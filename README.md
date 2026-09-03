@@ -1,2 +1,2 @@
-# FoodLink
-Distributed surplus food matching network using a multi-agent architecture.
+#Food-Bridge
+An agentic AI platform for real-time surplus food matching.
