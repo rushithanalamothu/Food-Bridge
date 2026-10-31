@@ -64,6 +64,8 @@ The intake slice now implements persisted drafts/confirmation, a scoped eligibil
 - `integrations/`: bounded external calls and fake providers behind interfaces. All model-backed features use `integrations.ai.generate_structured` and one app-wide `Settings.ai_*` provider/key/model configuration; feature-level vendor selection or provider clients are prohibited. No provider is allowed to mutate donation state or override rules.
 - `apps/web/src/features/<role>/`: role routes, components and hooks. Cross-role components go in `components/`; HTTP/SSE wrappers go in `api/`; generated types must not be edited.
 
+For environment examples and the contributor integration rule, see [shared AI configuration](setup.md#shared-ai-configuration). Detailed provider defaults, compatibility aliases and intake fallback behavior are in [extraction modes](features/intake.md#extraction-modes).
+
 Avoid a general `utils.py` or `services.py` that absorbs every owner’s code. Add a named module where its responsibility is clear. Start with explicit functions and small services; do not introduce an agent framework unless an ADR explains a capability the current boundaries cannot provide.
 
 ## 4. Domain vocabulary and invariants

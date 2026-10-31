@@ -52,7 +52,6 @@ With no configured key (or explicit `FOODBRIDGE_AI_PROVIDER=rules`), basic extra
 
 The app-wide AI client supports OpenAI (the API used for GPT models), Google Gemini and Anthropic Claude, plus configurable OpenAI-compatible Chat Completions endpoints. Keys are read by the backend only; never put them in `VITE_*` variables or commit `.env`. Consumer ChatGPT/Claude subscriptions are not API credentials.
 
-
 **One AI configuration for the whole app.** All model-backed features must call `integrations.ai.generate_structured` with the shared `Settings`; they supply only feature instructions, input and a Pydantic output type. This client handles provider HTTP, schema normalization, timeouts and local output validation. Intake uses it now. Future matching/ranking must reuse it; those model-backed business features are not implemented yet. Do not add feature-specific provider/key/model settings or provider HTTP clients. `FOODBRIDGE_AI_PROVIDER`, `FOODBRIDGE_AI_API_KEY`, `FOODBRIDGE_AI_MODEL`, `FOODBRIDGE_AI_BASE_URL`, `FOODBRIDGE_AI_RESPONSE_FORMAT` and `FOODBRIDGE_AI_TIMEOUT_S` apply to every caller in API and worker processes. Eligibility and urgency remain pure deterministic rules and need no model key.
 
 The previous `FOODBRIDGE_EXTRACTION_*` environment names remain deprecated aliases for these same global settings. Global names take precedence when both are present; a legacy extraction key cannot select a separate intake provider. Compose applies the same precedence. Prefer the global names in new `.env` files.

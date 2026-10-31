@@ -2,6 +2,8 @@
 
 FoodBridge connects surplus-food donors with eligible recipient organizations and coordinates pickup before the food’s safe-use deadline. This repository is the shared implementation foundation for the four-person project team.
 
+**AI configuration:** [one provider/key/model for every AI feature](docs/setup.md#shared-ai-configuration). All contributors use the shared backend client; do not add per-feature provider keys.
+
 **Intake feature:** [run and integrate the donor workflow](docs/features/intake.md).
 
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).

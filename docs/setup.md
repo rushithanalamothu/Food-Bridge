@@ -36,7 +36,7 @@ A worker example:
 make worker QUEUE=intake
 ```
 
-Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The current tasks only verify registration. Business task handlers/outbox polling are subsequent implementation work. On macOS, prefer containerized workers when testing process termination/limits.
+Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. General orchestration, matching and reservation business handlers remain planned; their probes only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
 
 ## Entire stack in containers
 
@@ -49,6 +49,21 @@ Compose starts DB and Redis health checks, runs migrations once, then starts the
 This profile copies application source into images; rebuild after code changes (`docker compose up --build -d`). Use native API/web commands for hot reload. Avoid starting native and containerized API/web instances on the same ports.
 
 The official `postgis/postgis` image is amd64-only. Compose sets `platform: linux/amd64` for DB so Apple Silicon can use Docker emulation. Enable emulation in Docker Desktop. See the upstream [image support notes](https://github.com/postgis/docker-postgis). Postgres 16 uses `/var/lib/postgresql/data`; do not change to the Postgres 18 volume layout without a migration/backup plan.
+
+## Shared AI configuration
+
+Configure one provider and API key in the root `.env` for the whole app. For example:
+
+```dotenv
+FOODBRIDGE_AI_PROVIDER=gemini
+FOODBRIDGE_AI_API_KEY=replace-with-your-private-api-key
+```
+
+Use `openai` for OpenAI/GPT or `anthropic` for Claude instead of `gemini`. `FOODBRIDGE_AI_MODEL` optionally overrides the selected provider's default model. Alternatively, leave `FOODBRIDGE_AI_PROVIDER=auto` and set exactly one vendor key (`OPENAI_API_KEY`, `GEMINI_API_KEY` or `ANTHROPIC_API_KEY`). With no key, auto mode uses basic rules extraction. With multiple vendor keys, choose the app-wide provider explicitly.
+
+These settings apply to the API and every worker; donors and other roles do not configure separate model providers. After edits, restart native backend processes or run `docker compose up --build -d`. Keep `.env` private; never add keys to frontend `VITE_*` variables. Existing `FOODBRIDGE_EXTRACTION_*` variables are compatibility aliases for the global settings; replace them with `FOODBRIDGE_AI_*` in new setups. See [provider options and fallback behavior](features/intake.md#extraction-modes) for defaults and OpenAI-compatible endpoints.
+
+When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client today; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
 
 ## Checks
 
