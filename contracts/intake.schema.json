@@ -788,7 +788,10 @@
         "provider": {
           "enum": [
             "rules",
-            "openai"
+            "openai",
+            "gemini",
+            "anthropic",
+            "openai_compatible"
           ],
           "title": "Provider",
           "type": "string"
