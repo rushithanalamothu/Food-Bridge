@@ -56,7 +56,7 @@ class ReviewIssue(Contract):
 
 class ExtractionResult(Contract):
     fields: ProposedFields
-    provider: Literal["rules", "openai"]
+    provider: Literal["rules", "openai", "gemini", "anthropic", "openai_compatible"]
     model: str | None = None
     prompt_version: str = "intake-extraction-v1"
     evidence: dict[str, str] = Field(default_factory=dict)

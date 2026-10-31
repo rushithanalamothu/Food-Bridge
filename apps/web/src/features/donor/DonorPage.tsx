@@ -270,7 +270,7 @@ export function DonorPage() {
                 <p className="form-hint">
                   {draft.extraction.provider === 'rules'
                     ? 'Basic extraction · no model used'
-                    : `Model proposal · ${draft.extraction.model}`}
+                    : `Model proposal · ${draft.extraction.provider} · ${draft.extraction.model}`}
                   . Every field can be corrected.
                 </p>
                 {(draft.extraction.issues ?? []).length > 0 && (
