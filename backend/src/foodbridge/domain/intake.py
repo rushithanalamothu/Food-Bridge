@@ -17,21 +17,51 @@ from foodbridge.domain.contracts import (
     Storage,
 )
 
+SAFETY_FIELDS = (
+    "food_name",
+    "category",
+    "quantity_kg",
+    "storage",
+    "allergens",
+    "pickup_window",
+    "safe_use_by",
+)
+RequiredField = Literal[
+    "food_name",
+    "category",
+    "quantity_kg",
+    "storage",
+    "allergens",
+    "pickup_window",
+    "safe_use_by",
+    "packaging_type",
+    "portions",
+    "handling_notes",
+]
+
 NonNegativeNumber = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
 
 class IntakePolicy(Contract):
-    version: str = Field(default="eligibility-v1", min_length=1)
+    version: str = Field(default="eligibility-v2", min_length=1)
     handling_buffer_s: int = Field(default=900, ge=0, le=86400)
     route_max_age_s: int = Field(default=300, gt=0, le=86400)
-    critical_window_s: int = Field(default=3600, gt=0)
-    high_window_s: int = Field(default=10800, gt=0)
+    critical_window_s: int = Field(default=7200, gt=0)
+    high_window_s: int = Field(default=21600, gt=0)
     urgency_horizon_s: int = Field(default=21600, gt=0)
+
+    max_description_length: int = Field(default=2000, ge=1, le=4000)
+    accepted_quantity_units: list[Literal["kg", "g", "lb", "meal", "serving", "box"]] = Field(
+        default_factory=lambda: ["kg", "g", "lb", "meal", "serving", "box"], min_length=1
+    )
+    required_fields: list[RequiredField] = Field(default_factory=lambda: list(SAFETY_FIELDS))
 
     @model_validator(mode="after")
     def ordered_windows(self) -> Self:
         if not self.critical_window_s <= self.high_window_s <= self.urgency_horizon_s:
             raise ValueError("urgency windows must be in increasing order")
+        if not set(SAFETY_FIELDS) <= set(self.required_fields):
+            raise ValueError("required_fields cannot disable mandatory safety fields")
         return self
 
 
@@ -39,6 +69,7 @@ class ProposedFields(Contract):
     food_name: str | None = Field(default=None, max_length=200)
     category: FoodCategory | None = None
     quantity_kg: PositiveKg | None = None
+    packaging_type: Literal["boxed", "sealed", "bulk", "other"] | None = None
     portions: int | None = Field(default=None, gt=0)
     storage: Storage | None = None
     dietary_tags: list[str] | None = None
@@ -58,7 +89,8 @@ class ExtractionResult(Contract):
     fields: ProposedFields
     provider: Literal["rules", "openai", "gemini", "anthropic", "openai_compatible"]
     model: str | None = None
-    prompt_version: str = "intake-extraction-v1"
+    prompt_version: str = "intake-extraction-v2"
+    request_id: UUID | None = None
     evidence: dict[str, str] = Field(default_factory=dict)
     issues: list[ReviewIssue] = Field(default_factory=list)
 
@@ -90,7 +122,7 @@ class UrgencyAssessment(Contract):
     deadline_at: AwareDatetime
     seconds_remaining: float
     score: float = Field(ge=0, le=1)
-    policy_version: str = "eligibility-v1"
+    policy_version: str = "eligibility-v2"
     basis: Literal["confirmed_deadline"] = "confirmed_deadline"
 
 
@@ -144,6 +176,13 @@ class EligibilityBatch(Contract):
     candidates: list[EligibilityCandidate] = Field(max_length=100)
     synthetic: bool = False
 
+    @model_validator(mode="after")
+    def unique_recipients(self) -> Self:
+        identifiers = [candidate.recipient.organization_id for candidate in self.candidates]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("candidate recipient IDs must be unique")
+        return self
+
 
 class EligibilityDecision(Contract):
     recipient_organization_id: UUID
@@ -159,9 +198,11 @@ class EligibilityResult(Contract):
     donation_id: UUID
     donation_version: int
     evaluated_at: AwareDatetime
-    policy_version: str = "eligibility-v1"
+    policy_version: str = "eligibility-v2"
     synthetic: bool
     urgency: UrgencyAssessment
+    donation_decision: Literal["eligible", "rejected", "needs_review"] = "needs_review"
+    donation_reasons: list[str] = Field(default_factory=list)
     decisions: list[EligibilityDecision]
 
 
@@ -172,6 +213,15 @@ class EvaluationRead(Contract):
     synthetic: bool
     result: EligibilityResult | None = None
     failure_code: str | None = None
+
+
+class IntakeHandoff(Contract):
+    """Internal read result, never a queue payload. Not a ranking or reservation."""
+
+    evaluation_id: UUID
+    donation: DonationRead
+    result: EligibilityResult
+    eligible_candidates: list[EligibilityCandidate]
 
 
 class IntakeContracts(Contract):
@@ -185,4 +235,5 @@ class IntakeContracts(Contract):
     eligibility_batch: EligibilityBatch
     eligibility_result: EligibilityResult
     evaluation: EvaluationRead
+    handoff: IntakeHandoff
     policy: IntakePolicy

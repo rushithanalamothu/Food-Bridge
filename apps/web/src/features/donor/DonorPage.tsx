@@ -6,11 +6,13 @@ import type {
   DonorIdentity,
   IntakeDonationRead,
   EvaluationRead,
+  IntakePolicy,
 } from '../../api/generated/intake';
 import {
   createDraft,
   demoEligibility,
   getDonorIdentity,
+  getIntakePolicy,
   getDonation,
   getEvaluation,
   IntakeApiError,
@@ -35,6 +37,7 @@ export function DonorPage() {
   const [draft, setDraft] = useState<DraftRead>();
   const [posted, setPosted] = useState<IntakeDonationRead>();
   const [recent, setRecent] = useState<IntakeDonationRead[]>([]);
+  const [policy, setPolicy] = useState<IntakePolicy>();
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,7 +56,16 @@ export function DonorPage() {
     void getDonorIdentity()
       .then((value) => {
         if (!mounted.current) return;
-        setIdentity(value);
+        void getIntakePolicy()
+          .then((configured) => {
+            if (mounted.current) {
+              setPolicy(configured);
+              setIdentity(value);
+            }
+          })
+          .catch((err) => {
+            if (mounted.current) setError(errorText(err));
+          });
         void listDonations()
           .then((list) => {
             if (mounted.current) setRecent(list.items);
@@ -135,6 +147,7 @@ export function DonorPage() {
       category: text('category') as DonationInput['category'],
       quantity_kg: Number(text('quantity_kg')),
       portions: text('portions') ? Number(text('portions')) : null,
+      packaging_type: (text('packaging_type') || null) as DonationInput['packaging_type'],
       storage: text('storage') as DonationInput['storage'],
       dietary_tags: tokens('dietary_tags'),
       allergens: text('allergens').toLowerCase() === 'none' ? [] : tokens('allergens'),
@@ -225,7 +238,7 @@ export function DonorPage() {
                 <textarea
                   id="description"
                   required
-                  maxLength={4000}
+                  maxLength={policy?.max_description_length ?? 2000}
                   rows={7}
                   value={description}
                   onChange={(event) => {
@@ -305,10 +318,14 @@ export function DonorPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="portions">Meals / portions (optional)</label>
+                    <label htmlFor="portions">
+                      Meals / portions{' '}
+                      {policy?.required_fields?.includes('portions') ? '(required)' : '(optional)'}
+                    </label>
                     <input
                       id="portions"
                       name="portions"
+                      required={policy?.required_fields?.includes('portions')}
                       type="number"
                       min="1"
                       step="1"
@@ -354,6 +371,24 @@ export function DonorPage() {
                     </select>
                   </div>
                 </div>
+                <label htmlFor="packaging_type">
+                  Packaging{' '}
+                  {policy?.required_fields?.includes('packaging_type')
+                    ? '(required)'
+                    : '(optional)'}
+                </label>
+                <select
+                  id="packaging_type"
+                  name="packaging_type"
+                  required={policy?.required_fields?.includes('packaging_type')}
+                  defaultValue={fields?.packaging_type ?? ''}
+                >
+                  <option value="">Unspecified</option>
+                  <option value="boxed">Boxed</option>
+                  <option value="sealed">Sealed</option>
+                  <option value="bulk">Bulk</option>
+                  <option value="other">Other</option>
+                </select>
                 <label htmlFor="allergens">Allergens (comma separated, or “none”)</label>
                 <input
                   id="allergens"
@@ -410,10 +445,16 @@ export function DonorPage() {
                   required
                   defaultValue={datetimeLocal(fields?.safe_use_by)}
                 />
-                <label htmlFor="handling_notes">Pickup / handling notes (optional)</label>
+                <label htmlFor="handling_notes">
+                  Pickup / handling notes{' '}
+                  {policy?.required_fields?.includes('handling_notes')
+                    ? '(required)'
+                    : '(optional)'}
+                </label>
                 <textarea
                   id="handling_notes"
                   name="handling_notes"
+                  required={policy?.required_fields?.includes('handling_notes')}
                   rows={2}
                   maxLength={1000}
                   defaultValue={fields?.handling_notes ?? ''}

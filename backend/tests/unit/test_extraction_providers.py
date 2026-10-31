@@ -365,3 +365,76 @@ def test_shared_client_cannot_call_remote_models_when_app_ai_is_disabled():
             output_type=Output,
             transport=httpx.MockTransport(handler),
         )
+
+
+@pytest.mark.parametrize("provider", PROVIDERS)
+def test_transient_provider_failure_is_retried_once_with_same_credentials(provider):
+    from pydantic import BaseModel
+
+    from foodbridge.integrations.ai import generate_structured
+
+    class Output(BaseModel):
+        value: str
+
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) == 1:
+            raise httpx.ReadTimeout("sensitive exception content", request=request)
+        return httpx.Response(200, json=response_body(provider, '{"value":"ok"}'))
+
+    result = generate_structured(
+        configured(provider),
+        instructions="test",
+        user_input="test",
+        output_type=Output,
+        transport=httpx.MockTransport(handler),
+    )
+    assert result.value == "ok"
+    assert len(requests) == 2
+    assert requests[0].url == requests[1].url
+    assert requests[0].headers == requests[1].headers
+    assert requests[0].content == requests[1].content
+
+
+def test_auth_failure_is_not_retried_or_sent_to_another_provider():
+    count = 0
+
+    def handler(request):
+        nonlocal count
+        count += 1
+        return httpx.Response(401)
+
+    result = extract(TEXT, "UTC", NOW, configured("gemini"), httpx.MockTransport(handler))
+    assert result.provider == "rules"
+    assert count == 1
+
+
+def test_model_cannot_bypass_configured_input_units(monkeypatch):
+    from foodbridge.domain.intake import IntakePolicy
+    from foodbridge.integrations import extraction
+
+    monkeypatch.setattr(
+        extraction, "load_policy", lambda: IntakePolicy(accepted_quantity_units=["kg"])
+    )
+    proposal = {
+        "fields": {"quantity_kg": 0.454, "portions": 20},
+        "evidence": [
+            {"field": "quantity_kg", "quote": "1 lb"},
+            {"field": "portions", "quote": "20 boxes"},
+        ],
+    }
+    result = extract(
+        "1 lb in 20 boxes",
+        "UTC",
+        NOW,
+        configured("gemini"),
+        httpx.MockTransport(
+            lambda request: httpx.Response(200, json=response_body("gemini", json.dumps(proposal)))
+        ),
+    )
+    assert result.provider == "gemini"
+    assert result.fields.quantity_kg is None
+    assert result.fields.portions is None
+    assert any(issue.code == "uncertain" for issue in result.issues)

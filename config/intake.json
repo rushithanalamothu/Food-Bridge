@@ -1,8 +1,19 @@
 {
-  "version": "eligibility-v1",
+  "version": "eligibility-v2",
   "handling_buffer_s": 900,
   "route_max_age_s": 300,
-  "critical_window_s": 3600,
-  "high_window_s": 10800,
-  "urgency_horizon_s": 21600
+  "critical_window_s": 7200,
+  "high_window_s": 21600,
+  "urgency_horizon_s": 21600,
+  "max_description_length": 2000,
+  "accepted_quantity_units": ["kg", "g", "lb", "meal", "serving", "box"],
+  "required_fields": [
+    "food_name",
+    "category",
+    "quantity_kg",
+    "storage",
+    "allergens",
+    "pickup_window",
+    "safe_use_by"
+  ]
 }

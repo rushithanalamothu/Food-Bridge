@@ -149,3 +149,71 @@ def test_configured_urgency_thresholds_are_used_and_versioned(food):
     result = urgency(food, NOW, policy)
     assert result.priority == "critical"
     assert result.policy_version == "test-policy"
+
+
+@pytest.mark.parametrize(
+    "remaining,priority",
+    [
+        (-1, "expired"),
+        (0, "expired"),
+        (1, "critical"),
+        (7200, "critical"),
+        (7201, "high"),
+        (21600, "high"),
+        (21601, "normal"),
+    ],
+)
+def test_spec_v03_urgency_boundaries(food, remaining, priority):
+    value = urgency(food, food.pickup_window.end - timedelta(seconds=remaining))
+    assert value.priority == priority
+    assert value.policy_version == "eligibility-v2"
+    assert 0 <= value.score <= 1
+
+
+def test_required_policy_cannot_remove_safety_fields():
+    from pydantic import ValidationError
+
+    from foodbridge.domain.intake import IntakePolicy
+
+    with pytest.raises(ValidationError, match="mandatory safety fields"):
+        IntakePolicy(required_fields=["food_name"])
+
+
+def test_additional_required_field_blocks_confirmation_and_all_candidates(food, batch):
+    from foodbridge.domain.intake import IntakePolicy
+
+    policy = IntakePolicy()
+    policy.required_fields.append("packaging_type")
+    with pytest.raises(ValueError, match="required_detail_missing"):
+        validate_confirmation(food, NOW, policy)
+    result = evaluate(food, batch, NOW, policy)
+    assert result.donation_decision == "needs_review"
+    assert result.donation_reasons == ["required_detail_missing"]
+    assert all(not item.eligible for item in result.decisions)
+    food.packaging_type = "boxed"
+    assert evaluate(food, batch, NOW, policy).donation_decision == "eligible"
+
+
+def test_duplicate_recipient_ids_are_rejected_before_handoff(batch):
+    from pydantic import ValidationError
+
+    value = batch.model_dump()
+    value["candidates"].append(value["candidates"][0])
+    with pytest.raises(ValidationError, match="must be unique"):
+        EligibilityBatch.model_validate(value)
+
+
+def test_arrival_at_exact_safe_use_deadline_is_rejected(food, batch):
+    from foodbridge.domain.intake import IntakePolicy
+
+    # Both candidate pickup and arrival are future, but arrival is exactly expiry.
+    candidate = batch.candidates[0]
+    candidate.route.travel_time_s = 3600
+    candidate.recipient.receiving_window.end = food.safe_use_by
+    candidate.driver.window.end = food.safe_use_by
+    food.pickup_window.start = food.safe_use_by - timedelta(seconds=3600 + 900)
+    food.pickup_window.end = food.safe_use_by - timedelta(seconds=1)
+    decision = evaluate(food, batch, NOW, IntakePolicy()).decisions[0]
+    assert decision.arrival_at == food.safe_use_by
+    assert not decision.eligible
+    assert "safe_use_deadline_missed" in decision.reasons

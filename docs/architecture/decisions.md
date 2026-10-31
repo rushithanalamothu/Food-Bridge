@@ -18,6 +18,12 @@ Accepted at scaffold creation, 2026-10-30. These choices resolve workbook altern
 | ADR-013 | Local intake demo is an explicit local-only opt-in; shared intake verifies OIDC JWTs and server memberships | No production login/provisioning is invented; gateway integration remains assigned |
 | ADR-011 | Scaffold exposes health only; feature routes are honest placeholders | Teammates can run and build now without mistaking simulated business output for implementation |
 
+## ADR-014 — Reconcile intake v0.3 without a second lifecycle
+
+Keep explicit donor confirmation, canonical kilograms, source-backed extraction, app-wide AI settings and the shared donation lifecycle. Model self-reported confidence is replaced by deterministic evidence checks and mandatory donor review. Urgency defaults now match the individual spec (2/6 hours); policy v2 adds configurable intake limits/required fields without disabling safety minima. Packaging is additive JSONB/wire data, so no migration is needed.
+
+Eligibility decisions are separate from aggregate state. The existing outbox events and typed `IntakeService.get_handoff` are the intake boundary; general Orchestrator/Matching dispatch remains assigned work. This avoids advertising a second `ELIGIBLE` state machine or an unfinished workflow as complete. [The alignment record](../specs/intake-v0.3-alignment.md) maps DI/NFR/UT/FT requirements, operational limits, amendments and remaining owners. Producer/consumer review should focus on packaging, policy/result/handoff contracts and policy-version invalidation.
+
 ## Technical references
 
 Primary documentation consulted when choosing the foundation:

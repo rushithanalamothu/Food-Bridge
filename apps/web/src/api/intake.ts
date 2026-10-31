@@ -6,6 +6,7 @@ import type {
   IntakeDonationRead,
   EvaluationRead,
   DonationPage,
+  IntakePolicy,
 } from './generated/intake';
 
 export class IntakeApiError extends Error {
@@ -66,3 +67,5 @@ export const demoEligibility = (id: string, key: string) =>
   });
 export const getEvaluation = (id: string, signal?: AbortSignal) =>
   intakeRequest<EvaluationRead>(`/intake/evaluations/${id}`, { signal });
+
+export const getIntakePolicy = () => intakeRequest<IntakePolicy>('/intake/policy');

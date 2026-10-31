@@ -12,6 +12,7 @@ export type DonorOrganizationId = string;
 export type FoodName = string;
 export type HandlingNotes = string;
 export type Id = string;
+export type PackagingType = ('boxed' | 'sealed' | 'bulk' | 'other') | null;
 export type Address = string;
 export type Latitude = number;
 export type Longitude = number;
@@ -56,6 +57,7 @@ export type Category1 =
 export type DietaryTags1 = string[] | null;
 export type FoodName1 = string | null;
 export type HandlingNotes1 = string;
+export type PackagingType1 = ('boxed' | 'sealed' | 'bulk' | 'other') | null;
 export type Portions1 = number | null;
 export type QuantityKg1 = number | null;
 export type SafeUseBy1 = string | null;
@@ -67,6 +69,7 @@ export type Issues = ReviewIssue[];
 export type Model = string | null;
 export type PromptVersion = string;
 export type Provider = 'rules' | 'openai' | 'gemini' | 'anthropic' | 'openai_compatible';
+export type RequestId = string | null;
 export type Id1 = string;
 export type Status = 'review_required' | 'confirmed';
 export type Version1 = number;
@@ -121,7 +124,9 @@ export type RecipientOrganizationId = string;
 export type RecipientVersion = number;
 export type SlackS = number | null;
 export type Decisions = EligibilityDecision[];
+export type DonationDecision = 'eligible' | 'rejected' | 'needs_review';
 export type DonationId2 = string;
+export type DonationReasons = string[];
 export type DonationVersion = number;
 export type EvaluatedAt = string;
 export type PolicyVersion1 = string;
@@ -131,14 +136,36 @@ export type FailureCode = string | null;
 export type Id3 = string;
 export type Status1 = 'pending' | 'completed' | 'stale' | 'failed';
 export type Synthetic2 = boolean;
+export type EligibleCandidates = EligibilityCandidate[];
+export type EvaluationId = string;
 export type DisplayName = string;
 export type Mode = 'local_demo' | 'oidc';
 export type OrganizationId1 = string;
 export type OrganizationName = string;
 export type UserId = string;
+/**
+ * @minItems 1
+ */
+export type AcceptedQuantityUnits = [
+  'kg' | 'g' | 'lb' | 'meal' | 'serving' | 'box',
+  ...('kg' | 'g' | 'lb' | 'meal' | 'serving' | 'box')[],
+];
 export type CriticalWindowS = number;
 export type HandlingBufferS = number;
 export type HighWindowS = number;
+export type MaxDescriptionLength = number;
+export type RequiredFields = (
+  | 'food_name'
+  | 'category'
+  | 'quantity_kg'
+  | 'storage'
+  | 'allergens'
+  | 'pickup_window'
+  | 'safe_use_by'
+  | 'packaging_type'
+  | 'portions'
+  | 'handling_notes'
+)[];
 export type RouteMaxAgeS = number;
 export type UrgencyHorizonS = number;
 export type Version3 = string;
@@ -152,6 +179,7 @@ export type Description3 = string;
 export type DietaryTags2 = string[];
 export type FoodName2 = string;
 export type HandlingNotes2 = string;
+export type PackagingType2 = ('boxed' | 'sealed' | 'bulk' | 'other') | null;
 export type Portions2 = number | null;
 export type QuantityKg2 = number;
 export type SafeUseBy2 = string;
@@ -168,6 +196,7 @@ export interface IntakeContracts {
   eligibility_result: EligibilityResult;
   evaluation: EvaluationRead;
   extraction: ExtractionResult;
+  handoff: IntakeHandoff;
   identity: DonorIdentity;
   policy: IntakePolicy;
   submission: DonationSubmit;
@@ -187,6 +216,7 @@ export interface DonationRead {
   food_name: FoodName;
   handling_notes?: HandlingNotes;
   id: Id;
+  packaging_type?: PackagingType;
   pickup_location: Location;
   pickup_window: PickupWindow;
   portions?: Portions;
@@ -236,6 +266,7 @@ export interface ExtractionResult {
   model?: Model;
   prompt_version?: PromptVersion;
   provider: Provider;
+  request_id?: RequestId;
 }
 export interface Evidence {
   [k: string]: string;
@@ -246,6 +277,7 @@ export interface ProposedFields {
   dietary_tags?: DietaryTags1;
   food_name?: FoodName1;
   handling_notes?: HandlingNotes1;
+  packaging_type?: PackagingType1;
   pickup_window?: PickupWindow | null;
   portions?: Portions1;
   quantity_kg?: QuantityKg1;
@@ -304,7 +336,9 @@ export interface RouteFacts {
 }
 export interface EligibilityResult {
   decisions: Decisions;
+  donation_decision?: DonationDecision;
   donation_id: DonationId2;
+  donation_reasons?: DonationReasons;
   donation_version: DonationVersion;
   evaluated_at: EvaluatedAt;
   policy_version?: PolicyVersion1;
@@ -328,6 +362,15 @@ export interface EvaluationRead {
   status: Status1;
   synthetic: Synthetic2;
 }
+/**
+ * Internal read result, never a queue payload. Not a ranking or reservation.
+ */
+export interface IntakeHandoff {
+  donation: DonationRead;
+  eligible_candidates: EligibleCandidates;
+  evaluation_id: EvaluationId;
+  result: EligibilityResult;
+}
 export interface DonorIdentity {
   display_name: DisplayName;
   mode: Mode;
@@ -337,9 +380,12 @@ export interface DonorIdentity {
   user_id: UserId;
 }
 export interface IntakePolicy {
+  accepted_quantity_units?: AcceptedQuantityUnits;
   critical_window_s?: CriticalWindowS;
   handling_buffer_s?: HandlingBufferS;
   high_window_s?: HighWindowS;
+  max_description_length?: MaxDescriptionLength;
+  required_fields?: RequiredFields;
   route_max_age_s?: RouteMaxAgeS;
   urgency_horizon_s?: UrgencyHorizonS;
   version?: Version3;
@@ -360,6 +406,7 @@ export interface DonationInput {
   dietary_tags?: DietaryTags2;
   food_name: FoodName2;
   handling_notes?: HandlingNotes2;
+  packaging_type?: PackagingType2;
   pickup_location: Location;
   pickup_window: PickupWindow;
   portions?: Portions2;

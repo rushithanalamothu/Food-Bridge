@@ -18,8 +18,10 @@ from foodbridge.domain.intake import (
     DraftRead,
     EvaluationRead,
     IntakeDonationRead,
+    IntakePolicy,
 )
 from foodbridge.integrations.extraction import extract
+from foodbridge.observability import timed
 
 router = APIRouter(prefix="/api/v1", tags=["intake"])
 Actor = Annotated[DonorIdentity, Depends(current_donor)]
@@ -41,13 +43,25 @@ def me(actor: Actor) -> DonorIdentity:
 
 @router.post("/donation-drafts", response_model=DraftRead, status_code=201)
 def create_draft(body: DraftCreate, request: Request, actor: Actor, key: Key) -> DraftRead:
+    intake = service(request)
+    replay = intake.replay_draft(actor, body, key)
+    if replay:
+        return replay
+    if len(body.description) > intake.policy.max_description_length:
+        raise AppError("description_too_long", "Shorten the food description.")
     proposal = extract(
         body.description,
         body.pickup_location.timezone,
         request.app.state.clock(),
         request.app.state.settings,
+        request_id=request.state.request_id,
     )
-    return service(request).create_draft(actor, body, proposal, key)
+    return intake.create_draft(actor, body, proposal, key)
+
+
+@router.get("/intake/policy", response_model=IntakePolicy)
+def get_policy(request: Request, actor: Actor) -> IntakePolicy:
+    return service(request).policy
 
 
 @router.get("/donation-drafts/{identifier}", response_model=DraftRead)
@@ -57,7 +71,8 @@ def get_draft(identifier: UUID, request: Request, actor: Actor) -> DraftRead:
 
 @router.post("/donations", response_model=IntakeDonationRead, status_code=202)
 def submit(body: DonationSubmit, request: Request, actor: Actor, key: Key) -> IntakeDonationRead:
-    return service(request).submit(actor, body, key, request.state.request_id)
+    with timed("confirmation"):
+        return service(request).submit(actor, body, key, request.state.request_id)
 
 
 @router.get("/donations", response_model=DonationPage)

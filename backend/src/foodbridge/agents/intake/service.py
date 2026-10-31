@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 from datetime import UTC, datetime
+from time import perf_counter
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, or_, select, text
@@ -27,10 +28,13 @@ from foodbridge.domain.intake import (
     DraftCreate,
     DraftRead,
     EligibilityBatch,
+    EligibilityResult,
     EvaluationRead,
     ExtractionResult,
     IntakeDonationRead,
+    IntakeHandoff,
 )
+from foodbridge.observability import decisions, duplicates, record, timed
 
 
 def utcnow() -> datetime:
@@ -72,10 +76,18 @@ def _idempotency(session, actor_id: UUID, action: str, key: UUID, body: dict):
     session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock})
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
     record = session.get(IdempotencyRecord, (actor_id, action, key))
-    if record and record.request_hash != digest:
+    legacy_digest = None
+    if action == "donations" and body.get("donation", {}).get("packaging_type") is None:
+        # Receipts created before optional packaging existed used the earlier canonical DTO.
+        legacy_body = {**body, "donation": dict(body["donation"])}
+        legacy_body["donation"].pop("packaging_type", None)
+        legacy_digest = hashlib.sha256(json.dumps(legacy_body, sort_keys=True).encode()).hexdigest()
+    if record and record.request_hash not in {digest, legacy_digest}:
         raise AppError(
             "idempotency_key_reused", "This request key was used for different details.", 409
         )
+    if record:
+        duplicates.inc()
     return record, digest
 
 
@@ -136,6 +148,8 @@ class IntakeService:
             )
             if old:
                 return DraftRead.model_validate(old.response)
+            if len(request.description) > self.policy.max_description_length:
+                raise AppError("description_too_long", "Shorten the food description.")
             draft = DonationDraft(
                 id=uuid4(),
                 donor_organization_id=actor.organization_id,
@@ -154,6 +168,16 @@ class IntakeService:
             )
             return view
 
+    def replay_draft(
+        self, actor: DonorIdentity, request: DraftCreate, key: UUID
+    ) -> DraftRead | None:
+        """Avoid another model call for a completed request; concurrent first calls may overlap."""
+        with self.sessions.begin() as session:
+            old, _ = _idempotency(
+                session, actor.user_id, "drafts", key, request.model_dump(mode="json")
+            )
+            return DraftRead.model_validate(old.response) if old else None
+
     def get_draft(self, actor: DonorIdentity, draft_id: UUID) -> DraftRead:
         with self.sessions() as session:
             row = session.scalar(
@@ -169,6 +193,7 @@ class IntakeService:
     def submit(
         self, actor: DonorIdentity, request: DonationSubmit, key: UUID, correlation_id: UUID
     ) -> IntakeDonationRead:
+        started = perf_counter()
         now = self.clock()
         with self.sessions.begin() as session:
             old, digest = _idempotency(
@@ -195,11 +220,13 @@ class IntakeService:
                     "description_changed", "Create a new draft after changing the description.", 409
                 )
             try:
-                validate_confirmation(request.donation, now)
+                validate_confirmation(request.donation, now, self.policy)
             except ValueError as exc:
                 raise AppError(
                     str(exc),
                     {
+                        "description_too_long": "Shorten the food description.",
+                        "required_detail_missing": "Complete the required donation details.",
                         "pickup_deadline_passed": "Pickup has ended. Update the window.",
                         "quantity_precision_or_range": "Use up to three decimals for weight.",
                         "allergens_need_review": "Use standard allergen names, such as soy.",
@@ -250,7 +277,15 @@ class IntakeService:
             _remember(
                 session, actor.user_id, "donations", key, digest, view.model_dump(mode="json"), now
             )
-            return view
+        record(
+            "donation.persisted",
+            request_id=correlation_id,
+            donation_id=row.id,
+            outcome="submitted",
+            duration_ms=(perf_counter() - started) * 1000,
+            policy_version=self.policy.version,
+        )
+        return view
 
     def get_donation(self, actor: DonorIdentity, donation_id: UUID) -> IntakeDonationRead:
         with self.sessions() as session:
@@ -344,7 +379,15 @@ class IntakeService:
                 created_at=now,
             )
             session.add(row)
-            _event(session, row.id, 1, "intake.evaluation_requested.v1", now, correlation_id, {})
+            _event(
+                session,
+                row.id,
+                1,
+                "intake.evaluation_requested.v1",
+                now,
+                correlation_id,
+                {"donation_id": str(donation.id)},
+            )
             view = EvaluationRead(
                 id=row.id, donation_id=donation.id, status="pending", synthetic=batch.synthetic
             )
@@ -387,6 +430,7 @@ class IntakeService:
 
     def process_evaluation(self, identifier: UUID) -> EvaluationRead | None:
         """One short DB transaction; duplicate deliveries observe the completed result."""
+        started = perf_counter()
         now = self.clock()
         with self.sessions.begin() as session:
             row = session.get(IntakeEvaluation, identifier, with_for_update=True)
@@ -405,9 +449,13 @@ class IntakeService:
             elif batch.synthetic and not self.allow_synthetic:
                 row.status, row.failure_code = "failed", "synthetic_evaluation_disabled"
             else:
-                result = evaluate(
-                    DonationInput.model_validate(donation.confirmed_data), batch, now, self.policy
-                )
+                with timed("eligibility"):
+                    result = evaluate(
+                        DonationInput.model_validate(donation.confirmed_data),
+                        batch,
+                        now,
+                        self.policy,
+                    )
                 row.result, row.status = result.model_dump(mode="json"), "completed"
                 source_event = session.scalar(
                     select(OutboxEvent).where(
@@ -429,7 +477,66 @@ class IntakeService:
                         "donation_id": str(donation.id),
                         "donation_version": donation.version,
                         "eligible_count": sum(d.eligible for d in result.decisions),
+                        "donation_decision": result.donation_decision,
                         "synthetic": batch.synthetic,
                     },
                 )
-            return self._evaluation_view(row)
+            view = self._evaluation_view(row)
+        if view.result:
+            decisions.labels("donation", view.result.donation_decision).inc()
+            for decision in view.result.decisions:
+                decisions.labels("candidate", "eligible" if decision.eligible else "rejected").inc()
+        record(
+            "validation.completed",
+            request_id=correlation_id if view.result else None,
+            donation_id=donation.id,
+            evaluation_id=identifier,
+            outcome=view.status,
+            duration_ms=(perf_counter() - started) * 1000,
+            reason_codes=sorted(
+                {reason for decision in view.result.decisions for reason in decision.reasons}
+            )
+            if view.result
+            else [],
+            policy_version=self.policy.version,
+        )
+        return view
+
+    def get_handoff(self, identifier: UUID) -> IntakeHandoff:
+        """Internal Orchestrator port: confirmed donation plus revalidated candidate snapshots.
+
+        No ranking, state transition, publication or reservation occurs here. Downstream
+        transactions must still recheck versions and current capacity before accepting.
+        """
+        with self.sessions() as session:
+            row = session.get(IntakeEvaluation, identifier)
+            if row is None or row.status != "completed":
+                raise AppError(
+                    "evaluation_not_ready", "Eligibility evaluation is not complete.", 409
+                )
+            donation = session.get(Donation, row.donation_id)
+            batch = EligibilityBatch.model_validate(row.batch)
+            saved = EligibilityResult.model_validate(row.result)
+            if (
+                donation.version != batch.expected_donation_version
+                or donation.status not in {"submitted", "matching", "offered"}
+                or saved.policy_version != self.policy.version
+                or (batch.synthetic and not self.allow_synthetic)
+            ):
+                raise AppError("stale_evaluation", "Request a new eligibility evaluation.", 409)
+            now = self.clock()
+            value = donation_view(donation, now).donation
+            result = evaluate(value, batch, now, self.policy)
+            if result.donation_decision != "eligible":
+                raise AppError(
+                    "stale_evaluation", "The donation needs a new validation or donor review.", 409
+                )
+            eligible = {d.recipient_organization_id for d in result.decisions if d.eligible}
+            return IntakeHandoff(
+                evaluation_id=row.id,
+                donation=value,
+                result=result,
+                eligible_candidates=[
+                    c for c in batch.candidates if c.recipient.organization_id in eligible
+                ],
+            )

@@ -49,6 +49,24 @@
           "title": "Handling Notes",
           "type": "string"
         },
+        "packaging_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "boxed",
+                "sealed",
+                "bulk",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packaging Type"
+        },
         "pickup_location": {
           "$ref": "#/$defs/Location"
         },
@@ -193,6 +211,24 @@
           "format": "uuid",
           "title": "Id",
           "type": "string"
+        },
+        "packaging_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "boxed",
+                "sealed",
+                "bulk",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packaging Type"
         },
         "pickup_location": {
           "$ref": "#/$defs/Location"
@@ -650,10 +686,27 @@
           "title": "Decisions",
           "type": "array"
         },
+        "donation_decision": {
+          "default": "needs_review",
+          "enum": [
+            "eligible",
+            "rejected",
+            "needs_review"
+          ],
+          "title": "Donation Decision",
+          "type": "string"
+        },
         "donation_id": {
           "format": "uuid",
           "title": "Donation Id",
           "type": "string"
+        },
+        "donation_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Donation Reasons",
+          "type": "array"
         },
         "donation_version": {
           "title": "Donation Version",
@@ -665,7 +718,7 @@
           "type": "string"
         },
         "policy_version": {
-          "default": "eligibility-v1",
+          "default": "eligibility-v2",
           "title": "Policy Version",
           "type": "string"
         },
@@ -781,7 +834,7 @@
           "title": "Model"
         },
         "prompt_version": {
-          "default": "intake-extraction-v1",
+          "default": "intake-extraction-v2",
           "title": "Prompt Version",
           "type": "string"
         },
@@ -795,6 +848,19 @@
           ],
           "title": "Provider",
           "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
         }
       },
       "required": [
@@ -827,11 +893,59 @@
       "title": "IntakeDonationRead",
       "type": "object"
     },
+    "IntakeHandoff": {
+      "additionalProperties": false,
+      "description": "Internal read result, never a queue payload. Not a ranking or reservation.",
+      "properties": {
+        "donation": {
+          "$ref": "#/$defs/DonationRead"
+        },
+        "eligible_candidates": {
+          "items": {
+            "$ref": "#/$defs/EligibilityCandidate"
+          },
+          "title": "Eligible Candidates",
+          "type": "array"
+        },
+        "evaluation_id": {
+          "format": "uuid",
+          "title": "Evaluation Id",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/EligibilityResult"
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "donation",
+        "result",
+        "eligible_candidates"
+      ],
+      "title": "IntakeHandoff",
+      "type": "object"
+    },
     "IntakePolicy": {
       "additionalProperties": false,
       "properties": {
+        "accepted_quantity_units": {
+          "items": {
+            "enum": [
+              "kg",
+              "g",
+              "lb",
+              "meal",
+              "serving",
+              "box"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Quantity Units",
+          "type": "array"
+        },
         "critical_window_s": {
-          "default": 3600,
+          "default": 7200,
           "exclusiveMinimum": 0,
           "title": "Critical Window S",
           "type": "integer"
@@ -844,10 +958,36 @@
           "type": "integer"
         },
         "high_window_s": {
-          "default": 10800,
+          "default": 21600,
           "exclusiveMinimum": 0,
           "title": "High Window S",
           "type": "integer"
+        },
+        "max_description_length": {
+          "default": 2000,
+          "maximum": 4000,
+          "minimum": 1,
+          "title": "Max Description Length",
+          "type": "integer"
+        },
+        "required_fields": {
+          "items": {
+            "enum": [
+              "food_name",
+              "category",
+              "quantity_kg",
+              "storage",
+              "allergens",
+              "pickup_window",
+              "safe_use_by",
+              "packaging_type",
+              "portions",
+              "handling_notes"
+            ],
+            "type": "string"
+          },
+          "title": "Required Fields",
+          "type": "array"
         },
         "route_max_age_s": {
           "default": 300,
@@ -863,7 +1003,7 @@
           "type": "integer"
         },
         "version": {
-          "default": "eligibility-v1",
+          "default": "eligibility-v2",
           "minLength": 1,
           "title": "Version",
           "type": "string"
@@ -1000,6 +1140,24 @@
           "maxLength": 1000,
           "title": "Handling Notes",
           "type": "string"
+        },
+        "packaging_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "boxed",
+                "sealed",
+                "bulk",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packaging Type"
         },
         "pickup_window": {
           "anyOf": [
@@ -1250,7 +1408,7 @@
           "type": "string"
         },
         "policy_version": {
-          "default": "eligibility-v1",
+          "default": "eligibility-v2",
           "title": "Policy Version",
           "type": "string"
         },
@@ -1311,6 +1469,9 @@
     "extraction": {
       "$ref": "#/$defs/ExtractionResult"
     },
+    "handoff": {
+      "$ref": "#/$defs/IntakeHandoff"
+    },
     "identity": {
       "$ref": "#/$defs/DonorIdentity"
     },
@@ -1332,6 +1493,7 @@
     "eligibility_batch",
     "eligibility_result",
     "evaluation",
+    "handoff",
     "policy"
   ],
   "title": "IntakeContracts",

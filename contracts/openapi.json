@@ -50,6 +50,23 @@
             "title": "Handling Notes",
             "type": "string"
           },
+          "packaging_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "boxed",
+                  "sealed",
+                  "bulk",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packaging Type"
+          },
           "pickup_location": {
             "$ref": "#/components/schemas/Location"
           },
@@ -193,6 +210,23 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "packaging_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "boxed",
+                  "sealed",
+                  "bulk",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packaging Type"
           },
           "pickup_location": {
             "$ref": "#/components/schemas/Location"
@@ -520,10 +554,27 @@
             "title": "Decisions",
             "type": "array"
           },
+          "donation_decision": {
+            "default": "needs_review",
+            "enum": [
+              "eligible",
+              "rejected",
+              "needs_review"
+            ],
+            "title": "Donation Decision",
+            "type": "string"
+          },
           "donation_id": {
             "format": "uuid",
             "title": "Donation Id",
             "type": "string"
+          },
+          "donation_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Donation Reasons",
+            "type": "array"
           },
           "donation_version": {
             "title": "Donation Version",
@@ -535,7 +586,7 @@
             "type": "string"
           },
           "policy_version": {
-            "default": "eligibility-v1",
+            "default": "eligibility-v2",
             "title": "Policy Version",
             "type": "string"
           },
@@ -648,7 +699,7 @@
             "title": "Model"
           },
           "prompt_version": {
-            "default": "intake-extraction-v1",
+            "default": "intake-extraction-v2",
             "title": "Prompt Version",
             "type": "string"
           },
@@ -662,6 +713,18 @@
             ],
             "title": "Provider",
             "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
           }
         },
         "required": [
@@ -705,6 +768,93 @@
           "urgency"
         ],
         "title": "IntakeDonationRead",
+        "type": "object"
+      },
+      "IntakePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_quantity_units": {
+            "items": {
+              "enum": [
+                "kg",
+                "g",
+                "lb",
+                "meal",
+                "serving",
+                "box"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Accepted Quantity Units",
+            "type": "array"
+          },
+          "critical_window_s": {
+            "default": 7200,
+            "exclusiveMinimum": 0.0,
+            "title": "Critical Window S",
+            "type": "integer"
+          },
+          "handling_buffer_s": {
+            "default": 900,
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Handling Buffer S",
+            "type": "integer"
+          },
+          "high_window_s": {
+            "default": 21600,
+            "exclusiveMinimum": 0.0,
+            "title": "High Window S",
+            "type": "integer"
+          },
+          "max_description_length": {
+            "default": 2000,
+            "maximum": 4000.0,
+            "minimum": 1.0,
+            "title": "Max Description Length",
+            "type": "integer"
+          },
+          "required_fields": {
+            "items": {
+              "enum": [
+                "food_name",
+                "category",
+                "quantity_kg",
+                "storage",
+                "allergens",
+                "pickup_window",
+                "safe_use_by",
+                "packaging_type",
+                "portions",
+                "handling_notes"
+              ],
+              "type": "string"
+            },
+            "title": "Required Fields",
+            "type": "array"
+          },
+          "route_max_age_s": {
+            "default": 300,
+            "exclusiveMinimum": 0.0,
+            "maximum": 86400.0,
+            "title": "Route Max Age S",
+            "type": "integer"
+          },
+          "urgency_horizon_s": {
+            "default": 21600,
+            "exclusiveMinimum": 0.0,
+            "title": "Urgency Horizon S",
+            "type": "integer"
+          },
+          "version": {
+            "default": "eligibility-v2",
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "title": "IntakePolicy",
         "type": "object"
       },
       "LiveStatus": {
@@ -849,6 +999,23 @@
             "title": "Handling Notes",
             "type": "string"
           },
+          "packaging_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "boxed",
+                  "sealed",
+                  "bulk",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packaging Type"
+          },
           "pickup_window": {
             "anyOf": [
               {
@@ -989,7 +1156,7 @@
             "type": "string"
           },
           "policy_version": {
-            "default": "eligibility-v1",
+            "default": "eligibility-v2",
             "title": "Policy Version",
             "type": "string"
           },
@@ -1506,6 +1673,32 @@
           }
         ],
         "summary": "Get Evaluation",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/intake/policy": {
+      "get": {
+        "operationId": "get_policy_api_v1_intake_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakePolicy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Policy",
         "tags": [
           "intake"
         ]

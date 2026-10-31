@@ -135,3 +135,44 @@ def test_model_schema_has_no_implicit_optional_properties():
 def test_empty_or_unrecognized_allergen_declaration_is_not_none():
     assert extract_rules("Allergens: ,.", "UTC", NOW).fields.allergens is None
     assert extract_rules("Allergens: may contain soy.", "UTC", NOW).fields.allergens is None
+
+
+def test_packaging_and_explicit_notes_are_source_backed():
+    result = extract_rules("20 boxed meals. Notes: Keep sealed for pickup.", "UTC", NOW)
+    # Two packaging declarations require review rather than choosing one.
+    assert result.fields.packaging_type is None
+    result = extract_rules("20 boxed meals. Notes: Rear entrance.", "UTC", NOW)
+    assert result.fields.packaging_type == "boxed"
+    assert result.fields.portions == 20
+    assert result.fields.handling_notes == "Rear entrance."
+    assert all(
+        quote in "20 boxed meals. Notes: Rear entrance." for quote in result.evidence.values()
+    )
+
+
+def test_configured_units_and_required_fields_are_enforced():
+    from foodbridge.domain.intake import IntakePolicy
+
+    policy = IntakePolicy(accepted_quantity_units=["kg"])
+    policy.required_fields.append("packaging_type")
+    result = extract_rules("10 lb. 20 meals.", "UTC", NOW, policy)
+    assert result.fields.quantity_kg is None
+    assert result.fields.portions is None
+    assert any(issue.field == "packaging_type" for issue in result.issues)
+    assert extract_rules("10 kg.", "UTC", NOW, policy).fields.quantity_kg == 10
+
+
+@pytest.mark.parametrize(
+    "text", ["-1 kg", "- 1 kg", "0 kg", "-20 meals", "- 20 meals", "9" * 1000 + " kg"]
+)
+def test_invalid_explicit_quantities_are_never_proposed_as_positive(text):
+    result = extract_rules(text, "UTC", NOW)
+    assert result.fields.quantity_kg is None
+    assert result.fields.portions is None
+
+
+def test_box_count_is_not_meal_count_or_weight():
+    result = extract_rules("20 boxes of food", "UTC", NOW)
+    assert result.fields.quantity_kg is None
+    assert result.fields.portions is None
+    assert result.fields.packaging_type == "boxed"

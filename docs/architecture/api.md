@@ -79,3 +79,7 @@ The stream publisher is a single elected writer enforced by a PostgreSQL transac
 A PostgreSQL sequence allocated by unrelated business transactions before commit would not guarantee commit order and must not be used as the replay cursor. Keep broker publication and stream-publication markers separate on the outbox, and test two concurrent business commits plus publisher crash/restart so neither destination can be skipped accidentally.
 
 Cancellation, capacity conflicts, offer expiry and reassignment all generate status events. Exact event payloads that the UI uses must be included in the owner’s contract/examples PR. Polling scoped snapshots every 15 seconds is the temporary fallback if SSE is unavailable; it must not display “live” while disconnected.
+
+## Intake v0.3 additive contracts
+
+`GET /api/v1/intake/policy` requires the current donor identity and returns `IntakePolicy` (generated schema). Donor clients use its configurable description limit and extra required review fields. `packaging_type` is optional on proposals and confirmed donations. Evaluation results now distinguish donation-level decision/reasons from candidate eligibility and aggregate state. `IntakeHandoff` is an internal service read model, not an HTTP or queue endpoint. Local-only opt-in `/api/v1/metrics` is excluded from OpenAPI and exports process-local non-PII metrics. See [spec amendments and remaining dispatch](../specs/intake-v0.3-alignment.md).

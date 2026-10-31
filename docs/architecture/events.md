@@ -68,3 +68,7 @@ Manual replay is authenticated, audited and checks current status/version/deadli
 ## Status distribution
 
 Business events feed a durable audience-scoped stream after commit. A relay may use Redis pub/sub to wake API instances, but clients can always replay from database state. A PostgreSQL advisory-lock-elected publisher serializes stream cursor allocation over committed outbox events, independently of the broker relay; see [api.md](api.md) for ordering, retention and reconnect rules. Queue depth and retry metrics are operational observations, never the source of truth for a donation’s status.
+
+## Intake v0.3 handoff
+
+`intake.evaluated.v1` remains an ID/version-based result notification; its scalar metadata includes `donation_decision` and eligible count. Read the persisted evaluation and use `IntakeService.get_handoff(evaluation_id)` for a freshly validated internal donation/candidate snapshot. Never enqueue the `IntakeHandoff` object or raw text. The scoped relay consumes evaluation-request events only; general Orchestrator consumption of submission/result events remains pending. Policy v2 invalidates old-policy handoffs; re-evaluate against the current version before advancing the workflow. See [alignment](../specs/intake-v0.3-alignment.md).
