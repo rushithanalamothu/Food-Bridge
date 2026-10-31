@@ -50,7 +50,7 @@ Browser: donor | recipient | driver | operations
 
 Each worker imports domain contracts and only its own agent implementation. Shared domain services/repositories own invariant-preserving transactions. Workers do not call another agent’s task function directly; the orchestrator decides the next action based on persisted state and version. They do not expose public HTTP ports. All browser writes go through the gateway.
 
-The outbox relay, recovery scheduler and business task handlers are planned work; the scaffold currently registers diagnostic tasks only. Four green worker processes do not mean the donation workflow exists.
+The intake slice now implements persisted drafts/confirmation, a scoped eligibility worker and its durable outbox relay. See [the intake handoff](features/intake.md). The general orchestrator relay, recovery scheduler and matching/reservation handlers remain planned work; worker process health does not establish the complete donation workflow.
 
 ## 3. Module boundaries
 
@@ -133,7 +133,7 @@ Multi-criteria ranking uses normalized [0,1] features with documented direction 
 
 [Canonical Python wire models](../backend/src/foodbridge/domain/contracts.py) generate [JSON Schema](../contracts/domain.schema.json) and [TypeScript](../apps/web/src/api/generated/domain.ts). Generated files are checked into Git so frontend work can proceed without Python. Run `make contracts` after changing models; `make check` detects drift. ORM entities are separate persistence types and must be mapped deliberately.
 
-The exported [OpenAPI](../contracts/openapi.json) describes only routes actually mounted by FastAPI. Planned business endpoints are specified in [api.md](architecture/api.md), not advertised as working endpoints. When implementing each route, add response/request models and regenerate OpenAPI in that PR.
+The exported [OpenAPI](../contracts/openapi.json) describes routes actually mounted by FastAPI. Additive intake types live in `domain/intake.py` and generate a separate schema/TypeScript file. Planned business endpoints are specified in [api.md](architecture/api.md), not advertised as working endpoints. When implementing each route, add response/request models and regenerate OpenAPI in that PR.
 
 Breaking field/status changes require a consumer-first plan: add the compatible field, update consumers, migrate stored data, then remove the old field in a versioned change. Do not rename shared fields in a feature branch without coordinating affected owners. Event types carry `.v1`, and consumers reject unsupported major versions.
 

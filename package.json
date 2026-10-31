@@ -14,7 +14,8 @@
     "test": "npm run test --workspace @foodbridge/web",
     "contracts:types": "node scripts/generate-types.mjs",
     "format": "prettier --write apps/web contracts config package.json scripts/*.mjs .github/*.md .github/ISSUE_TEMPLATE .github/workflows",
-    "format:check": "prettier --check apps/web contracts config package.json scripts/*.mjs .github/*.md .github/ISSUE_TEMPLATE .github/workflows"
+    "format:check": "prettier --check apps/web contracts config package.json scripts/*.mjs .github/*.md .github/ISSUE_TEMPLATE .github/workflows",
+    "test:e2e": "npm run test:e2e --workspace @foodbridge/web"
   },
   "devDependencies": {
     "json-schema-to-typescript": "^15.0.4",

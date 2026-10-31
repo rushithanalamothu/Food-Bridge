@@ -228,3 +228,7 @@ data/generated/*
 evaluation/results/
 output/
 .DS_Store
+
+# Browser verification artifacts
+apps/web/test-results/
+apps/web/playwright-report/

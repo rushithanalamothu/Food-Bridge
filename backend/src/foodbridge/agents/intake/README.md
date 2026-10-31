@@ -1,11 +1,7 @@
-# Intake agent — Mokshith
+# Intake and Eligibility — Mokshith
 
-Text-to-draft extraction, required-field review, urgency and deterministic eligibility.
+Implemented: conservative text extraction + optional structured model adapter, donor review/confirmation, persisted submission/history/outbox, deadline urgency, deterministic eligibility and an idempotent worker.
 
-Current status: queue entry point and diagnostic `foodbridge.intake.probe` only. No business workflow is implemented here yet.
+Start with [the feature runbook](../../../../../docs/features/intake.md) for exact contracts, local setup, limits and the handoff to matching/orchestration. Canonical types are in `domain/intake.py`; generated artifacts come from `make contracts`.
 
-- Input: Private draft text for extraction; donor-confirmed DonationInput + typed recipient/route facts for policy.
-- Output: Proposed fields with missing/provenance metadata, or versioned eligibility decisions/reason codes. Never silently confirm an LLM guess.
-- First task: Add proposal DTO + pure hard-policy tests, then implement repositories/task handlers against those contracts.
-
-Consume only the `intake` queue. Register tasks as `foodbridge.intake.<verb>`. Use shared domain types and repositories; keep provider calls bounded and outside write transactions. See the repository design, events and team implementation plan under `docs/` before changing cross-agent interfaces.
+`policy.py` is provider/DB/framework-independent. `service.py` owns transactions. `extraction.py` proposes unconfirmed fields. `tasks.py` consumes a persisted evaluation ID; `relay.py` publishes only intake evaluation requests. Submission events remain available for Tej's orchestrator. No matching, reservation or capacity mutation is performed here.

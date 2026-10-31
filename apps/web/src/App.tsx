@@ -33,7 +33,10 @@ export function App() {
           <Route path="*" element={<h1>Page not found</h1>} />
         </Routes>
       </main>
-      <footer>Scaffold only. No donations, reservations or sign-ins are processed yet.</footer>
+      <footer>
+        Donor intake is available. Matching, reservation and pickup workspaces are under
+        development.
+      </footer>
     </div>
   );
 }

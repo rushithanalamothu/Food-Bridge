@@ -1,6 +1,6 @@
 # Events, worker boundaries and failure recovery
 
-Status: implementation contract. The scaffold configures queues and diagnostic tasks only. Durable outbox/receipts, recovery scheduling and business handlers are the orchestrator/reservation workstream’s next tasks.
+Status: implementation contract. Intake implements `foodbridge.intake.evaluate`, persisted evaluation/result events and an intake-only outbox relay. [The intake runbook](../features/intake.md) defines that slice. Generic consumer receipts, workflow recovery scheduling and matching/reservation handlers remain the respective owners’ next tasks.
 
 ## Queue ownership
 
@@ -19,7 +19,9 @@ Python task names use `foodbridge.<agent>.<verb>`. Current `probe` tasks are dia
 
 [Example envelope](../../contracts/examples/event.json): UUID event ID, `.v1` event type, schema version, aggregate UUID/version, correlation UUID, occurred-at timestamp, minimal payload. Domain payload definitions are additive contract work; a loose envelope dictionary is not permission to send arbitrary JSON.
 
-Initial vocabulary to implement:
+Vocabulary (donation submission and intake evaluation are implemented; other domain events remain planned):
+
+- `intake.evaluation_requested.v1`, `intake.evaluated.v1`.
 
 - `donation.submitted.v1`, `donation.review_required.v1`, `donation.eligible.v1`.
 - `matching.proposed.v1`, `matching.exhausted.v1`, `matching.requested.v1`.

@@ -1,8 +1,12 @@
 # Implementation plan and acceptance gates
 
-This is a dependency-ordered backlog, not a claim that the product is complete. The repository foundation is the only completed phase at creation. Each workstream should link its PR/issue and update the status below when its acceptance gate passes. Dates should be assigned by the team; do not invent delivery commitments.
+This is a dependency-ordered backlog, not a claim that the product is complete. The original foundation and the Intake and Eligibility slice are implemented; [the intake runbook](../features/intake.md) records its exact boundary. The complete donation-to-offer pipeline is still pending. Each workstream should link its PR/issue and update the status below when its acceptance gate passes. Dates should be assigned by the team; do not invent delivery commitments.
 
-## Phase 0 — Shared foundation (this scaffold)
+## Implemented intake slice
+
+Mokshith's I01/I02 logic, draft/submission contracts, minimal supporting persistence/JWT verification, donor review UI and intake worker/relay are implemented. F01/F02 are only partially covered: recipient/capacity/offer/reservation/assignment tables remain pending. F03 still needs a configured identity provider, provisioning and browser login. F04 is complete for intake types only. The real HTTP-to-worker path can be exercised locally; V01's matching/offer gate is not yet complete. See [feature details](../features/intake.md) before extending shared tables.
+
+## Phase 0 — Shared foundation (initial scaffold)
 
 Delivered: repository layout, local configuration, locked dependencies, API health, role app shell, worker queues/probes, PostGIS migration entry point, canonical initial DTOs, legal state edges, synthetic file generator, tests/CI, ownership and design documents. The historical HTML prototype is saved as a design reference.
 

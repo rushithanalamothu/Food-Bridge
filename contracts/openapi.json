@@ -1,6 +1,709 @@
 {
   "components": {
     "schemas": {
+      "DonationInput": {
+        "additionalProperties": false,
+        "description": "Donor-confirmed data, not unreviewed LLM extraction.",
+        "properties": {
+          "allergens": {
+            "description": "Explicitly confirmed; [] means none declared.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allergens",
+            "type": "array"
+          },
+          "category": {
+            "enum": [
+              "prepared_meals",
+              "produce",
+              "bakery",
+              "dairy",
+              "pantry",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "dietary_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dietary Tags",
+            "type": "array"
+          },
+          "food_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Food Name",
+            "type": "string"
+          },
+          "handling_notes": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Handling Notes",
+            "type": "string"
+          },
+          "pickup_location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "pickup_window": {
+            "$ref": "#/components/schemas/PickupWindow"
+          },
+          "portions": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portions"
+          },
+          "quantity_kg": {
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity Kg",
+            "type": "number"
+          },
+          "safe_use_by": {
+            "format": "date-time",
+            "title": "Safe Use By",
+            "type": "string"
+          },
+          "storage": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "food_name",
+          "category",
+          "quantity_kg",
+          "storage",
+          "allergens",
+          "pickup_location",
+          "pickup_window",
+          "safe_use_by"
+        ],
+        "title": "DonationInput",
+        "type": "object"
+      },
+      "DonationPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeDonationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "DonationPage",
+        "type": "object"
+      },
+      "DonationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "allergens": {
+            "description": "Explicitly confirmed; [] means none declared.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allergens",
+            "type": "array"
+          },
+          "category": {
+            "enum": [
+              "prepared_meals",
+              "produce",
+              "bakery",
+              "dairy",
+              "pantry",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "dietary_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dietary Tags",
+            "type": "array"
+          },
+          "donor_organization_id": {
+            "format": "uuid",
+            "title": "Donor Organization Id",
+            "type": "string"
+          },
+          "food_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Food Name",
+            "type": "string"
+          },
+          "handling_notes": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Handling Notes",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pickup_location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "pickup_window": {
+            "$ref": "#/components/schemas/PickupWindow"
+          },
+          "portions": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portions"
+          },
+          "quantity_kg": {
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity Kg",
+            "type": "number"
+          },
+          "safe_use_by": {
+            "format": "date-time",
+            "title": "Safe Use By",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "storage": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "title": "Storage",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "description",
+          "food_name",
+          "category",
+          "quantity_kg",
+          "storage",
+          "allergens",
+          "pickup_location",
+          "pickup_window",
+          "safe_use_by",
+          "id",
+          "donor_organization_id",
+          "status",
+          "version",
+          "created_at"
+        ],
+        "title": "DonationRead",
+        "type": "object"
+      },
+      "DonationStatus": {
+        "enum": [
+          "draft",
+          "submitted",
+          "needs_review",
+          "matching",
+          "offered",
+          "reserved",
+          "pickup_assigned",
+          "picked_up",
+          "delivered",
+          "no_match",
+          "expired",
+          "cancelled",
+          "failed"
+        ],
+        "title": "DonationStatus",
+        "type": "string"
+      },
+      "DonationSubmit": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "donation": {
+            "$ref": "#/components/schemas/DonationInput"
+          },
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "expected_draft_version": {
+            "minimum": 1.0,
+            "title": "Expected Draft Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "draft_id",
+          "expected_draft_version",
+          "confirmed",
+          "donation"
+        ],
+        "title": "DonationSubmit",
+        "type": "object"
+      },
+      "DonorIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "local_demo",
+              "oidc"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "pickup_location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "organization_id",
+          "organization_name",
+          "display_name",
+          "pickup_location",
+          "mode"
+        ],
+        "title": "DonorIdentity",
+        "type": "object"
+      },
+      "DraftCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "pickup_location": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "required": [
+          "description",
+          "pickup_location"
+        ],
+        "title": "DraftCreate",
+        "type": "object"
+      },
+      "DraftRead": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "donation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Donation Id"
+          },
+          "donor_organization_id": {
+            "format": "uuid",
+            "title": "Donor Organization Id",
+            "type": "string"
+          },
+          "extraction": {
+            "$ref": "#/components/schemas/ExtractionResult"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pickup_location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "status": {
+            "enum": [
+              "review_required",
+              "confirmed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "description",
+          "pickup_location",
+          "id",
+          "donor_organization_id",
+          "version",
+          "status",
+          "extraction",
+          "created_at"
+        ],
+        "title": "DraftRead",
+        "type": "object"
+      },
+      "EligibilityDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "arrival_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival At"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "pickup_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup At"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "recipient_organization_id": {
+            "format": "uuid",
+            "title": "Recipient Organization Id",
+            "type": "string"
+          },
+          "recipient_version": {
+            "title": "Recipient Version",
+            "type": "integer"
+          },
+          "slack_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slack S"
+          }
+        },
+        "required": [
+          "recipient_organization_id",
+          "recipient_version",
+          "eligible",
+          "reasons"
+        ],
+        "title": "EligibilityDecision",
+        "type": "object"
+      },
+      "EligibilityResult": {
+        "additionalProperties": false,
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/EligibilityDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "donation_version": {
+            "title": "Donation Version",
+            "type": "integer"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "policy_version": {
+            "default": "eligibility-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "synthetic": {
+            "title": "Synthetic",
+            "type": "boolean"
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/UrgencyAssessment"
+          }
+        },
+        "required": [
+          "donation_id",
+          "donation_version",
+          "evaluated_at",
+          "synthetic",
+          "urgency",
+          "decisions"
+        ],
+        "title": "EligibilityResult",
+        "type": "object"
+      },
+      "EvaluationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EligibilityResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "completed",
+              "stale",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "synthetic": {
+            "title": "Synthetic",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "donation_id",
+          "status",
+          "synthetic"
+        ],
+        "title": "EvaluationRead",
+        "type": "object"
+      },
+      "ExtractionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "object"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/ProposedFields"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "default": "intake-extraction-v1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "rules",
+              "openai"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "provider"
+        ],
+        "title": "ExtractionResult",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IntakeDonationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationRead"
+          },
+          "handoff": {
+            "const": "awaiting_orchestrator",
+            "default": "awaiting_orchestrator",
+            "title": "Handoff",
+            "type": "string"
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/UrgencyAssessment"
+          }
+        },
+        "required": [
+          "donation",
+          "urgency"
+        ],
+        "title": "IntakeDonationRead",
+        "type": "object"
+      },
       "LiveStatus": {
         "properties": {
           "status": {
@@ -16,6 +719,197 @@
           }
         },
         "title": "LiveStatus",
+        "type": "object"
+      },
+      "Location": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Address",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "timezone": {
+            "default": "America/Los_Angeles",
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "latitude",
+          "longitude"
+        ],
+        "title": "Location",
+        "type": "object"
+      },
+      "PickupWindow": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PickupWindow",
+        "type": "object"
+      },
+      "ProposedFields": {
+        "additionalProperties": false,
+        "properties": {
+          "allergens": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allergens"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "prepared_meals",
+                  "produce",
+                  "bakery",
+                  "dairy",
+                  "pantry",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "dietary_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dietary Tags"
+          },
+          "food_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Name"
+          },
+          "handling_notes": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Handling Notes",
+            "type": "string"
+          },
+          "pickup_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PickupWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "portions": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portions"
+          },
+          "quantity_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity Kg"
+          },
+          "safe_use_by": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safe Use By"
+          },
+          "storage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ambient",
+                  "chilled",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage"
+          }
+        },
+        "title": "ProposedFields",
         "type": "object"
       },
       "ReadyStatus": {
@@ -46,6 +940,131 @@
         ],
         "title": "ReadyStatus",
         "type": "object"
+      },
+      "ReviewIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "missing",
+              "uncertain",
+              "provider_unavailable",
+              "source_mismatch"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "title": "ReviewIssue",
+        "type": "object"
+      },
+      "UrgencyAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "const": "confirmed_deadline",
+            "default": "confirmed_deadline",
+            "title": "Basis",
+            "type": "string"
+          },
+          "deadline_at": {
+            "format": "date-time",
+            "title": "Deadline At",
+            "type": "string"
+          },
+          "policy_version": {
+            "default": "eligibility-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "normal",
+              "high",
+              "critical",
+              "expired"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "seconds_remaining": {
+            "title": "Seconds Remaining",
+            "type": "number"
+          }
+        },
+        "required": [
+          "priority",
+          "deadline_at",
+          "seconds_remaining",
+          "score"
+        ],
+        "title": "UrgencyAssessment",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -55,6 +1074,340 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/donation-drafts": {
+      "post": {
+        "operationId": "create_draft_api_v1_donation_drafts_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Draft",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/donation-drafts/{identifier}": {
+      "get": {
+        "operationId": "get_draft_api_v1_donation_drafts__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Draft",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/donations": {
+      "get": {
+        "operationId": "list_donations_api_v1_donations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Donations",
+        "tags": [
+          "intake"
+        ]
+      },
+      "post": {
+        "operationId": "submit_api_v1_donations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonationSubmit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeDonationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/donations/{identifier}": {
+      "get": {
+        "operationId": "get_donation_api_v1_donations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeDonationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Donation",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/donations/{identifier}/demo-eligibility": {
+      "post": {
+        "operationId": "demo_eligibility_api_v1_donations__identifier__demo_eligibility_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Demo Eligibility",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "live_api_v1_health_live_get",
@@ -104,6 +1457,80 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/intake/evaluations/{identifier}": {
+      "get": {
+        "operationId": "get_evaluation_api_v1_intake_evaluations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Evaluation",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonorIdentity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me",
+        "tags": [
+          "intake"
         ]
       }
     }

@@ -31,8 +31,13 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_soft_time_limit=45,
     task_time_limit=60,
-    broker_transport_options={"visibility_timeout": 300},
+    broker_transport_options={
+        "visibility_timeout": 300,
+        "socket_timeout": 2,
+        "socket_connect_timeout": 2,
+    },
     broker_connection_retry_on_startup=True,
+    broker_connection_timeout=2,
     timezone="UTC",
     enable_utc=True,
 )

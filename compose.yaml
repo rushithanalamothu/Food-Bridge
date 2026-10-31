@@ -4,6 +4,13 @@ x-backend: &backend
     dockerfile: backend/Dockerfile
   environment: &backend-env
     FOODBRIDGE_ENVIRONMENT: local
+    FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: ${FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO:-false}
+    FOODBRIDGE_EXTRACTION_PROVIDER: ${FOODBRIDGE_EXTRACTION_PROVIDER:-rules}
+    FOODBRIDGE_EXTRACTION_MODEL: ${FOODBRIDGE_EXTRACTION_MODEL:-}
+    FOODBRIDGE_EXTRACTION_API_KEY: ${FOODBRIDGE_EXTRACTION_API_KEY:-}
+    FOODBRIDGE_OIDC_ISSUER: ${FOODBRIDGE_OIDC_ISSUER:-}
+    FOODBRIDGE_OIDC_AUDIENCE: ${FOODBRIDGE_OIDC_AUDIENCE:-}
+    FOODBRIDGE_OIDC_JWKS_URL: ${FOODBRIDGE_OIDC_JWKS_URL:-}
     FOODBRIDGE_DATABASE_URL: postgresql+psycopg://foodbridge:foodbridge_local@db:5432/foodbridge
     FOODBRIDGE_REDIS_URL: redis://redis:6379/0
     FOODBRIDGE_CORS_ORIGINS: '["http://localhost:5173"]'
@@ -70,6 +77,9 @@ services:
   reservation:
     <<: *backend
     command: ['uv', 'run', '--no-sync', 'celery', '-A', 'foodbridge.agents.celery_app:celery_app', 'worker', '-Q', 'reservation', '--loglevel=INFO', '--concurrency=1', '--hostname=reservation@%h']
+  intake-relay:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'python', '-m', 'foodbridge.agents.intake.relay']
   web:
     build:
       context: .

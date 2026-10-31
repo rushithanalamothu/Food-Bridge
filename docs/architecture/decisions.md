@@ -14,6 +14,8 @@ Accepted at scaffold creation, 2026-10-30. These choices resolve workbook altern
 | ADR-008 | Persisted offer → explicit recipient reservation → separate driver assignment | Distinguishes acceptance from logistics; supports driver retry without losing the recipient |
 | ADR-009 | JWT/OIDC verification and organization membership; fetch-based SSE | Standard bearer auth and scoped replay; provider choice is still a scheduled implementation task |
 | ADR-010 | No network credentials or live model required for CI | Fake adapters and seeded clocks enable parallel work; live-provider integration is a separate gated test |
+| ADR-012 | Intake extraction completes synchronously with a bounded provider timeout; draft POST returns 201; confirmed submission remains 202 with durable handoff | Runs without the unfinished generic orchestrator; later async extraction requires compatible draft lifecycle changes |
+| ADR-013 | Local intake demo is an explicit local-only opt-in; shared intake verifies OIDC JWTs and server memberships | No production login/provisioning is invented; gateway integration remains assigned |
 | ADR-011 | Scaffold exposes health only; feature routes are honest placeholders | Teammates can run and build now without mistaking simulated business output for implementation |
 
 ## Technical references

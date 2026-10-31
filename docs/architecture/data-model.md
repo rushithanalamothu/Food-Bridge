@@ -1,6 +1,6 @@
 # Persistence model and transaction rules
 
-Status: schema plan. The scaffold migration enables PostGIS only. The tables below are the coordinated next migrations, not already-provisioned entities. Rushitha owns the schema history; the business owner reviews each table/transaction affecting their module.
+Status: the intake migration implements users/organizations/memberships, drafts, donations, history, idempotency, outbox and intake evaluations. [The feature runbook](../features/intake.md) describes the concrete model. Recipient/capacity, matches, reservation, assignment, generic workflow recovery and stream tables below remain the schema plan. Rushitha owns the schema history; the business owner reviews each table/transaction affecting their module.
 
 ## Common rules
 

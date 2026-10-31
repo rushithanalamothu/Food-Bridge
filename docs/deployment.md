@@ -4,7 +4,7 @@ The Compose file is a local development profile. Cloud provider/host selection r
 
 ## Current foundation versus planned operations
 
-Current: health endpoints, dependency probes, local migration entry point, worker processes/probes, CI and a buildable frontend. Planned: identity provider configuration, business metrics/log middleware, outbox relay, elected recovery/expiry scheduler, authenticated SSE, error budgets, shared test hosting and demo runbook. The implementation plan assigns those tasks.
+Current: health/dependency probes, donor intake persistence/confirmation, JWT membership verification, intake evaluation worker/relay, local demo opt-in, request IDs, migrations, web review flow and CI. Planned: identity provider provisioning/browser login, general orchestrator relay/recovery/expiry scheduling, matching/reservation, authenticated SSE, broader metrics/error budgets and shared demo hosting. The implementation plan assigns those tasks.
 
 ## Promotion order
 

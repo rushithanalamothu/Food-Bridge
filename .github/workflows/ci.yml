@@ -59,3 +59,31 @@ jobs:
       - run: make migrate
       - run: uv run alembic -c backend/alembic.ini check
       - run: make integration
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm exec --workspace @foodbridge/web -- playwright install --with-deps chromium
+      - name: Intake HTTP, worker and browser smoke
+        env:
+          FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: 'true'
+        run: |
+          uv run python scripts/seed_intake_demo.py
+          uv run uvicorn foodbridge.api.main:app --host 127.0.0.1 --port 8000 > /tmp/intake-api.log 2>&1 &
+          intake_api_pid=$!
+          uv run celery -A foodbridge.agents.celery_app:celery_app worker -Q intake --pool=solo --loglevel=INFO > /tmp/intake-worker.log 2>&1 &
+          intake_worker_pid=$!
+          uv run python -m foodbridge.agents.intake.relay > /tmp/intake-relay.log 2>&1 &
+          intake_relay_pid=$!
+          trap 'kill "$intake_api_pid" "$intake_worker_pid" "$intake_relay_pid" 2>/dev/null || true' EXIT
+          uv run python scripts/smoke_intake.py
+          npm run test:e2e
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intake-browser-failure
+          path: apps/web/test-results/
+          if-no-files-found: ignore
