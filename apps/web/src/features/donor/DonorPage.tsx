@@ -318,7 +318,10 @@ export function DonorPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="portions">Meals / portions (optional)</label>
+                    <label htmlFor="portions">
+                      Meals / portions{' '}
+                      {policy?.required_fields?.includes('portions') ? '(required)' : '(optional)'}
+                    </label>
                     <input
                       id="portions"
                       name="portions"
@@ -442,7 +445,12 @@ export function DonorPage() {
                   required
                   defaultValue={datetimeLocal(fields?.safe_use_by)}
                 />
-                <label htmlFor="handling_notes">Pickup / handling notes (optional)</label>
+                <label htmlFor="handling_notes">
+                  Pickup / handling notes{' '}
+                  {policy?.required_fields?.includes('handling_notes')
+                    ? '(required)'
+                    : '(optional)'}
+                </label>
                 <textarea
                   id="handling_notes"
                   name="handling_notes"
