@@ -1,0 +1,8 @@
+{
+  "version": "eligibility-v1",
+  "handling_buffer_s": 900,
+  "route_max_age_s": 300,
+  "critical_window_s": 3600,
+  "high_window_s": 10800,
+  "urgency_horizon_s": 21600
+}

@@ -1,6 +1,6 @@
 # Web workspace — Mithil
 
-One React/TypeScript codebase serves `/donor`, `/recipient`, `/driver` and `/operations`. The current routes are explicit implementation placeholders. The HTML mockup in [the design reference](../../docs/design/ui/foodbridge.html) is simulated and is not copied into production behavior.
+One React/TypeScript codebase serves `/donor`, `/recipient`, `/driver` and `/operations`. The donor route implements real draft review and submission; the other role routes remain implementation placeholders. See [the intake runbook](../../docs/features/intake.md). The HTML mockup in [the design reference](../../docs/design/ui/foodbridge.html) is simulated and is not copied into production behavior.
 
 Run `npm run dev` from root; the Vite `/api` proxy targets `localhost:8000`. Docker sets its internal target to `api:8000`. Build/typecheck/test with root commands. Node 22 is the team baseline.
 

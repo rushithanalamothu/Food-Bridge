@@ -1,0 +1,173 @@
+.donor-workspace {
+  max-width: 980px;
+}
+.donor-workspace h2 {
+  font-size: 19px;
+  letter-spacing: -0.4px;
+}
+.donor-workspace .demo-label {
+  padding: 12px 0;
+  border-bottom: 1px solid #dddeda;
+  color: #667473;
+  font-size: 12px;
+}
+.donor-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(180px, 1fr);
+  gap: 32px;
+  margin-top: 28px;
+  align-items: start;
+}
+.donor-sheet {
+  border: 1px solid #dddeda;
+  background: #fffefa;
+  padding: 26px;
+  border-radius: 4px;
+  min-width: 0;
+}
+.donor-workspace label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 18px 0 6px;
+}
+.donor-workspace input,
+.donor-workspace textarea,
+.donor-workspace select {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #cdd3cf;
+  border-radius: 4px;
+  color: #233b43;
+  background: #fffefa;
+  font: inherit;
+  font-size: 15px;
+  min-width: 0;
+}
+.donor-workspace textarea {
+  resize: vertical;
+}
+.donor-workspace button {
+  background: #c15332;
+  color: white;
+  border: 1px solid #c15332;
+  border-radius: 4px;
+  padding: 11px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.donor-workspace button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.donor-workspace .quiet-button {
+  background: transparent;
+  color: #233b43;
+  border-color: #cdd3cf;
+}
+.donor-workspace .form-hint {
+  color: #667473;
+  font-size: 12px;
+}
+.donor-workspace .donor-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.donor-workspace .donor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+.donor-workspace .confirmation {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  font-weight: 400;
+  margin: 22px 0;
+}
+.donor-workspace .confirmation input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.donor-workspace .donor-error {
+  color: #8b351e;
+  background: #f8e8dd;
+  padding: 14px;
+  font-size: 13px;
+}
+.review-issues {
+  border-left: 2px solid #c7ad82;
+  padding: 0 0 0 14px;
+  font-size: 12px;
+  color: #667473;
+}
+.review-issues ul {
+  padding-left: 18px;
+}
+.recent-donation {
+  padding: 15px 0;
+  border-bottom: 1px solid #dddeda;
+  font-size: 13px;
+}
+.recent-donation p {
+  margin: 5px 0;
+  color: #667473;
+  font-size: 12px;
+}
+.pickup-address {
+  border-top: 1px solid #dddeda;
+  padding-top: 16px;
+  font-size: 12px;
+}
+.posted-donation {
+  margin-top: 24px;
+}
+.posted-donation dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.posted-donation dt {
+  font-size: 12px;
+  color: #667473;
+}
+.posted-donation dd {
+  margin: 5px 0;
+  font-size: 14px;
+}
+.eligibility-demo {
+  margin: 24px 0;
+  padding-top: 12px;
+  border-top: 1px solid #dddeda;
+}
+.eligibility-decision {
+  border-bottom: 1px solid #dddeda;
+  padding: 14px 0;
+  font-size: 13px;
+}
+@media (max-width: 700px) {
+  .donor-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 450px) {
+  .donor-sheet {
+    padding: 18px;
+  }
+  .donor-workspace .donor-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .donor-workspace input {
+    font-size: 16px;
+  }
+}

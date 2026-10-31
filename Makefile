@@ -45,3 +45,10 @@ integration:
 # Example: make worker QUEUE=intake
 worker:
 	uv run celery -A foodbridge.agents.celery_app:celery_app worker -Q $(QUEUE) --loglevel=INFO --concurrency=1
+
+.PHONY: seed-intake-demo intake-relay
+seed-intake-demo:
+	uv run python scripts/seed_intake_demo.py
+
+intake-relay:
+	uv run python -m foodbridge.agents.intake.relay

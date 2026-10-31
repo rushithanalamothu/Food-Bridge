@@ -9,10 +9,9 @@
     "distance": 0.25
   },
   "max_search_radius_m": 20000,
-  "handling_buffer_s": 900,
   "offer_ttl_s": 300,
   "max_matching_rounds": 6,
   "provider_timeout_s": 10,
   "max_provider_attempts": 3,
-  "note": "Design defaults only. Not wired into business handlers yet. No food-safety deadline is inferred from these values."
+  "note": "Ranking design defaults only. Hard eligibility and handling buffers come from config/intake.json; no food-safety deadline is inferred."
 }

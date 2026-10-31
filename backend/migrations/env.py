@@ -3,6 +3,7 @@
 from alembic import context
 from sqlalchemy import create_engine, pool, text
 
+from foodbridge.db import models  # noqa: F401 -- register all application metadata
 from foodbridge.db.base import Base
 from foodbridge.settings import Settings
 

@@ -1,0 +1,1336 @@
+{
+  "$defs": {
+    "DonationInput": {
+      "additionalProperties": false,
+      "description": "Donor-confirmed data, not unreviewed LLM extraction.",
+      "properties": {
+        "allergens": {
+          "description": "Explicitly confirmed; [] means none declared.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allergens",
+          "type": "array"
+        },
+        "category": {
+          "enum": [
+            "prepared_meals",
+            "produce",
+            "bakery",
+            "dairy",
+            "pantry",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dietary Tags",
+          "type": "array"
+        },
+        "food_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Food Name",
+          "type": "string"
+        },
+        "handling_notes": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Handling Notes",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "pickup_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "portions": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portions"
+        },
+        "quantity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity Kg",
+          "type": "number"
+        },
+        "safe_use_by": {
+          "format": "date-time",
+          "title": "Safe Use By",
+          "type": "string"
+        },
+        "storage": {
+          "enum": [
+            "ambient",
+            "chilled",
+            "frozen"
+          ],
+          "title": "Storage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "food_name",
+        "category",
+        "quantity_kg",
+        "storage",
+        "allergens",
+        "pickup_location",
+        "pickup_window",
+        "safe_use_by"
+      ],
+      "title": "DonationInput",
+      "type": "object"
+    },
+    "DonationPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/IntakeDonationRead"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "title": "DonationPage",
+      "type": "object"
+    },
+    "DonationRead": {
+      "additionalProperties": false,
+      "properties": {
+        "allergens": {
+          "description": "Explicitly confirmed; [] means none declared.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allergens",
+          "type": "array"
+        },
+        "category": {
+          "enum": [
+            "prepared_meals",
+            "produce",
+            "bakery",
+            "dairy",
+            "pantry",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dietary Tags",
+          "type": "array"
+        },
+        "donor_organization_id": {
+          "format": "uuid",
+          "title": "Donor Organization Id",
+          "type": "string"
+        },
+        "food_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Food Name",
+          "type": "string"
+        },
+        "handling_notes": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Handling Notes",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "pickup_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "portions": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portions"
+        },
+        "quantity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity Kg",
+          "type": "number"
+        },
+        "safe_use_by": {
+          "format": "date-time",
+          "title": "Safe Use By",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/DonationStatus"
+        },
+        "storage": {
+          "enum": [
+            "ambient",
+            "chilled",
+            "frozen"
+          ],
+          "title": "Storage",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "description",
+        "food_name",
+        "category",
+        "quantity_kg",
+        "storage",
+        "allergens",
+        "pickup_location",
+        "pickup_window",
+        "safe_use_by",
+        "id",
+        "donor_organization_id",
+        "status",
+        "version",
+        "created_at"
+      ],
+      "title": "DonationRead",
+      "type": "object"
+    },
+    "DonationStatus": {
+      "enum": [
+        "draft",
+        "submitted",
+        "needs_review",
+        "matching",
+        "offered",
+        "reserved",
+        "pickup_assigned",
+        "picked_up",
+        "delivered",
+        "no_match",
+        "expired",
+        "cancelled",
+        "failed"
+      ],
+      "title": "DonationStatus",
+      "type": "string"
+    },
+    "DonationSubmit": {
+      "additionalProperties": false,
+      "properties": {
+        "confirmed": {
+          "const": true,
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "donation": {
+          "$ref": "#/$defs/DonationInput"
+        },
+        "draft_id": {
+          "format": "uuid",
+          "title": "Draft Id",
+          "type": "string"
+        },
+        "expected_draft_version": {
+          "minimum": 1,
+          "title": "Expected Draft Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "draft_id",
+        "expected_draft_version",
+        "confirmed",
+        "donation"
+      ],
+      "title": "DonationSubmit",
+      "type": "object"
+    },
+    "DonorIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "local_demo",
+            "oidc"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "organization_name": {
+          "title": "Organization Name",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "organization_id",
+        "organization_name",
+        "display_name",
+        "pickup_location",
+        "mode"
+      ],
+      "title": "DonorIdentity",
+      "type": "object"
+    },
+    "DraftCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        }
+      },
+      "required": [
+        "description",
+        "pickup_location"
+      ],
+      "title": "DraftCreate",
+      "type": "object"
+    },
+    "DraftRead": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "donation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Donation Id"
+        },
+        "donor_organization_id": {
+          "format": "uuid",
+          "title": "Donor Organization Id",
+          "type": "string"
+        },
+        "extraction": {
+          "$ref": "#/$defs/ExtractionResult"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "status": {
+          "enum": [
+            "review_required",
+            "confirmed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "description",
+        "pickup_location",
+        "id",
+        "donor_organization_id",
+        "version",
+        "status",
+        "extraction",
+        "created_at"
+      ],
+      "title": "DraftRead",
+      "type": "object"
+    },
+    "DriverFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "capacity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Capacity Kg",
+          "type": "number"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "storage_types": {
+          "items": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Storage Types",
+          "type": "array"
+        },
+        "to_pickup_time_s": {
+          "minimum": 0,
+          "title": "To Pickup Time S",
+          "type": "number"
+        },
+        "window": {
+          "$ref": "#/$defs/PickupWindow"
+        }
+      },
+      "required": [
+        "id",
+        "available",
+        "window",
+        "capacity_kg",
+        "storage_types",
+        "to_pickup_time_s"
+      ],
+      "title": "DriverFacts",
+      "type": "object"
+    },
+    "EligibilityBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/EligibilityCandidate"
+          },
+          "maxItems": 100,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "donation_id": {
+          "format": "uuid",
+          "title": "Donation Id",
+          "type": "string"
+        },
+        "expected_donation_version": {
+          "minimum": 1,
+          "title": "Expected Donation Version",
+          "type": "integer"
+        },
+        "synthetic": {
+          "default": false,
+          "title": "Synthetic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "donation_id",
+        "expected_donation_version",
+        "candidates"
+      ],
+      "title": "EligibilityBatch",
+      "type": "object"
+    },
+    "EligibilityCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "active_and_verified": {
+          "title": "Active And Verified",
+          "type": "boolean"
+        },
+        "driver": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DriverFacts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recipient": {
+          "$ref": "#/$defs/RecipientProfile"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RouteFacts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "recipient",
+        "active_and_verified",
+        "route",
+        "driver"
+      ],
+      "title": "EligibilityCandidate",
+      "type": "object"
+    },
+    "EligibilityDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "arrival_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrival At"
+        },
+        "eligible": {
+          "title": "Eligible",
+          "type": "boolean"
+        },
+        "pickup_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pickup At"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "recipient_organization_id": {
+          "format": "uuid",
+          "title": "Recipient Organization Id",
+          "type": "string"
+        },
+        "recipient_version": {
+          "title": "Recipient Version",
+          "type": "integer"
+        },
+        "slack_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slack S"
+        }
+      },
+      "required": [
+        "recipient_organization_id",
+        "recipient_version",
+        "eligible",
+        "reasons"
+      ],
+      "title": "EligibilityDecision",
+      "type": "object"
+    },
+    "EligibilityResult": {
+      "additionalProperties": false,
+      "properties": {
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/EligibilityDecision"
+          },
+          "title": "Decisions",
+          "type": "array"
+        },
+        "donation_id": {
+          "format": "uuid",
+          "title": "Donation Id",
+          "type": "string"
+        },
+        "donation_version": {
+          "title": "Donation Version",
+          "type": "integer"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "policy_version": {
+          "default": "eligibility-v1",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "synthetic": {
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "urgency": {
+          "$ref": "#/$defs/UrgencyAssessment"
+        }
+      },
+      "required": [
+        "donation_id",
+        "donation_version",
+        "evaluated_at",
+        "synthetic",
+        "urgency",
+        "decisions"
+      ],
+      "title": "EligibilityResult",
+      "type": "object"
+    },
+    "EvaluationRead": {
+      "additionalProperties": false,
+      "properties": {
+        "donation_id": {
+          "format": "uuid",
+          "title": "Donation Id",
+          "type": "string"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Code"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EligibilityResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "completed",
+            "stale",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "synthetic": {
+          "title": "Synthetic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "donation_id",
+        "status",
+        "synthetic"
+      ],
+      "title": "EvaluationRead",
+      "type": "object"
+    },
+    "ExtractionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "object"
+        },
+        "fields": {
+          "$ref": "#/$defs/ProposedFields"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ReviewIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompt_version": {
+          "default": "intake-extraction-v1",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "provider": {
+          "enum": [
+            "rules",
+            "openai"
+          ],
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fields",
+        "provider"
+      ],
+      "title": "ExtractionResult",
+      "type": "object"
+    },
+    "IntakeDonationRead": {
+      "additionalProperties": false,
+      "properties": {
+        "donation": {
+          "$ref": "#/$defs/DonationRead"
+        },
+        "handoff": {
+          "const": "awaiting_orchestrator",
+          "default": "awaiting_orchestrator",
+          "title": "Handoff",
+          "type": "string"
+        },
+        "urgency": {
+          "$ref": "#/$defs/UrgencyAssessment"
+        }
+      },
+      "required": [
+        "donation",
+        "urgency"
+      ],
+      "title": "IntakeDonationRead",
+      "type": "object"
+    },
+    "IntakePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "critical_window_s": {
+          "default": 3600,
+          "exclusiveMinimum": 0,
+          "title": "Critical Window S",
+          "type": "integer"
+        },
+        "handling_buffer_s": {
+          "default": 900,
+          "maximum": 86400,
+          "minimum": 0,
+          "title": "Handling Buffer S",
+          "type": "integer"
+        },
+        "high_window_s": {
+          "default": 10800,
+          "exclusiveMinimum": 0,
+          "title": "High Window S",
+          "type": "integer"
+        },
+        "route_max_age_s": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "title": "Route Max Age S",
+          "type": "integer"
+        },
+        "urgency_horizon_s": {
+          "default": 21600,
+          "exclusiveMinimum": 0,
+          "title": "Urgency Horizon S",
+          "type": "integer"
+        },
+        "version": {
+          "default": "eligibility-v1",
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "title": "IntakePolicy",
+      "type": "object"
+    },
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Address",
+          "type": "string"
+        },
+        "latitude": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "longitude": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "timezone": {
+          "default": "America/Los_Angeles",
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address",
+        "latitude",
+        "longitude"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "PickupWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "PickupWindow",
+      "type": "object"
+    },
+    "ProposedFields": {
+      "additionalProperties": false,
+      "properties": {
+        "allergens": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allergens"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "prepared_meals",
+                "produce",
+                "bakery",
+                "dairy",
+                "pantry",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "dietary_tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dietary Tags"
+        },
+        "food_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Food Name"
+        },
+        "handling_notes": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Handling Notes",
+          "type": "string"
+        },
+        "pickup_window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PickupWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "portions": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portions"
+        },
+        "quantity_kg": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity Kg"
+        },
+        "safe_use_by": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Safe Use By"
+        },
+        "storage": {
+          "anyOf": [
+            {
+              "enum": [
+                "ambient",
+                "chilled",
+                "frozen"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Storage"
+        }
+      },
+      "title": "ProposedFields",
+      "type": "object"
+    },
+    "RecipientProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_categories": {
+          "items": {
+            "enum": [
+              "prepared_meals",
+              "produce",
+              "bakery",
+              "dairy",
+              "pantry",
+              "other"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Categories",
+          "type": "array"
+        },
+        "accepted_storage": {
+          "items": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Storage",
+          "type": "array"
+        },
+        "available_capacity_kg_by_storage": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ]
+          },
+          "title": "Available Capacity Kg By Storage",
+          "type": "object"
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "receiving_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "rejected_allergens": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejected Allergens",
+          "type": "array"
+        },
+        "required_dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Dietary Tags",
+          "type": "array"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "organization_id",
+        "location",
+        "accepted_categories",
+        "accepted_storage",
+        "available_capacity_kg_by_storage",
+        "rejected_allergens",
+        "receiving_window",
+        "version"
+      ],
+      "title": "RecipientProfile",
+      "type": "object"
+    },
+    "ReviewIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "missing",
+            "uncertain",
+            "provider_unavailable",
+            "source_mismatch"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "code",
+        "message"
+      ],
+      "title": "ReviewIssue",
+      "type": "object"
+    },
+    "RouteFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "calculated_at": {
+          "format": "date-time",
+          "title": "Calculated At",
+          "type": "string"
+        },
+        "distance_m": {
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "estimated": {
+          "default": false,
+          "title": "Estimated",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "routing_provider",
+            "synthetic"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "travel_time_s": {
+          "minimum": 0,
+          "title": "Travel Time S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_m",
+        "travel_time_s",
+        "calculated_at",
+        "source"
+      ],
+      "title": "RouteFacts",
+      "type": "object"
+    },
+    "UrgencyAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "const": "confirmed_deadline",
+          "default": "confirmed_deadline",
+          "title": "Basis",
+          "type": "string"
+        },
+        "deadline_at": {
+          "format": "date-time",
+          "title": "Deadline At",
+          "type": "string"
+        },
+        "policy_version": {
+          "default": "eligibility-v1",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "normal",
+            "high",
+            "critical",
+            "expired"
+          ],
+          "title": "Priority",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        },
+        "seconds_remaining": {
+          "title": "Seconds Remaining",
+          "type": "number"
+        }
+      },
+      "required": [
+        "priority",
+        "deadline_at",
+        "seconds_remaining",
+        "score"
+      ],
+      "title": "UrgencyAssessment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "donation": {
+      "$ref": "#/$defs/IntakeDonationRead"
+    },
+    "donation_page": {
+      "$ref": "#/$defs/DonationPage"
+    },
+    "draft": {
+      "$ref": "#/$defs/DraftRead"
+    },
+    "draft_create": {
+      "$ref": "#/$defs/DraftCreate"
+    },
+    "eligibility_batch": {
+      "$ref": "#/$defs/EligibilityBatch"
+    },
+    "eligibility_result": {
+      "$ref": "#/$defs/EligibilityResult"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/EvaluationRead"
+    },
+    "extraction": {
+      "$ref": "#/$defs/ExtractionResult"
+    },
+    "identity": {
+      "$ref": "#/$defs/DonorIdentity"
+    },
+    "policy": {
+      "$ref": "#/$defs/IntakePolicy"
+    },
+    "submission": {
+      "$ref": "#/$defs/DonationSubmit"
+    }
+  },
+  "required": [
+    "draft_create",
+    "draft",
+    "submission",
+    "donation",
+    "donation_page",
+    "identity",
+    "extraction",
+    "eligibility_batch",
+    "eligibility_result",
+    "evaluation",
+    "policy"
+  ],
+  "title": "IntakeContracts",
+  "type": "object"
+}

@@ -1,7 +1,5 @@
 # Donor workspace
 
-Lead: Mithil. Put donor-specific routes, components and hooks here. The current page is a placeholder, not an implemented business flow.
+The intake slice implements description → persisted proposal → correction/confirmation → submission, urgency and a clearly synthetic eligibility-worker demo. It uses generated intake types and typed API wrappers; it never fabricates matching/reservation success.
 
-Use the root design/API contract and generated wire types. Backend collaborators: Mokshith for extraction/confirmation; Tej for status/auth.
-
-Keep fixture/mock responses separate from live API wrappers. Do not show a successful operation until the server confirms it.
+See the repository `docs/features/intake.md` for local identity setup and backend integration. Mithil owns further UI work; Mokshith owns extraction, confirmation and eligibility. Shared login, matching/SSE and profile selection remain integration work. API access tokens are accepted through the in-memory API wrapper, not persisted in browser storage.

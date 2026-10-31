@@ -28,7 +28,7 @@ uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000
 npm run dev
 ```
 
-Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Only the live/readiness health routes exist initially. The role pages are implementation placeholders, not the earlier simulated prototype.
+Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission; other role pages are placeholders. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
 
 A worker example:
 

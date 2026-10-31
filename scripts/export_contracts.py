@@ -6,6 +6,7 @@ from pathlib import Path
 
 from foodbridge.api.main import create_app
 from foodbridge.domain.contracts import FoodBridgeContracts
+from foodbridge.domain.intake import IntakeContracts
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,6 +18,7 @@ def main() -> None:
     artifacts = {
         "contracts/domain.schema.json": FoodBridgeContracts.model_json_schema(),
         "contracts/openapi.json": create_app().openapi(),
+        "contracts/intake.schema.json": IntakeContracts.model_json_schema(),
     }
     for relative, value in artifacts.items():
         path = ROOT / relative

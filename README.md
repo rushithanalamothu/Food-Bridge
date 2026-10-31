@@ -2,18 +2,20 @@
 
 FoodBridge connects surplus-food donors with eligible recipient organizations and coordinates pickup before the food’s safe-use deadline. This repository is the shared implementation foundation for the four-person project team.
 
+**Intake feature:** [run and integrate the donor workflow](docs/features/intake.md).
+
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).
 
 ## What runs today
 
-- FastAPI liveness/readiness endpoints and generated API documentation.
-- React + TypeScript application shell with donor, recipient, driver and operations routes.
-- Four independently runnable Celery workers with named queues and diagnostic tasks.
-- PostgreSQL/PostGIS + Redis development configuration and an initial extension migration.
+- FastAPI health, donor identity, persisted draft/confirmation, donation snapshots and intake evaluation endpoints.
+- React donor description/review/submission flow; recipient, driver and operations workspaces remain placeholders.
+- Four worker queues, an implemented intake eligibility worker and an intake outbox relay.
+- PostgreSQL/PostGIS + Redis setup, intake/identity/outbox tables and versioned migrations.
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**This is a scaffold, not the finished donation pipeline.** Authentication, business endpoints, domain database tables, extraction, ranking, transactional reservation, SSE and notifications are assigned implementation work. The role pages say so explicitly. [The implementation plan](docs/team/implementation-plan.md) tracks these gaps.
+**The complete donation pipeline is still under development.** Intake is implemented through persisted donor confirmation and eligibility evaluation. Gateway login/provider provisioning, matching/ranking, recipient capacity persistence, transactional reservation, SSE and notifications remain assigned work. Verified JWT and an opt-in local demo identity are available for intake integration. [The implementation plan](docs/team/implementation-plan.md) tracks these gaps.
 
 ## Local start
 

@@ -3,3 +3,6 @@ contracts/openapi.json
 apps/web/src/api/generated/domain.ts
 apps/web/dist
 node_modules
+
+contracts/intake.schema.json
+apps/web/src/api/generated/intake.ts

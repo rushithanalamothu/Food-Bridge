@@ -1,5 +1,7 @@
 # Team documentation
 
+The [implemented Intake and Eligibility feature](features/intake.md) includes its local runbook and team handoff.
+
 Read in this order:
 
 1. [Local setup](setup.md): get a reproducible environment running.
