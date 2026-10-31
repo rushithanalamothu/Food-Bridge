@@ -81,6 +81,24 @@
           "title": "Handling Notes",
           "type": "string"
         },
+        "packaging_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "boxed",
+                "sealed",
+                "bulk",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packaging Type"
+        },
         "pickup_location": {
           "$ref": "#/$defs/Location"
         },
@@ -196,6 +214,24 @@
           "format": "uuid",
           "title": "Id",
           "type": "string"
+        },
+        "packaging_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "boxed",
+                "sealed",
+                "bulk",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packaging Type"
         },
         "pickup_location": {
           "$ref": "#/$defs/Location"

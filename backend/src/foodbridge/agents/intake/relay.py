@@ -10,6 +10,7 @@ from sqlalchemy import or_, select
 from foodbridge.agents.intake.service import utcnow
 from foodbridge.db.models import OutboxEvent
 from foodbridge.db.session import session_factory
+from foodbridge.observability import publication_retries, record
 from foodbridge.settings import Settings
 
 EVENT_TYPE = "intake.evaluation_requested.v1"
@@ -43,12 +44,28 @@ def dispatch_pending(
             )
             if row is None:
                 break
+            correlation_id = UUID(row.envelope["correlation_id"])
+            donation_id = row.envelope.get("payload", {}).get("donation_id")
+            donation_id = UUID(donation_id) if donation_id else None
+            attempts = row.attempts + 1
             event_id, selected_id = row.event_id, row.aggregate_id
             lease = now + timedelta(seconds=30)
             row.lease_until, row.attempts = lease, row.attempts + 1
+        started = time.perf_counter()
         try:
             publish(str(selected_id))
         except (OperationalError, OSError):
+            publication_retries.inc()
+            record(
+                "event.publish_failed",
+                request_id=correlation_id,
+                donation_id=donation_id,
+                event_id=event_id,
+                evaluation_id=selected_id,
+                outcome="broker_unavailable",
+                duration_ms=(time.perf_counter() - started) * 1000,
+                attempts=attempts,
+            )
             # Persisted work remains pending; a later relay retries after the lease.
             break
         with sessions.begin() as session:

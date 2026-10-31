@@ -52,6 +52,7 @@ class DonationInput(Contract):
     food_name: str = Field(min_length=1, max_length=200)
     category: FoodCategory
     quantity_kg: PositiveKg
+    packaging_type: Literal["boxed", "sealed", "bulk", "other"] | None = None
     portions: int | None = Field(default=None, gt=0)
     storage: Storage
     dietary_tags: list[str] = Field(default_factory=list)

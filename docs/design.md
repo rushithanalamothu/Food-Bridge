@@ -2,6 +2,8 @@
 
 Status: implementation baseline, 2026-10-30. Source: FoodBridge Workbook 2, chapters 3–8, with technical ownership from section 8.1a. This document turns the workbook’s choices into integration rules; it does not claim the planned features are already implemented.
 
+Individual intake requirements: [Donation Intake and Eligibility v0.3](specs/donation-intake-eligibility-v0.3.pdf). See the [requirement alignment and amendments](specs/intake-v0.3-alignment.md) for known differences from the current implementation; this PDF is a requirements reference, not a completion claim.
+
 ## 1. Outcome and scope
 
 A donor describes surplus food, confirms structured details and submits a donation. FoodBridge validates the donation, filters eligible recipients, recommends one recipient, obtains acceptance, assigns a feasible driver and records pickup and delivery. A declined or expired offer can trigger another matching round while the food remains usable. Operators can understand each decision and recover failed work.

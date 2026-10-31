@@ -4,6 +4,8 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 
 **AI configuration:** [one provider/key/model for every AI feature](docs/setup.md#shared-ai-configuration). All contributors use the shared backend client; do not add per-feature provider keys.
 
+**Intake design specification:** [individual spec v0.3 and alignment status](docs/specs/README.md).
+
 **Intake feature:** [run and integrate the donor workflow](docs/features/intake.md).
 
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).

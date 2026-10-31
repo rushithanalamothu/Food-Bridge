@@ -297,3 +297,203 @@ def test_jwt_subject_resolves_server_membership_and_geometry(workspace, monkeypa
     assert response.json()["organization_id"] == str(actor.organization_id)
     assert response.json()["pickup_location"]["latitude"] == actor.pickup_location.latitude
     assert response.json()["mode"] == "oidc"
+
+
+def test_packaging_is_preserved_and_draft_replay_does_not_call_model(workspace, monkeypatch):
+    client, actor, service, _ = workspace
+    from foodbridge.api.routes import intake as routes
+
+    key = {"Idempotency-Key": str(uuid4())}
+    body = {
+        "description": "Food: rice meals. 20 boxed meals, 10 kg. Refrigerated. Allergens: none.",
+        "pickup_location": actor.pickup_location.model_dump(),
+    }
+    first = client.post("/api/v1/donation-drafts", headers=key, json=body)
+    assert first.status_code == 201
+    assert first.json()["extraction"]["fields"]["packaging_type"] == "boxed"
+    monkeypatch.setattr(routes, "extract", lambda *a, **k: pytest.fail("replay called provider"))
+    assert client.post("/api/v1/donation-drafts", headers=key, json=body).json() == first.json()
+    example = json.loads((ROOT / "contracts/examples/donation-input.json").read_text())
+    example.update(description=body["description"], packaging_type="boxed")
+    command_body = {
+        "draft_id": first.json()["id"],
+        "expected_draft_version": 1,
+        "confirmed": True,
+        "donation": example,
+    }
+    posted = client.post(
+        "/api/v1/donations", headers={"Idempotency-Key": str(uuid4())}, json=command_body
+    )
+    assert posted.status_code == 202, posted.text
+    assert (
+        service.get_donation(actor, posted.json()["donation"]["id"]).donation.packaging_type
+        == "boxed"
+    )
+
+
+def test_runtime_description_limit_blocks_before_extraction(workspace, monkeypatch):
+    client, actor, _, _ = workspace
+    from foodbridge.api.routes import intake as routes
+
+    policy = client.get("/api/v1/intake/policy").json()
+    assert policy["critical_window_s"] == 7200
+    assert policy["high_window_s"] == 21600
+    monkeypatch.setattr(
+        routes, "extract", lambda *a, **k: pytest.fail("invalid text called provider")
+    )
+    result = client.post(
+        "/api/v1/donation-drafts",
+        headers={"Idempotency-Key": str(uuid4())},
+        json={
+            "description": "x" * (policy["max_description_length"] + 1),
+            "pickup_location": actor.pickup_location.model_dump(),
+        },
+    )
+    assert result.status_code == 400
+    assert result.json()["code"] == "description_too_long"
+
+
+def test_same_key_concurrent_submission_returns_identical_result(workspace):
+    client, actor, service, _ = workspace
+    body = DonationSubmit.model_validate(create_request(client, actor))
+    key, correlation_id = uuid4(), uuid4()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(lambda _: service.submit(actor, body, key, correlation_id), range(2))
+        )
+    assert results[0] == results[1]
+    with service.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(Donation)
+                .where(Donation.donor_organization_id == actor.organization_id)
+            )
+            == 1
+        )
+
+
+def test_database_failure_rolls_back_donation_audit_and_outbox(workspace, monkeypatch):
+    from sqlalchemy.exc import OperationalError as DatabaseError
+
+    from foodbridge.agents.intake import service as module
+
+    client, actor, service, _ = workspace
+    body = create_request(client, actor)
+    key = {"Idempotency-Key": str(uuid4())}
+    original = module._event
+
+    def unavailable(*args, **kwargs):
+        raise DatabaseError("synthetic DB failure", {}, Exception("sensitive internal failure"))
+
+    monkeypatch.setattr(module, "_event", unavailable)
+    failed = client.post("/api/v1/donations", headers=key, json=body)
+    assert failed.status_code == 503
+    assert "sensitive internal failure" not in failed.text
+    with service.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(Donation)
+                .where(Donation.donor_organization_id == actor.organization_id)
+            )
+            == 0
+        )
+        assert session.get(DonationDraft, body["draft_id"]).status == "review_required"
+    monkeypatch.setattr(module, "_event", original)
+    assert client.post("/api/v1/donations", headers=key, json=body).status_code == 202
+
+
+def test_publication_retries_and_send_before_ack_crash_do_not_duplicate_effects(workspace):
+    client, actor, service, settings = workspace
+    snapshot = service.submit(
+        actor, DonationSubmit.model_validate(create_request(client, actor)), uuid4(), uuid4()
+    )
+    batch = demo_batch(snapshot, NOW)
+    job = service.request_evaluation(actor, batch, uuid4(), uuid4())
+
+    def reset_lease():
+        with service.sessions.begin() as session:
+            row = session.scalar(select(OutboxEvent).where(OutboxEvent.aggregate_id == job.id))
+            assert row.published_at is None
+            row.lease_until = None
+
+    def unavailable(_):
+        raise OperationalError("broker unavailable")
+
+    for _ in range(3):
+        dispatch_pending(settings, publish=unavailable, evaluation_id=job.id)
+        reset_lease()
+    published = []
+
+    def send_then_crash(identifier):
+        published.append(identifier)
+        raise OSError("send succeeded but relay died before marking published")
+
+    dispatch_pending(settings, publish=send_then_crash, evaluation_id=job.id)
+    reset_lease()
+    dispatch_pending(settings, publish=published.append, evaluation_id=job.id)
+    assert published == [str(job.id), str(job.id)]
+    assert service.process_evaluation(job.id) == service.process_evaluation(job.id)
+    with service.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OutboxEvent)
+                .where(
+                    OutboxEvent.aggregate_id == job.id,
+                    OutboxEvent.event_type == "intake.evaluated.v1",
+                )
+            )
+            == 1
+        )
+
+
+def test_internal_handoff_excludes_failed_candidates_and_rechecks_freshness(workspace):
+    from datetime import timedelta
+
+    client, actor, service, _ = workspace
+    snapshot = service.submit(
+        actor, DonationSubmit.model_validate(create_request(client, actor)), uuid4(), uuid4()
+    )
+    batch = demo_batch(snapshot, NOW)
+    job = service.request_evaluation(actor, batch, uuid4(), uuid4())
+    with pytest.raises(AppError, match="not complete"):
+        service.get_handoff(job.id)
+    service.process_evaluation(job.id)
+    handoff = service.get_handoff(job.id)
+    assert handoff.donation.id == snapshot.donation.id
+    assert handoff.result.donation_decision == "eligible"
+    assert [candidate.recipient.organization_id for candidate in handoff.eligible_candidates] == [
+        batch.candidates[0].recipient.organization_id
+    ]
+    service.clock = lambda: NOW + timedelta(seconds=301)
+    assert service.get_handoff(job.id).eligible_candidates == []
+    service.clock = lambda: snapshot.donation.pickup_window.end
+    with pytest.raises(AppError, match="new validation"):
+        service.get_handoff(job.id)
+    service.clock = lambda: NOW
+    service.policy = service.policy.model_copy(update={"version": "changed-policy"})
+    with pytest.raises(AppError, match="new eligibility"):
+        service.get_handoff(job.id)
+
+
+def test_pre_packaging_idempotency_receipt_still_replays(workspace):
+    import hashlib
+
+    client, actor, service, _ = workspace
+    body = create_request(client, actor)
+    key = uuid4()
+    first = service.submit(actor, DonationSubmit.model_validate(body), key, uuid4())
+    legacy_body = DonationSubmit.model_validate(body).model_dump(mode="json")
+    legacy_body["donation"].pop("packaging_type", None)
+    with service.sessions.begin() as session:
+        receipt = session.get(IdempotencyRecord, (actor.user_id, "donations", key))
+        receipt.request_hash = hashlib.sha256(
+            json.dumps(legacy_body, sort_keys=True).encode()
+        ).hexdigest()
+    replay = service.submit(actor, DonationSubmit.model_validate(body), key, uuid4())
+    assert replay.donation.id == first.donation.id
+    body["donation"]["packaging_type"] = "boxed"
+    with pytest.raises(AppError, match="different details"):
+        service.submit(actor, DonationSubmit.model_validate(body), key, uuid4())

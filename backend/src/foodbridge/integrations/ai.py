@@ -6,6 +6,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel
 
+from foodbridge.observability import model_calls
 from foodbridge.settings import Settings
 
 
@@ -198,7 +199,23 @@ def generate_structured[Output: BaseModel](
     if settings.ai_provider == "rules":
         raise ValueError("App AI is disabled")
     with httpx.Client(timeout=settings.ai_timeout_s, transport=transport) as client:
-        output = _request_json(
-            client, settings, instructions, user_input, schema_for_model(output_type)
-        )
-    return output_type.model_validate_json(output)
+        for attempt in range(2):
+            try:
+                output = _request_json(
+                    client, settings, instructions, user_input, schema_for_model(output_type)
+                )
+                value = output_type.model_validate_json(output)
+                model_calls.labels("completed").inc()
+                return value
+            except (httpx.TimeoutException, httpx.NetworkError):
+                model_calls.labels("transient_error").inc()
+                if attempt:
+                    raise
+            except httpx.HTTPStatusError as exc:
+                model_calls.labels("http_error").inc()
+                if attempt or exc.response.status_code < 500:
+                    raise
+            except ValueError:
+                model_calls.labels("invalid_output").inc()
+                raise
+    raise ValueError("model attempts exhausted")

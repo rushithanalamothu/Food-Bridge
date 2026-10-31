@@ -108,3 +108,9 @@ uv run alembic -c backend/alembic.ini current
 - **Frontend requests return HTML:** confirm Vite’s `/api` proxy target. A malformed response is rejected rather than shown as connected.
 
 `make down` stops containers while preserving volumes. Deleting volumes is an explicit destructive reset, not a normal setup command. `.env` is private and ignored; `.env.example` is the documented public configuration surface. Client bundles may contain no secrets, including `VITE_*` values.
+
+## Intake specification and diagnostics
+
+Read the [individual intake spec and implementation alignment](specs/README.md) before extending intake or consuming its results. Policy v2 defaults to critical <=2 hours/high <=6 hours and a 2,000-character description limit; `config/intake.json` configures units and required review fields. Restart all backend processes after versioned policy edits. The donor UI reads policy from the authenticated API.
+
+For local metrics, set `FOODBRIDGE_ENABLE_INTAKE_METRICS=true`, recreate the API, and read `/api/v1/metrics`. It exports only that API process; separate Celery worker metrics are not aggregated there. Worker diagnostics are structured JSON logs. Shared/production metric exposure is deliberately disabled until protected collection is configured.

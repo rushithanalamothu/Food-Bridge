@@ -83,9 +83,17 @@ def urgency(
     )
 
 
-def validate_confirmation(donation: DonationInput, now: datetime) -> None:
+def validate_confirmation(
+    donation: DonationInput, now: datetime, policy: IntakePolicy = DEFAULT_POLICY
+) -> None:
     """Semantic checks beyond the reusable schema; donor deadlines cannot be invented."""
-    if urgency(donation, now).priority == "expired":
+    if len(donation.description) > policy.max_description_length:
+        raise ValueError("description_too_long")
+    for field in policy.required_fields:
+        value = getattr(donation, field)
+        if value is None or value == "":
+            raise ValueError("required_detail_missing")
+    if urgency(donation, now, policy).priority == "expired":
         raise ValueError("pickup_deadline_passed")
     amount = Decimal(str(donation.quantity_kg))
     if amount > Decimal("999999999.999") or amount != amount.quantize(Decimal("0.001")):
@@ -108,10 +116,22 @@ def evaluate(
     policy: IntakePolicy = DEFAULT_POLICY,
 ) -> EligibilityResult:
     assessment = urgency(donation, now, policy)
+    donation_reasons = []
+    try:
+        validate_confirmation(donation, now, policy)
+    except ValueError as error:
+        donation_reasons.append(str(error))
+    donation_decision = (
+        "needs_review"
+        if "required_detail_missing" in donation_reasons
+        else "rejected"
+        if donation_reasons
+        else "eligible"
+    )
     decisions = []
     for candidate in batch.candidates:
         recipient, route, driver = candidate.recipient, candidate.route, candidate.driver
-        reasons = []
+        reasons = list(donation_reasons)
         if assessment.priority == "expired":
             reasons.append("donation_expired")
         if not candidate.active_and_verified:
@@ -173,7 +193,7 @@ def evaluate(
                 reasons.append("recipient_closed")
             if arrival > driver.window.end:
                 reasons.append("driver_window_missed")
-            if arrival > donation.safe_use_by:
+            if arrival >= donation.safe_use_by:
                 reasons.append("safe_use_deadline_missed")
             slack = min(
                 (donation.pickup_window.end - pickup).total_seconds(),
@@ -201,4 +221,6 @@ def evaluate(
         urgency=assessment,
         policy_version=policy.version,
         decisions=decisions,
+        donation_decision=donation_decision,
+        donation_reasons=donation_reasons,
     )

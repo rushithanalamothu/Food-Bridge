@@ -9,12 +9,13 @@ test('donor confirmation persists food and evaluates eligibility through the rea
   await page
     .getByLabel('Food description')
     .fill(
-      'Food: vegetable rice bowls. 20 meals, 10 kg. Refrigerated. Vegetarian. ' +
+      'Food: vegetable rice bowls. 20 boxed meals, 10 kg. Refrigerated. Vegetarian. ' +
         'Allergens: soy. Tomorrow pickup 10 AM to 12 PM. Use by 2 PM.',
     );
   await page.getByRole('button', { name: 'Review details', exact: true }).click();
   await expect(page.locator('#quantity_kg')).toHaveValue('10');
   await expect(page.locator('#allergens')).toHaveValue('soy');
+  await expect(page.locator('#packaging_type')).toHaveValue('boxed');
   const post = page.getByRole('button', { name: 'Confirm and post donation' });
   await expect(post).toBeDisabled();
   await page.getByRole('checkbox').check();
@@ -27,6 +28,9 @@ test('donor confirmation persists food and evaluates eligibility through the rea
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await post.click();
   await expect(page.getByRole('heading', { name: 'Donation posted', exact: true })).toBeVisible();
+  const donations = await page.request.get('/api/v1/donations');
+  const saved = (await donations.json()).items;
+  expect(saved[0].donation.packaging_type).toBe('boxed');
   await page.getByRole('button', { name: 'Check demo recipients', exact: true }).click();
   await expect(page.getByText('Demo recipient 1: Eligible', { exact: true })).toBeVisible({
     timeout: 30000,
