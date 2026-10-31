@@ -18,6 +18,7 @@ This split follows Workbook 2 §8.1a. Earlier chapter/meeting-note assignments a
 | `db/`, migration history | Rushitha | Owner of affected business transaction |
 | `config/matching.json` / eligibility policy | Mokshith + Rushitha | Tej for lifecycle impact |
 | root dependency files and lockfiles, Compose, CI | Tej coordinates | Teammate whose runtime is affected |
+| `integrations/ai.py`, `Settings.ai_*`, AI environment wiring | Tej coordinates shared runtime; Mokshith maintains current intake adapter | Rushitha for future ranking; each affected feature owner. One app-wide provider/key/model; no per-feature vendor clients |
 | global frontend styles, router, shared components | Mithil | Feature owner if behavior changes |
 | design and API/event documents | All authors own their changes | Consuming owners for changed interfaces |
 
@@ -42,3 +43,5 @@ A module is ready for another owner when its PR includes:
 6. Clear implemented/unimplemented status and exact command to verify it.
 
 Work in feature branches such as `feat/intake-draft-review`, `feat/web-donor-form`, `feat/data-core-model` and `feat/reservation-command`. Names are suggestions, not long-lived owner branches. Keep `main` integrated and runnable; avoid one branch per person that diverges for months.
+
+All contributors adding model-backed behavior must follow [shared AI setup and integration rules](../setup.md#shared-ai-configuration). Reuse `integrations.ai.generate_structured`; feature prompts and output schemas may differ, but provider/key/model settings are shared across the app.
