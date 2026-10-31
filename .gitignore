@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# FoodBridge local configuration and generated runtime output
+.env.*
+!.env.example
+node_modules/
+apps/web/dist/
+*.tsbuildinfo
+data/generated/*
+!data/generated/README.md
+evaluation/results/
+output/
+.DS_Store

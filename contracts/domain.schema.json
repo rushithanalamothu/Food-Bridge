@@ -1,0 +1,650 @@
+{
+  "$defs": {
+    "ApiError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "request_id": {
+          "format": "uuid",
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "request_id"
+      ],
+      "title": "ApiError",
+      "type": "object"
+    },
+    "DonationInput": {
+      "additionalProperties": false,
+      "description": "Donor-confirmed data, not unreviewed LLM extraction.",
+      "properties": {
+        "allergens": {
+          "description": "Explicitly confirmed; [] means none declared.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allergens",
+          "type": "array"
+        },
+        "category": {
+          "enum": [
+            "prepared_meals",
+            "produce",
+            "bakery",
+            "dairy",
+            "pantry",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dietary Tags",
+          "type": "array"
+        },
+        "food_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Food Name",
+          "type": "string"
+        },
+        "handling_notes": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Handling Notes",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "pickup_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "portions": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portions"
+        },
+        "quantity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity Kg",
+          "type": "number"
+        },
+        "safe_use_by": {
+          "format": "date-time",
+          "title": "Safe Use By",
+          "type": "string"
+        },
+        "storage": {
+          "enum": [
+            "ambient",
+            "chilled",
+            "frozen"
+          ],
+          "title": "Storage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "food_name",
+        "category",
+        "quantity_kg",
+        "storage",
+        "allergens",
+        "pickup_location",
+        "pickup_window",
+        "safe_use_by"
+      ],
+      "title": "DonationInput",
+      "type": "object"
+    },
+    "DonationRead": {
+      "additionalProperties": false,
+      "properties": {
+        "allergens": {
+          "description": "Explicitly confirmed; [] means none declared.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allergens",
+          "type": "array"
+        },
+        "category": {
+          "enum": [
+            "prepared_meals",
+            "produce",
+            "bakery",
+            "dairy",
+            "pantry",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dietary Tags",
+          "type": "array"
+        },
+        "donor_organization_id": {
+          "format": "uuid",
+          "title": "Donor Organization Id",
+          "type": "string"
+        },
+        "food_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Food Name",
+          "type": "string"
+        },
+        "handling_notes": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Handling Notes",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "pickup_location": {
+          "$ref": "#/$defs/Location"
+        },
+        "pickup_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "portions": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portions"
+        },
+        "quantity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity Kg",
+          "type": "number"
+        },
+        "safe_use_by": {
+          "format": "date-time",
+          "title": "Safe Use By",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/DonationStatus"
+        },
+        "storage": {
+          "enum": [
+            "ambient",
+            "chilled",
+            "frozen"
+          ],
+          "title": "Storage",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "description",
+        "food_name",
+        "category",
+        "quantity_kg",
+        "storage",
+        "allergens",
+        "pickup_location",
+        "pickup_window",
+        "safe_use_by",
+        "id",
+        "donor_organization_id",
+        "status",
+        "version",
+        "created_at"
+      ],
+      "title": "DonationRead",
+      "type": "object"
+    },
+    "DonationStatus": {
+      "enum": [
+        "draft",
+        "submitted",
+        "needs_review",
+        "matching",
+        "offered",
+        "reserved",
+        "pickup_assigned",
+        "picked_up",
+        "delivered",
+        "no_match",
+        "expired",
+        "cancelled",
+        "failed"
+      ],
+      "title": "DonationStatus",
+      "type": "string"
+    },
+    "EventEnvelope": {
+      "additionalProperties": false,
+      "description": "Queue metadata; payloads are IDs, never raw donor text or unrestricted PII.",
+      "properties": {
+        "aggregate_id": {
+          "format": "uuid",
+          "title": "Aggregate Id",
+          "type": "string"
+        },
+        "aggregate_version": {
+          "minimum": 1,
+          "title": "Aggregate Version",
+          "type": "integer"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "pattern": "^[a-z_]+\\.[a-z_]+\\.v1$",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Payload",
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "aggregate_id",
+        "aggregate_version",
+        "correlation_id",
+        "occurred_at",
+        "payload"
+      ],
+      "title": "EventEnvelope",
+      "type": "object"
+    },
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Address",
+          "type": "string"
+        },
+        "latitude": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "longitude": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "timezone": {
+          "default": "America/Los_Angeles",
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address",
+        "latitude",
+        "longitude"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "MatchRecommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "enum": [
+            "distance_only",
+            "multi_criteria"
+          ],
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "distance_m": {
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "donation_id": {
+          "format": "uuid",
+          "title": "Donation Id",
+          "type": "string"
+        },
+        "donation_version": {
+          "minimum": 1,
+          "title": "Donation Version",
+          "type": "integer"
+        },
+        "eligibility_policy_version": {
+          "minLength": 1,
+          "title": "Eligibility Policy Version",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "matching_round": {
+          "minimum": 1,
+          "title": "Matching Round",
+          "type": "integer"
+        },
+        "offer_expires_at": {
+          "format": "date-time",
+          "title": "Offer Expires At",
+          "type": "string"
+        },
+        "ranking_config_version": {
+          "minLength": 1,
+          "title": "Ranking Config Version",
+          "type": "string"
+        },
+        "recipient_organization_id": {
+          "format": "uuid",
+          "title": "Recipient Organization Id",
+          "type": "string"
+        },
+        "travel_time_s": {
+          "minimum": 0,
+          "title": "Travel Time S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "donation_id",
+        "recipient_organization_id",
+        "matching_round",
+        "donation_version",
+        "distance_m",
+        "travel_time_s",
+        "offer_expires_at",
+        "explanation",
+        "algorithm",
+        "eligibility_policy_version",
+        "ranking_config_version"
+      ],
+      "title": "MatchRecommendation",
+      "type": "object"
+    },
+    "PickupWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "PickupWindow",
+      "type": "object"
+    },
+    "RecipientProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_categories": {
+          "items": {
+            "enum": [
+              "prepared_meals",
+              "produce",
+              "bakery",
+              "dairy",
+              "pantry",
+              "other"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Categories",
+          "type": "array"
+        },
+        "accepted_storage": {
+          "items": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Storage",
+          "type": "array"
+        },
+        "available_capacity_kg_by_storage": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ]
+          },
+          "title": "Available Capacity Kg By Storage",
+          "type": "object"
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "receiving_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "rejected_allergens": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejected Allergens",
+          "type": "array"
+        },
+        "required_dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Dietary Tags",
+          "type": "array"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "organization_id",
+        "location",
+        "accepted_categories",
+        "accepted_storage",
+        "available_capacity_kg_by_storage",
+        "rejected_allergens",
+        "receiving_window",
+        "version"
+      ],
+      "title": "RecipientProfile",
+      "type": "object"
+    },
+    "ReservationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_donation_version": {
+          "minimum": 1,
+          "title": "Expected Donation Version",
+          "type": "integer"
+        },
+        "match_id": {
+          "format": "uuid",
+          "title": "Match Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "expected_donation_version"
+      ],
+      "title": "ReservationRequest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Schema export bundle only; this wrapper is NOT an HTTP request body.",
+  "properties": {
+    "donation": {
+      "$ref": "#/$defs/DonationRead"
+    },
+    "donation_input": {
+      "$ref": "#/$defs/DonationInput"
+    },
+    "error": {
+      "$ref": "#/$defs/ApiError"
+    },
+    "event": {
+      "$ref": "#/$defs/EventEnvelope"
+    },
+    "recipient": {
+      "$ref": "#/$defs/RecipientProfile"
+    },
+    "recommendation": {
+      "$ref": "#/$defs/MatchRecommendation"
+    },
+    "reservation_request": {
+      "$ref": "#/$defs/ReservationRequest"
+    }
+  },
+  "required": [
+    "donation_input",
+    "donation",
+    "recipient",
+    "recommendation",
+    "reservation_request",
+    "event",
+    "error"
+  ],
+  "title": "FoodBridgeContracts",
+  "type": "object"
+}

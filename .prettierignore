@@ -1,0 +1,5 @@
+contracts/domain.schema.json
+contracts/openapi.json
+apps/web/src/api/generated/domain.ts
+apps/web/dist
+node_modules

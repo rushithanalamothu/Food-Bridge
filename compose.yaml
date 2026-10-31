@@ -1,0 +1,84 @@
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment: &backend-env
+    FOODBRIDGE_ENVIRONMENT: local
+    FOODBRIDGE_DATABASE_URL: postgresql+psycopg://foodbridge:foodbridge_local@db:5432/foodbridge
+    FOODBRIDGE_REDIS_URL: redis://redis:6379/0
+    FOODBRIDGE_CORS_ORIGINS: '["http://localhost:5173"]'
+  depends_on: &backend-deps
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  db:
+    image: postgis/postgis:16-3.6
+    # Official PostGIS image is amd64; Apple Silicon uses Docker emulation.
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: foodbridge
+      POSTGRES_PASSWORD: foodbridge_local
+      POSTGRES_DB: foodbridge
+    ports: ['127.0.0.1:${FOODBRIDGE_DB_PORT:-5432}:5432']
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U foodbridge -d foodbridge']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['127.0.0.1:${FOODBRIDGE_REDIS_PORT:-6379}:6379']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment: *backend-env
+    command: ['uv', 'run', '--no-sync', 'alembic', '-c', 'backend/alembic.ini', 'upgrade', 'head']
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    <<: *backend
+    ports: ['127.0.0.1:8000:8000']
+    healthcheck:
+      test: ['CMD', 'uv', 'run', '--no-sync', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready')"]
+      interval: 10s
+      timeout: 7s
+      retries: 6
+  orchestrator:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'celery', '-A', 'foodbridge.agents.celery_app:celery_app', 'worker', '-Q', 'orchestrator', '--loglevel=INFO', '--concurrency=1', '--hostname=orchestrator@%h']
+  intake:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'celery', '-A', 'foodbridge.agents.celery_app:celery_app', 'worker', '-Q', 'intake', '--loglevel=INFO', '--concurrency=1', '--hostname=intake@%h']
+  matching:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'celery', '-A', 'foodbridge.agents.celery_app:celery_app', 'worker', '-Q', 'matching', '--loglevel=INFO', '--concurrency=1', '--hostname=matching@%h']
+  reservation:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'celery', '-A', 'foodbridge.agents.celery_app:celery_app', 'worker', '-Q', 'reservation', '--loglevel=INFO', '--concurrency=1', '--hostname=reservation@%h']
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports: ['127.0.0.1:5173:5173']
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:

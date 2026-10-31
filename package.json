@@ -1,0 +1,23 @@
+{
+  "name": "foodbridge-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @foodbridge/web",
+    "build": "npm run build --workspace @foodbridge/web",
+    "typecheck": "npm run typecheck --workspace @foodbridge/web",
+    "test": "npm run test --workspace @foodbridge/web",
+    "contracts:types": "node scripts/generate-types.mjs",
+    "format": "prettier --write apps/web contracts config package.json scripts/*.mjs .github/*.md .github/ISSUE_TEMPLATE .github/workflows",
+    "format:check": "prettier --check apps/web contracts config package.json scripts/*.mjs .github/*.md .github/ISSUE_TEMPLATE .github/workflows"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^15.0.4",
+    "prettier": "^3.5.3"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "description": "20 individually boxed vegetable rice meals. Refrigerated; contains soy.",
+  "food_name": "Vegetable rice meals",
+  "category": "prepared_meals",
+  "quantity_kg": 10,
+  "portions": 20,
+  "storage": "chilled",
+  "dietary_tags": ["vegetarian"],
+  "allergens": ["soy"],
+  "pickup_location": {
+    "address": "210 Market Street, San Jose, CA (synthetic)",
+    "latitude": 37.332,
+    "longitude": -121.89,
+    "timezone": "America/Los_Angeles"
+  },
+  "pickup_window": {
+    "start": "2026-10-30T23:00:00Z",
+    "end": "2026-10-31T01:00:00Z"
+  },
+  "safe_use_by": "2026-10-31T03:00:00Z",
+  "handling_notes": "Use the rear entrance. Ring the kitchen bell."
+}

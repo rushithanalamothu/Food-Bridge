@@ -1,0 +1,10 @@
+{
+  "event_id": "10000000-0000-4000-8000-000000000001",
+  "event_type": "donation.submitted.v1",
+  "schema_version": 1,
+  "aggregate_id": "20000000-0000-4000-8000-000000000001",
+  "aggregate_version": 1,
+  "correlation_id": "30000000-0000-4000-8000-000000000001",
+  "occurred_at": "2026-10-30T22:45:00Z",
+  "payload": { "matching_round": 1 }
+}

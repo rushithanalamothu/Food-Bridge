@@ -1,0 +1,14 @@
+{
+  "id": "50000000-0000-4000-8000-000000000001",
+  "donation_id": "20000000-0000-4000-8000-000000000001",
+  "recipient_organization_id": "40000000-0000-4000-8000-000000000001",
+  "matching_round": 1,
+  "donation_version": 4,
+  "distance_m": 5150,
+  "travel_time_s": 840,
+  "offer_expires_at": "2026-10-30T23:05:00Z",
+  "explanation": "Synthetic example: category, chilled capacity, dietary and receiving-window checks passed. Route values are illustrative, not a live estimate.",
+  "algorithm": "distance_only",
+  "eligibility_policy_version": "eligibility-v1",
+  "ranking_config_version": "ranking-v1"
+}

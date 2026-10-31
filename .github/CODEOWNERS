@@ -1,0 +1,14 @@
+# Verified collaborator handles. This requests reviews; branch protection is configured separately.
+* @tejkiranyenugunti-spec
+/apps/web/ @mithil-sri-sai
+/backend/src/foodbridge/agents/intake/ @mokshith245
+/backend/src/foodbridge/agents/matching/ @rushithanalamothu
+/backend/src/foodbridge/db/ @rushithanalamothu
+/backend/migrations/ @rushithanalamothu
+/backend/src/foodbridge/domain/ @mokshith245 @rushithanalamothu @tejkiranyenugunti-spec
+/contracts/ @mithil-sri-sai @mokshith245 @rushithanalamothu @tejkiranyenugunti-spec
+/config/ @mokshith245 @rushithanalamothu
+/data/ @rushithanalamothu
+/evaluation/ @rushithanalamothu
+/docs/ @mokshith245 @mithil-sri-sai @rushithanalamothu @tejkiranyenugunti-spec
+/docs/design/ui/ @mithil-sri-sai
