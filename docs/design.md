@@ -61,7 +61,7 @@ The intake slice now implements persisted drafts/confirmation, a scoped eligibil
 - `agents/orchestrator/`: durable round/step management, dispatch, recovery leases, bounded retries and decline/no-driver/no-match behavior.
 - `agents/reservation/`: accept/decline, capacity accounting, driver assignment, pickup and delivery transactions, notification requests.
 - `db/`: mapped entities, repositories and transaction helpers. One SQLAlchemy `Base`; one Alembic history. No table creation at application import/startup.
-- `integrations/`: bounded external calls and fake providers behind interfaces. No provider is allowed to mutate donation state or override rules.
+- `integrations/`: bounded external calls and fake providers behind interfaces. All model-backed features use `integrations.ai.generate_structured` and one app-wide `Settings.ai_*` provider/key/model configuration; feature-level vendor selection or provider clients are prohibited. No provider is allowed to mutate donation state or override rules.
 - `apps/web/src/features/<role>/`: role routes, components and hooks. Cross-role components go in `components/`; HTTP/SSE wrappers go in `api/`; generated types must not be edited.
 
 Avoid a general `utils.py` or `services.py` that absorbs every owner’s code. Add a named module where its responsibility is clear. Start with explicit functions and small services; do not introduce an agent framework unless an ADR explains a capability the current boundaries cannot provide.

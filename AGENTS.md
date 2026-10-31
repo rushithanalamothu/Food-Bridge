@@ -13,3 +13,5 @@ This repository is a scaffold for a four-person academic project. Start with `do
 - Run `make check`; run `make integration` with real PostgreSQL/PostGIS and Redis for data/queue changes. Document checks that could not be run.
 - Coordinate schema/migration changes with the data owner and producer/consumer contracts with affected owners. Local fixes, documentation and reversible edits do not require extra user approval.
 - Keep secrets/real user data out of Git, logs, frontend bundles and queue payloads. Keep historical `meetings/` notes unchanged unless specifically correcting them.
+
+- All AI features must use `integrations.ai.generate_structured` and the app-wide `Settings.ai_*` configuration. Do not add feature-specific provider/key/model settings, direct provider clients or cross-vendor fallback. Eligibility and lifecycle decisions remain deterministic.

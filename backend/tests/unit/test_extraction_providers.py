@@ -18,7 +18,7 @@ def clean_provider_environment(monkeypatch):
     import os
 
     for name in os.environ:
-        if name.startswith("FOODBRIDGE_EXTRACTION_") or name in {
+        if name.startswith(("FOODBRIDGE_AI_", "FOODBRIDGE_EXTRACTION_")) or name in {
             "OPENAI_API_KEY",
             "GEMINI_API_KEY",
             "GOOGLE_API_KEY",
@@ -33,10 +33,10 @@ def clean_provider_environment(monkeypatch):
 def configured(provider, **kwargs):
     return Settings(
         _env_file=None,
-        extraction_provider=provider,
-        extraction_model="test-model",
-        extraction_api_key="private-test-key",
-        extraction_base_url="https://example.test/v1" if provider == "openai_compatible" else None,
+        ai_provider=provider,
+        ai_model="test-model",
+        ai_api_key="private-test-key",
+        ai_base_url="https://example.test/v1" if provider == "openai_compatible" else None,
         **kwargs,
     )
 
@@ -152,37 +152,37 @@ def test_key_only_selection_from_env_and_dotenv(variable, provider, monkeypatch,
     path = tmp_path / ".env"
     path.write_text(f"{variable}=private-test-key\n")
     for settings in (Settings(_env_file=path),):
-        assert settings.extraction_provider == provider
-        assert settings.extraction_model
-        assert settings.extraction_api_key.get_secret_value() == "private-test-key"
+        assert settings.ai_provider == provider
+        assert settings.ai_model
+        assert settings.ai_api_key.get_secret_value() == "private-test-key"
     monkeypatch.setenv(variable, "private-test-key")
-    assert Settings(_env_file=None).extraction_provider == provider
+    assert Settings(_env_file=None).ai_provider == provider
 
 
 def test_no_key_rules_opt_out_and_ambiguous_keys(monkeypatch):
-    assert Settings(_env_file=None).extraction_provider == "rules"
+    assert Settings(_env_file=None).ai_provider == "rules"
     monkeypatch.setenv("OPENAI_API_KEY", "openai-test-key")
     monkeypatch.setenv("GEMINI_API_KEY", "gemini-test-key")
     with pytest.raises(ValidationError, match="ambiguous"):
         Settings(_env_file=None)
-    assert Settings(_env_file=None, extraction_provider="rules").extraction_provider == "rules"
-    chosen = Settings(_env_file=None, extraction_provider="gemini")
-    assert chosen.extraction_api_key.get_secret_value() == "gemini-test-key"
+    assert Settings(_env_file=None, ai_provider="rules").ai_provider == "rules"
+    chosen = Settings(_env_file=None, ai_provider="gemini")
+    assert chosen.ai_api_key.get_secret_value() == "gemini-test-key"
 
 
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"extraction_provider": "gemini"},
-        {"extraction_api_key": "private-test-key"},
-        {"extraction_provider": "openai_compatible", "extraction_api_key": "private-test-key"},
+        {"ai_provider": "gemini"},
+        {"ai_api_key": "private-test-key"},
+        {"ai_provider": "openai_compatible", "ai_api_key": "private-test-key"},
         {
-            "extraction_provider": "openai_compatible",
-            "extraction_api_key": "private-test-key",
-            "extraction_model": "model",
-            "extraction_base_url": "http://example.test/v1",
+            "ai_provider": "openai_compatible",
+            "ai_api_key": "private-test-key",
+            "ai_model": "model",
+            "ai_base_url": "http://example.test/v1",
         },
-        {"extraction_provider": "openai", "extraction_api_key": " "},
+        {"ai_provider": "openai", "ai_api_key": " "},
     ],
 )
 def test_invalid_configuration_fails_without_exposing_secrets(kwargs):
@@ -204,7 +204,7 @@ def test_compatible_json_mode_still_validates_locally():
         TEXT,
         "UTC",
         NOW,
-        configured("openai_compatible", extraction_response_format="json_object"),
+        configured("openai_compatible", ai_response_format="json_object"),
         httpx.MockTransport(handler),
     )
     assert result.provider == "openai_compatible"
@@ -250,18 +250,118 @@ def test_refusals_and_blocked_prompts_are_not_proposals(provider, body):
 def test_explicit_provider_never_uses_another_vendors_key(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "openai-only")
     with pytest.raises(ValidationError, match="requires a server API key"):
-        Settings(_env_file=None, extraction_provider="gemini")
+        Settings(_env_file=None, ai_provider="gemini")
 
 
 def test_generic_key_and_model_override_vendor_defaults(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "vendor-key")
     settings = Settings(
         _env_file=None,
-        extraction_provider="gemini",
-        extraction_api_key="generic-key",
-        extraction_model="chosen-model",
+        ai_provider="gemini",
+        ai_api_key="generic-key",
+        ai_model="chosen-model",
     )
-    assert settings.extraction_api_key.get_secret_value() == "generic-key"
-    assert settings.extraction_model == "chosen-model"
+    assert settings.ai_api_key.get_secret_value() == "generic-key"
+    assert settings.ai_model == "chosen-model"
     assert "generic-key" not in settings.model_dump_json()
     assert "vendor-key" not in settings.model_dump_json()
+
+
+@pytest.mark.parametrize("provider", PROVIDERS)
+def test_different_features_share_one_provider_key_and_model(provider):
+    from pydantic import BaseModel, ConfigDict
+
+    from foodbridge.integrations.ai import generate_structured
+
+    class Summary(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        summary: str
+
+    class Ranking(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        candidate_ids: list[str]
+
+    settings = configured(provider)
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        text = '{"summary":"review required"}' if len(requests) == 1 else '{"candidate_ids":["a"]}'
+        return httpx.Response(200, json=response_body(provider, text))
+
+    # Different prompts/schemas stand in for future features, not implemented matching.
+    transport = httpx.MockTransport(handler)
+    summary = generate_structured(
+        settings,
+        instructions="Summarize supplied facts.",
+        user_input="facts",
+        output_type=Summary,
+        transport=transport,
+    )
+    ranking = generate_structured(
+        settings,
+        instructions="Rank only supplied IDs.",
+        user_input="a",
+        output_type=Ranking,
+        transport=transport,
+    )
+    assert summary.summary == "review required"
+    assert ranking.candidate_ids == ["a"]
+    assert requests[0].url == requests[1].url
+    for request in requests:
+        header = (
+            "x-goog-api-key"
+            if provider == "gemini"
+            else ("x-api-key" if provider == "anthropic" else "authorization")
+        )
+        assert request.headers[header].endswith("private-test-key")
+        if provider != "gemini":
+            assert json.loads(request.content)["model"] == settings.ai_model
+
+
+def test_global_settings_win_over_legacy_aliases_for_all_consumers(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text(
+        "FOODBRIDGE_AI_PROVIDER=gemini\nFOODBRIDGE_AI_API_KEY=global-key\n"
+        "FOODBRIDGE_AI_MODEL=global-model\nFOODBRIDGE_EXTRACTION_PROVIDER=anthropic\n"
+        "FOODBRIDGE_EXTRACTION_API_KEY=old-key\nFOODBRIDGE_EXTRACTION_MODEL=old-model\n"
+    )
+    settings = Settings(_env_file=path)
+    assert settings.ai_provider == "gemini"
+    assert settings.ai_model == "global-model"
+    assert settings.ai_api_key.get_secret_value() == "global-key"
+    assert not hasattr(settings, "extraction_provider")
+
+
+def test_legacy_settings_resolve_to_global_configuration(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text(
+        "FOODBRIDGE_EXTRACTION_PROVIDER=anthropic\n"
+        "FOODBRIDGE_EXTRACTION_API_KEY=legacy-key\n"
+        "FOODBRIDGE_EXTRACTION_MODEL=legacy-model\n"
+    )
+    settings = Settings(_env_file=path)
+    assert settings.ai_provider == "anthropic"
+    assert settings.ai_model == "legacy-model"
+    assert settings.ai_api_key.get_secret_value() == "legacy-key"
+
+
+def test_shared_client_cannot_call_remote_models_when_app_ai_is_disabled():
+    from pydantic import BaseModel
+
+    from foodbridge.integrations.ai import generate_structured
+
+    class Output(BaseModel):
+        value: str
+
+    def handler(request):
+        pytest.fail("disabled app AI must not contact any provider")
+
+    with pytest.raises(ValueError, match="disabled"):
+        generate_structured(
+            Settings(_env_file=None, ai_provider="rules"),
+            instructions="test",
+            user_input="test",
+            output_type=Output,
+            transport=httpx.MockTransport(handler),
+        )

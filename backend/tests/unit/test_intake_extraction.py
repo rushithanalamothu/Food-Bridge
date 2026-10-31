@@ -62,9 +62,9 @@ def test_unit_conversion_is_explicit():
 def test_unavailable_model_falls_back_without_leaking_credentials():
     settings = Settings(
         _env_file=None,
-        extraction_provider="openai",
-        extraction_model="test-model",
-        extraction_api_key="test-only-never-sent",
+        ai_provider="openai",
+        ai_model="test-model",
+        ai_api_key="test-only-never-sent",
     )
 
     def handler(request):
@@ -83,9 +83,9 @@ def test_model_must_cite_real_source_text():
 
     settings = Settings(
         _env_file=None,
-        extraction_provider="openai",
-        extraction_model="test-model",
-        extraction_api_key="test-only-never-sent",
+        ai_provider="openai",
+        ai_model="test-model",
+        ai_api_key="test-only-never-sent",
     )
     proposal = {
         "fields": {"quantity_kg": 99, "allergens": []},

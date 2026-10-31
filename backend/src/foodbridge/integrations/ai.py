@@ -1,9 +1,10 @@
-"""Provider HTTP protocols only; callers validate every proposal and source quote."""
+"""App-wide structured AI client. All model-backed features share one resolved configuration."""
 
 import json
 from urllib.parse import quote
 
 import httpx
+from pydantic import BaseModel
 
 from foodbridge.settings import Settings
 
@@ -42,13 +43,13 @@ def provider_schema(schema: dict, provider: str) -> dict:
     return schema
 
 
-def request_proposal(
-    client: httpx.Client, settings: Settings, instructions: str, description: str, schema: dict
+def _request_json(
+    client: httpx.Client, settings: Settings, instructions: str, user_input: str, schema: dict
 ) -> str:
-    provider = settings.extraction_provider
-    key = settings.extraction_api_key.get_secret_value()
+    provider = settings.ai_provider
+    key = settings.ai_api_key.get_secret_value()
     schema = provider_schema(schema, provider)
-    model = settings.extraction_model
+    model = settings.ai_model
     if provider == "openai":
         response = client.post(
             "https://api.openai.com/v1/responses",
@@ -57,12 +58,12 @@ def request_proposal(
                 "model": model,
                 "store": False,
                 "instructions": instructions,
-                "input": description,
+                "input": user_input,
                 "max_output_tokens": 2000,
                 "text": {
                     "format": {
                         "type": "json_schema",
-                        "name": "food_donation_proposal",
+                        "name": "foodbridge_result",
                         "strict": True,
                         "schema": schema,
                     }
@@ -76,7 +77,7 @@ def request_proposal(
             headers={"x-goog-api-key": key},
             json={
                 "systemInstruction": {"parts": [{"text": instructions}]},
-                "contents": [{"role": "user", "parts": [{"text": description}]}],
+                "contents": [{"role": "user", "parts": [{"text": user_input}]}],
                 "generationConfig": {
                     "responseMimeType": "application/json",
                     "responseJsonSchema": schema,
@@ -92,20 +93,20 @@ def request_proposal(
                 "model": model,
                 "max_tokens": 2000,
                 "system": instructions,
-                "messages": [{"role": "user", "content": description}],
+                "messages": [{"role": "user", "content": user_input}],
                 "output_config": {"format": {"type": "json_schema", "schema": schema}},
             },
         )
     elif provider == "openai_compatible":
-        response_format = {"type": settings.extraction_response_format}
-        if settings.extraction_response_format == "json_schema":
+        response_format = {"type": settings.ai_response_format}
+        if settings.ai_response_format == "json_schema":
             response_format["json_schema"] = {
-                "name": "food_donation_proposal",
+                "name": "foodbridge_result",
                 "strict": True,
                 "schema": schema,
             }
         response = client.post(
-            settings.extraction_base_url.rstrip("/") + "/chat/completions",
+            settings.ai_base_url.rstrip("/") + "/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
             json={
                 "model": model,
@@ -116,7 +117,7 @@ def request_proposal(
                         "role": "system",
                         "content": instructions + " Return JSON matching: " + json.dumps(schema),
                     },
-                    {"role": "user", "content": description},
+                    {"role": "user", "content": user_input},
                 ],
             },
         )
@@ -160,3 +161,44 @@ def request_proposal(
     if message.get("refusal") or message.get("tool_calls"):
         raise ValueError("refused output")
     return message["content"]
+
+
+def schema_for_model(output_type: type[BaseModel]) -> dict:
+    schema = output_type.model_json_schema()
+
+    def visit(node):
+        if isinstance(node, dict):
+            node.pop("default", None)
+            if node.get("type") == "object" and "properties" in node:
+                node["required"] = list(node["properties"])
+                node["additionalProperties"] = False
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+
+    visit(schema)
+    return schema
+
+
+def generate_structured[Output: BaseModel](
+    settings: Settings,
+    *,
+    instructions: str,
+    user_input: str,
+    output_type: type[Output],
+    transport: httpx.BaseTransport | None = None,
+) -> Output:
+    """Use the single app provider/key/model; features supply prompts and output types only.
+
+    Raises on disabled AI, provider failures or invalid output. The feature owns an
+    explicit deterministic fallback. Never switches provider or credentials on failure.
+    """
+    if settings.ai_provider == "rules":
+        raise ValueError("App AI is disabled")
+    with httpx.Client(timeout=settings.ai_timeout_s, transport=transport) as client:
+        output = _request_json(
+            client, settings, instructions, user_input, schema_for_model(output_type)
+        )
+    return output_type.model_validate_json(output)
