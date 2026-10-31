@@ -13,7 +13,10 @@ requests = Counter(
     "intake_requests_total", "Intake HTTP requests by status", ["status"], registry=registry
 )
 decisions = Counter(
-    "eligibility_decisions_total", "Candidate outcomes", ["outcome"], registry=registry
+    "eligibility_decisions_total",
+    "Donation and candidate outcomes",
+    ["subject", "outcome"],
+    registry=registry,
 )
 latency = Histogram(
     "validation_latency_seconds",

@@ -483,8 +483,9 @@ class IntakeService:
                 )
             view = self._evaluation_view(row)
         if view.result:
+            decisions.labels("donation", view.result.donation_decision).inc()
             for decision in view.result.decisions:
-                decisions.labels("eligible" if decision.eligible else "rejected").inc()
+                decisions.labels("candidate", "eligible" if decision.eligible else "rejected").inc()
         record(
             "validation.completed",
             request_id=correlation_id if view.result else None,
