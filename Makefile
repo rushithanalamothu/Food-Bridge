@@ -52,3 +52,13 @@ seed-intake-demo:
 
 intake-relay:
 	uv run python -m foodbridge.agents.intake.relay
+
+.PHONY: seed-workflow-demo workflow-runtime smoke-workflow
+seed-workflow-demo:
+	uv run python scripts/seed_workflow_demo.py
+
+workflow-runtime:
+	uv run python -m foodbridge.agents.orchestrator.runtime
+
+smoke-workflow:
+	uv run python scripts/smoke_workflow.py

@@ -2,7 +2,7 @@
 
 Category normalization, PostGIS candidate search, route estimates, constrained ranking and distance-only baseline.
 
-Current status: queue entry point and diagnostic `foodbridge.matching.probe` only. No business workflow is implemented here yet.
+Current status: diagnostic probe plus thin `prepare`/`rank` queue integration tasks for Tej's coordinator. Production candidate/routing/ranking logic remains unimplemented. The default gateway reports dependency unavailable; only the explicitly enabled local demo uses synthetic matching. See the [workflow handoff](../../../../../docs/features/workflow.md).
 
 - Input: Donation/profile versions, matching round and eligible candidate IDs under one policy version.
 - Output: MatchRecommendation proposal or exhausted reason; do not create reservations or bypass eligibility.

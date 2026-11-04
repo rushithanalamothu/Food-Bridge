@@ -4,7 +4,7 @@ The Compose file is a local development profile. Cloud provider/host selection r
 
 ## Current foundation versus planned operations
 
-Current: health/dependency probes, donor intake persistence/confirmation, JWT membership verification, intake evaluation worker/relay, local demo opt-in, request IDs, migrations, web review flow and CI. Planned: identity provider provisioning/browser login, general orchestrator relay/recovery/expiry scheduling, matching/reservation, authenticated SSE, broader metrics/error budgets and shared demo hosting. The implementation plan assigns those tasks.
+Current: health/dependency probes, intake, role-scoped JWT memberships, durable orchestration/expiry recovery, reservation/capacity, driver pickup/delivery, sandbox notification delivery, authenticated SSE replay and local Compose/CI wiring. See the [workflow runbook](features/workflow.md). Pending: live matching/routing/data services, identity-provider provisioning/browser login, complete recipient/driver UI, real notification delivery, broader metrics/error budgets and shared demo hosting. Local smoke evidence does not certify shared-cloud deployment.
 
 ## Promotion order
 

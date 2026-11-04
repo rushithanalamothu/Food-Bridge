@@ -8,18 +8,22 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 
 **Intake feature:** [run and integrate the donor workflow](docs/features/intake.md).
 
+**Orchestration and pickup:** [Tej's workflow runbook, API handoff and verification](docs/features/workflow.md).
+
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).
 
 ## What runs today
 
 - FastAPI health, donor identity, persisted draft/confirmation, donation snapshots and intake evaluation endpoints.
 - React donor description/review/submission flow; recipient, driver and operations workspaces remain placeholders.
-- Four worker queues, an implemented intake eligibility worker and an intake outbox relay.
-- PostgreSQL/PostGIS + Redis setup, intake/identity/outbox tables and versioned migrations.
+- Four worker queues, intake eligibility, durable orchestration/recovery and notification workers.
+- Transactional reservation/capacity accounting, driver assignment, pickup/delivery and scoped status APIs.
+- Authenticated SSE replay, failure/replay operations, and an explicit local synthetic full-workflow smoke.
+- PostgreSQL/PostGIS + Redis setup, versioned intake/workflow tables and migrations.
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**The complete donation pipeline is still under development.** Intake is implemented through persisted donor confirmation and eligibility evaluation. Gateway login/provider provisioning, matching/ranking, recipient capacity persistence, transactional reservation, SSE and notifications remain assigned work. Verified JWT and an opt-in local demo identity are available for intake integration. [The implementation plan](docs/team/implementation-plan.md) tracks these gaps.
+**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, receiving-profile update services, identity-provider provisioning/browser login, recipient/driver screens, real email/SMS delivery and shared-cloud hosting remain team integration work. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
 
 ## Local start
 

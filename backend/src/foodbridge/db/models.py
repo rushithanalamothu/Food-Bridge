@@ -95,7 +95,7 @@ class StatusHistory(Base):
     aggregate_version: Mapped[int] = mapped_column(Integer)
     previous_status: Mapped[str | None] = mapped_column(String(30))
     next_status: Mapped[str] = mapped_column(String(30))
-    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    actor_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
     reason: Mapped[str] = mapped_column(String(100))
     correlation_id: Mapped[UUID] = mapped_column(PGUUID)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -112,6 +112,8 @@ class OutboxEvent(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     attempts: Mapped[int] = mapped_column(Integer, default=0)
+    stream_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    audience: Mapped[list | None] = mapped_column(JSONB)
 
 
 class IdempotencyRecord(Base):

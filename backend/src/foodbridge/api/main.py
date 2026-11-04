@@ -14,6 +14,7 @@ from foodbridge import __version__
 from foodbridge.agents.intake.service import utcnow
 from foodbridge.api.routes.health import router
 from foodbridge.api.routes.intake import router as intake_router
+from foodbridge.api.routes.workflow import router as workflow_router
 from foodbridge.domain.contracts import ApiError
 from foodbridge.domain.errors import AppError
 from foodbridge.observability import record, registry, requests
@@ -75,7 +76,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=settings.cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Idempotency-Key",
+            "Last-Event-ID",
+            "X-FoodBridge-Role",
+            "X-Organization-ID",
+        ],
     )
     if settings.enable_intake_metrics:
 
@@ -85,6 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(router)
     app.include_router(intake_router)
+    app.include_router(workflow_router)
     return app
 
 

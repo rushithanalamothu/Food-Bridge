@@ -6,3 +6,5 @@ node_modules
 
 contracts/intake.schema.json
 apps/web/src/api/generated/intake.ts
+contracts/workflow.schema.json
+apps/web/src/api/generated/workflow.ts

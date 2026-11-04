@@ -1,14 +1,18 @@
 # Implementation plan and acceptance gates
 
-This is a dependency-ordered backlog, not a claim that the product is complete. The original foundation and the Intake and Eligibility slice are implemented; [the intake runbook](../features/intake.md) records its exact boundary. The complete donation-to-offer pipeline is still pending. Each workstream should link its PR/issue and update the status below when its acceptance gate passes. Dates should be assigned by the team; do not invent delivery commitments.
+This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake and Tej's backend workflow are implemented. Live matching/data services and complete client integration remain pending. Dates should be assigned by the team; do not invent delivery commitments.
+
+## Implemented Tej workflow
+
+[Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These tests do not certify Rushitha's live M01–M03 implementation, Mithil's W02–W04 screens or shared-cloud promotion. F03 now resolves all active role memberships; identity-provider selection/provisioning and browser login remain pending. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
 
 ## Implemented intake slice
 
-Mokshith's I01/I02 logic, draft/submission contracts, minimal supporting persistence/JWT verification, donor review UI and intake worker/relay are implemented. F01/F02 are only partially covered: recipient/capacity/offer/reservation/assignment tables remain pending. F03 still needs a configured identity provider, provisioning and browser login. F04 is complete for intake types only. The real HTTP-to-worker path can be exercised locally; V01's matching/offer gate is not yet complete. See [feature details](../features/intake.md) before extending shared tables.
+Mokshith's I01/I02 logic, draft/submission contracts, donor review UI and intake worker/relay are implemented. Tej adds recipient/capacity/offer/reservation/assignment support without replacing those tables or the intake policy. F01's live data/profile repositories and V01's live matching integration remain pending. See [feature details](../features/intake.md) before extending shared tables.
 
 ## Intake v0.3 alignment
 
-Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej must still consume submission/result outbox events and wire the full workflow; Rushitha must provide live candidate/route facts and the matching consumer. FT-07/full V01 remains pending. API-process local metrics are implemented; protected deployment-wide collection is not.
+Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej now consumes submission/result events and wires the backend workflow; Rushitha must provide live candidate/route facts and matching. FT-07/full V01 has synthetic integration coverage; live integration remains pending. Protected deployment-wide metrics collection remains pending.
 
 ## Shared AI integration rule
 
