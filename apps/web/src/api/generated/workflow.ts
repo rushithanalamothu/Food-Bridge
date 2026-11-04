@@ -33,6 +33,65 @@ export type Status = 'offered' | 'accepted' | 'declined' | 'expired' | 'supersed
 export type Version = number;
 export type Items1 = OfferRead[];
 export type NextCursor1 = string | null;
+export type DecidedAt = string;
+export type FailureCode = string | null;
+export type Generation = number;
+export type Mode = 'model' | 'rules' | 'fallback' | 'rejected';
+export type Model = string | null;
+export type AllowedTools = (
+  | 'prepare_candidates'
+  | 'rank_candidates'
+  | 'coordinate_pickup'
+  | 'retry_current_agent'
+  | 'refresh_eligibility'
+  | 'wait'
+  | 'escalate_operator'
+)[];
+export type Attempts1 = number;
+export type DonationStatus = string;
+export type DonationVersion1 = number;
+export type FailureCode1 = string | null;
+export type MatchingRound1 = number;
+export type Mode1 = 'model' | 'rules' | 'fallback' | 'rejected';
+export type Outcome = 'dispatched' | 'deferred' | 'escalated' | 'revalidated' | 'stale';
+export type Tool =
+  | 'prepare_candidates'
+  | 'rank_candidates'
+  | 'coordinate_pickup'
+  | 'retry_current_agent'
+  | 'refresh_eligibility'
+  | 'wait'
+  | 'escalate_operator';
+export type Attempts2 = number;
+export type FailureCode2 = string | null;
+export type Kind = string;
+export type Status1 = string;
+export type PreviousOutcomes = StepOutcome[];
+export type RetryBudget = number;
+export type SecondsRemaining = number;
+export type Stage = string;
+export type StepId1 = string;
+export type Urgency = 'critical' | 'high' | 'normal';
+export type Outcome1 = 'dispatched' | 'deferred' | 'escalated' | 'revalidated' | 'stale';
+export type DelayS = number;
+export type DonationVersion2 = number;
+export type MatchingRound2 = number;
+export type StepId2 = string;
+export type Summary = string;
+export type Tool1 =
+  | 'prepare_candidates'
+  | 'rank_candidates'
+  | 'coordinate_pickup'
+  | 'retry_current_agent'
+  | 'refresh_eligibility'
+  | 'wait'
+  | 'escalate_operator';
+export type PromptVersion = string;
+export type Provider = string;
+export type Decisions = OrchestrationDecision[];
+export type DonationId2 = string;
+export type Status2 = string;
+export type StepId3 = string;
 /**
  * Explicitly confirmed; [] means none declared.
  */
@@ -55,7 +114,7 @@ export type Start = string;
 export type Portions = number | null;
 export type QuantityKg = number;
 export type SafeUseBy = string;
-export type DonationStatus =
+export type DonationStatus1 =
   | 'draft'
   | 'submitted'
   | 'needs_review'
@@ -71,13 +130,13 @@ export type DonationStatus =
   | 'failed';
 export type Storage = 'ambient' | 'chilled' | 'frozen';
 export type Version1 = number;
-export type DonationId2 = string;
+export type DonationId3 = string;
 export type DriverId = string;
 export type End1 = string;
 export type Id3 = string;
 export type ReservationId = string;
 export type Start1 = string;
-export type Status1 =
+export type Status3 =
   'assigned' | 'accepted' | 'declined' | 'collected' | 'delivered' | 'released' | 'failed';
 export type Version2 = number;
 export type ExpectedVersion1 = number;
@@ -87,16 +146,16 @@ export type Reason2 = string | null;
 export type Items2 = PickupRead[];
 export type NextCursor2 = string | null;
 export type FailureId = string;
-export type Status2 = 'queued';
-export type StepId1 = string;
+export type Status4 = 'queued';
+export type StepId4 = string;
 export type CreatedAt2 = string;
-export type DonationId3 = string;
-export type DonationVersion1 = number;
+export type DonationId4 = string;
+export type DonationVersion3 = number;
 export type Id4 = string;
 export type MatchId = string;
 export type QuantityKg1 = number;
 export type RecipientOrganizationId1 = string;
-export type Status3 = 'active' | 'released' | 'completed' | 'failed';
+export type Status5 = 'active' | 'released' | 'completed' | 'failed';
 export type Storage1 = string;
 export type Version3 = number;
 export type AggregateId = string;
@@ -122,6 +181,7 @@ export interface WorkflowContracts {
   failures: FailurePage;
   offer: OfferRead;
   offers: OfferPage;
+  orchestrator_audit: OrchestrationAudit;
   pickup: PickupRead;
   pickup_confirmation: PickupConfirmation;
   pickups: PickupPage;
@@ -181,15 +241,67 @@ export interface OfferPage {
   items: Items1;
   next_cursor?: NextCursor1;
 }
+export interface OrchestrationAudit {
+  decisions: Decisions;
+  donation_id: DonationId2;
+  status: Status2;
+  step_id: StepId3;
+}
+export interface OrchestrationDecision {
+  decided_at: DecidedAt;
+  failure_code: FailureCode;
+  generation: Generation;
+  mode: Mode;
+  model: Model;
+  observation: OrchestrationObservation;
+  outcome: Outcome1;
+  plan: OrchestrationPlan;
+  prompt_version: PromptVersion;
+  provider: Provider;
+}
+export interface OrchestrationObservation {
+  allowed_tools: AllowedTools;
+  attempts: Attempts1;
+  donation_status: DonationStatus;
+  donation_version: DonationVersion1;
+  failure_code: FailureCode1;
+  matching_round: MatchingRound1;
+  previous_decision?: PlanFeedback | null;
+  previous_outcomes: PreviousOutcomes;
+  retry_budget: RetryBudget;
+  seconds_remaining: SecondsRemaining;
+  stage: Stage;
+  step_id: StepId1;
+  urgency: Urgency;
+}
+export interface PlanFeedback {
+  mode: Mode1;
+  outcome: Outcome;
+  tool: Tool;
+}
+export interface StepOutcome {
+  attempts: Attempts2;
+  failure_code: FailureCode2;
+  kind: Kind;
+  status: Status1;
+}
+export interface OrchestrationPlan {
+  delay_s: DelayS;
+  donation_version: DonationVersion2;
+  matching_round: MatchingRound2;
+  step_id: StepId2;
+  summary: Summary;
+  tool: Tool1;
+}
 export interface PickupRead {
   donation: DonationRead;
-  donation_id: DonationId2;
+  donation_id: DonationId3;
   driver_id: DriverId;
   end: End1;
   id: Id3;
   reservation_id: ReservationId;
   start: Start1;
-  status: Status1;
+  status: Status3;
   version: Version2;
 }
 export interface DonationRead {
@@ -208,7 +320,7 @@ export interface DonationRead {
   portions?: Portions;
   quantity_kg: QuantityKg;
   safe_use_by: SafeUseBy;
-  status: DonationStatus;
+  status: DonationStatus1;
   storage: Storage;
   version: Version1;
 }
@@ -234,18 +346,18 @@ export interface PickupPage {
 }
 export interface ReplayResult {
   failure_id: FailureId;
-  status?: Status2;
-  step_id: StepId1;
+  status?: Status4;
+  step_id: StepId4;
 }
 export interface ReservationRead {
   created_at: CreatedAt2;
-  donation_id: DonationId3;
-  donation_version: DonationVersion1;
+  donation_id: DonationId4;
+  donation_version: DonationVersion3;
   id: Id4;
   match_id: MatchId;
   quantity_kg: QuantityKg1;
   recipient_organization_id: RecipientOrganizationId1;
-  status: Status3;
+  status: Status5;
   storage: Storage1;
   version: Version3;
 }

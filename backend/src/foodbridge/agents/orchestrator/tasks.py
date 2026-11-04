@@ -27,6 +27,16 @@ def consume(event_id: str):
     coordinator.consume(UUID(event_id))
 
 
+@celery_app.task(name="foodbridge.orchestrator.plan_step", acks_late=True)
+def plan_step(step_id: str):
+    from uuid import UUID
+
+    from foodbridge.agents.orchestrator.agent import OrchestratorAgent
+    from foodbridge.settings import Settings
+
+    OrchestratorAgent(Settings()).plan_step(UUID(step_id))
+
+
 @celery_app.task(name="foodbridge.orchestrator.run_step", acks_late=True)
 def run_step(step_id: str):
     from uuid import UUID

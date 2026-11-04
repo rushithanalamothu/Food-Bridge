@@ -10,8 +10,6 @@ from foodbridge.agents.celery_app import celery_app
 from foodbridge.agents.orchestrator.relay import dispatch_pending
 from foodbridge.agents.orchestrator.service import WorkflowService
 from foodbridge.api.stream import publish_stream
-from foodbridge.db.session import session_factory
-from foodbridge.db.workflow_models import WorkflowStep
 from foodbridge.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -25,14 +23,9 @@ def tick(settings):
     coordinator.recover_intake()
     for identifier in coordinator.sweep():
         # Publication failure leaves the step due in PostgreSQL for the next sweep.
-        with session_factory(settings.database_url)() as session:
-            step = session.get(WorkflowStep, identifier)
-            task = {
-                "eligibility": "foodbridge.matching.prepare",
-                "matching": "foodbridge.matching.rank",
-                "assignment": "foodbridge.reservation.assign",
-            }[step.kind]
-        celery_app.send_task(task, args=[str(identifier)], retry=False)
+        celery_app.send_task(
+            "foodbridge.orchestrator.plan_step", args=[str(identifier)], retry=False
+        )
     celery_app.send_task("foodbridge.reservation.deliver_notifications", retry=False)
     publish_stream(settings.database_url)
 

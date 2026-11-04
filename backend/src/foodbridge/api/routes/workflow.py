@@ -26,9 +26,11 @@ from foodbridge.db.workflow_models import (
     MatchOffer,
     Notification,
     TaskFailure,
+    WorkflowStep,
 )
 from foodbridge.domain.contracts import DonationRead, ReservationRequest
 from foodbridge.domain.errors import AppError
+from foodbridge.domain.orchestration import OrchestrationAudit
 from foodbridge.domain.workflow import (
     Actor,
     DeliveryConfirmation,
@@ -202,6 +204,54 @@ def pickups(request: Request, actor: Identity, limit: Limit = 25, cursor: str | 
             ],
             next_cursor=next_cursor,
         )
+
+
+@router.get("/operations/orchestrator/decisions/{identifier}", response_model=OrchestrationAudit)
+def orchestrator_decisions(identifier: UUID, request: Request, actor: Identity):
+    require_role(actor, "operator")
+    with session_factory(request.app.state.settings.database_url)() as session:
+        step = session.get(WorkflowStep, identifier)
+        donation = session.get(Donation, step.donation_id) if step else None
+        if donation is None or donation.donor_organization_id != actor.organization_id:
+            raise AppError("not_found", "Not found.", 404)
+        return OrchestrationAudit(
+            step_id=step.id,
+            donation_id=donation.id,
+            status=step.status,
+            decisions=step.data.get("orchestrator", {}).get("decisions", []),
+        )
+
+
+@router.get("/operations/orchestrator/decisions", response_model=list[OrchestrationAudit])
+def donation_orchestrator_decisions(
+    donation_id: UUID, request: Request, actor: Identity, limit: Limit = 25
+):
+    require_role(actor, "operator")
+    with session_factory(request.app.state.settings.database_url)() as session:
+        donation = session.get(Donation, donation_id)
+        if donation is None or donation.donor_organization_id != actor.organization_id:
+            raise AppError("not_found", "Not found.", 404)
+        steps = list(
+            session.scalars(
+                select(WorkflowStep)
+                .where(WorkflowStep.donation_id == donation_id)
+                .order_by(
+                    WorkflowStep.matching_round.desc(),
+                    WorkflowStep.input_version.desc(),
+                    WorkflowStep.id,
+                )
+                .limit(limit)
+            )
+        )
+        return [
+            OrchestrationAudit(
+                step_id=s.id,
+                donation_id=donation_id,
+                status=s.status,
+                decisions=s.data.get("orchestrator", {}).get("decisions", []),
+            )
+            for s in steps
+        ]
 
 
 @router.get("/operations/failures", response_model=FailurePage)

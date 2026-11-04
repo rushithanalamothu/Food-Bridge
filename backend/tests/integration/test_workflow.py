@@ -857,3 +857,379 @@ def test_client_role_selector_cannot_grant_another_membership(env, monkeypatch):
     with env.sessions.begin() as session:
         session.get(User, env.actors["donor"].user_id).active = False
     assert env.client.get("/api/v1/session", headers=headers).status_code == 403
+
+
+def pending_agent(env, *, model=True):
+    from foodbridge.agents.orchestrator.agent import OrchestratorAgent
+
+    identifier = submit(env)
+    consume_all(env)
+    with env.sessions() as session:
+        step = session.scalar(select(WorkflowStep).where(WorkflowStep.donation_id == identifier))
+    settings = Settings(
+        database_url=env.url,
+        ai_provider="openai" if model else "rules",
+        ai_api_key="test-key-only" if model else None,
+        ai_model="test-model" if model else None,
+        enable_local_workflow_demo=True,
+        enable_local_intake_demo=True,
+    )
+    return OrchestratorAgent(settings, lambda: env.clock.now), step
+
+
+def test_ai_orchestrator_uses_shared_model_client_and_dispatches_once(env):
+    import json
+
+    import httpx
+
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT
+    from foodbridge.integrations.ai import generate_structured
+
+    agent, step = pending_agent(env)
+    observed = []
+
+    def response(request):
+        body = json.loads(request.content)
+        facts = json.loads(body["input"])
+        observed.append(facts)
+        assert "Orchestrator Agent" in body["instructions"]
+        assert "Synthetic kitchen" not in body["input"] and "food_name" not in body["input"]
+        plan = {
+            "step_id": facts["step_id"],
+            "donation_version": facts["donation_version"],
+            "matching_round": facts["matching_round"],
+            "tool": "prepare_candidates",
+            "delay_s": 0,
+            "summary": "Start candidate preparation while sufficient time remains.",
+        }
+        return httpx.Response(
+            200,
+            json={
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": json.dumps(plan)}],
+                    }
+                ],
+            },
+        )
+
+    def generate(settings, **kwargs):
+        return generate_structured(settings, transport=httpx.MockTransport(response), **kwargs)
+
+    agent.plan_step(step.id, generate=generate)
+    agent.plan_step(step.id, generate=generate)  # Planning lease suppresses duplicate calls.
+    assert len(observed) == 1
+    with env.sessions() as session:
+        meta = session.get(WorkflowStep, step.id).data["orchestrator"]
+        assert meta["decisions"][0]["mode"] == "model"
+        assert meta["decisions"][0]["model"] == "test-model"
+        assert "test-key-only" not in json.dumps(meta)
+        event = session.scalar(select(OutboxEvent).where(OutboxEvent.event_type == DISPATCH_EVENT))
+        assert set(event.envelope["payload"]) == {"donation_id", "step_id", "dispatch_token"}
+    calls = []
+    agent.dispatch(event.event_id, publish=lambda task, args: calls.append((task, args)))
+    agent.dispatch(event.event_id, publish=lambda task, args: calls.append((task, args)))
+    assert len(calls) == 1 and calls[0][0] == "foodbridge.matching.prepare"
+    token = calls[0][1][1]
+    env.workflow.run_step(step.id, env.gateway, dispatch_token=token)
+    env.workflow.run_step(step.id, env.gateway, dispatch_token=token)
+    with env.sessions() as session:
+        assert session.scalar(select(func.count()).select_from(IntakeEvaluation)) == 1
+    env.current.actor = env.actors["operator"]
+    audit = env.client.get(f"/api/v1/operations/orchestrator/decisions/{step.id}")
+    assert audit.status_code == 200 and audit.json()["decisions"][0]["mode"] == "model"
+    audits = env.client.get(
+        f"/api/v1/operations/orchestrator/decisions?donation_id={step.donation_id}"
+    )
+    assert audits.status_code == 200 and audits.json()[0]["step_id"] == str(step.id)
+    assert (
+        env.client.get(
+            f"/api/v1/operations/orchestrator/decisions?donation_id={uuid4()}"
+        ).status_code
+        == 404
+    )
+    env.current.actor = env.actors["recipient"]
+    assert env.client.get(f"/api/v1/operations/orchestrator/decisions/{step.id}").status_code == 403
+
+
+def test_ai_orchestrator_can_wait_then_use_feedback_to_continue(env):
+    from foodbridge.domain.orchestration import OrchestrationPlan
+
+    agent, step = pending_agent(env)
+    inputs = []
+
+    def generate(_settings, **kwargs):
+        import json
+
+        obs = json.loads(kwargs["user_input"])
+        inputs.append(obs)
+        return OrchestrationPlan(
+            step_id=obs["step_id"],
+            donation_version=obs["donation_version"],
+            matching_round=obs["matching_round"],
+            tool="wait" if len(inputs) == 1 else "prepare_candidates",
+            delay_s=10 if len(inputs) == 1 else 0,
+            summary="Wait briefly for a transient dependency."
+            if len(inputs) == 1
+            else "Resume after waiting.",
+        )
+
+    agent.plan_step(step.id, generate=generate)
+    with env.sessions() as session:
+        row = session.get(WorkflowStep, step.id)
+        assert row.next_attempt_at == NOW + timedelta(seconds=10)
+        assert row.data["orchestrator"]["decisions"][0]["outcome"] == "deferred"
+    agent.plan_step(step.id, generate=generate)
+    assert len(inputs) == 1
+    env.clock.now += timedelta(seconds=11)
+    agent.plan_step(step.id, generate=generate)
+    assert inputs[-1]["previous_decision"]["tool"] == "wait"
+    with env.sessions() as session:
+        assert session.get(WorkflowStep, step.id).data["orchestrator"]["status"] == "dispatched"
+
+
+@pytest.mark.parametrize("invalid", ["version", "stage", "invented_tool"])
+def test_ai_invalid_plan_escalates_without_executing_it(env, invalid):
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT
+
+    agent, step = pending_agent(env)
+
+    def generate(_settings, **kwargs):
+        import json
+
+        obs = json.loads(kwargs["user_input"])
+        return {
+            "step_id": obs["step_id"],
+            "donation_version": 999 if invalid == "version" else obs["donation_version"],
+            "matching_round": obs["matching_round"],
+            "tool": {"stage": "coordinate_pickup", "invented_tool": "confirm_delivery"}.get(
+                invalid, "prepare_candidates"
+            ),
+            "delay_s": 0,
+            "summary": "Invalid proposed action.",
+        }
+
+    agent.plan_step(step.id, generate=generate)
+    with env.sessions() as session:
+        row = session.get(WorkflowStep, step.id)
+        assert row.status == "failed"
+        assert row.data["orchestrator"]["decisions"][0]["mode"] == "rejected"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OutboxEvent)
+                .where(OutboxEvent.event_type == DISPATCH_EVENT)
+            )
+            == 0
+        )
+        assert session.scalar(select(func.count()).select_from(Reservation)) == 0
+        assert session.scalar(select(TaskFailure)).code == "orchestrator_invalid_plan"
+
+
+def test_ai_planning_holds_no_database_lock_and_cannot_override_cancellation(env):
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT
+    from foodbridge.domain.orchestration import OrchestrationPlan
+
+    agent, step = pending_agent(env)
+
+    def generate(_settings, **kwargs):
+        import json
+
+        obs = json.loads(kwargs["user_input"])
+        # A separate connection can commit cancellation while the provider is running.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(
+                env.reservation.cancel,
+                env.actors["donor"],
+                step.donation_id,
+                DonationCommand(expected_donation_version=obs["donation_version"]),
+                uuid4(),
+                uuid4(),
+            ).result(timeout=3)
+        return OrchestrationPlan(
+            step_id=step.id,
+            donation_version=obs["donation_version"],
+            matching_round=obs["matching_round"],
+            tool="prepare_candidates",
+            delay_s=0,
+            summary="Continue.",
+        )
+
+    agent.plan_step(step.id, generate=generate)
+    with env.sessions() as session:
+        assert session.get(Donation, step.donation_id).status == "cancelled"
+        assert session.get(WorkflowStep, step.id).data["orchestrator"]["status"] == "stale"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OutboxEvent)
+                .where(OutboxEvent.event_type == DISPATCH_EVENT)
+            )
+            == 0
+        )
+
+
+def test_ai_provider_failure_is_explicit_fallback_not_model_success(env):
+    agent, step = pending_agent(env)
+
+    def unavailable(*_args, **_kwargs):
+        raise TimeoutError("sensitive provider exception")
+
+    agent.plan_step(step.id, generate=unavailable)
+    with env.sessions() as session:
+        decision = session.get(WorkflowStep, step.id).data["orchestrator"]["decisions"][0]
+        assert decision["mode"] == "fallback"
+        assert decision["failure_code"] == "orchestrator_provider_unavailable"
+        assert "sensitive" not in str(decision)
+
+
+def test_rules_mode_never_claims_an_ai_decision(env):
+    agent, step = pending_agent(env, model=False)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("Rules mode must not call a model")
+
+    agent.plan_step(step.id, generate=forbidden)
+    with env.sessions() as session:
+        assert (
+            session.get(WorkflowStep, step.id).data["orchestrator"]["decisions"][0]["mode"]
+            == "rules"
+        )
+
+
+def test_new_planning_lease_fences_old_plans_and_old_dispatch_tokens(env):
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT, baseline_plan
+
+    agent, step = pending_agent(env)
+    old, old_token, old_generation = agent.observe(step.id)
+    env.clock.now += timedelta(seconds=76)
+    fresh, token, generation = agent.observe(step.id)
+    agent.apply(old, old_token, old_generation, baseline_plan(old), "model", None)
+    with env.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OutboxEvent)
+                .where(OutboxEvent.event_type == DISPATCH_EVENT)
+            )
+            == 0
+        )
+    agent.apply(fresh, token, generation, baseline_plan(fresh), "model", None)
+    assert env.workflow.claim(step.id, old_token) is None
+    assert env.workflow.claim(step.id, token) is not None
+
+
+def test_ai_dispatch_send_before_receipt_crash_redelivers_one_effect(env):
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT
+
+    agent, step = pending_agent(env, model=False)
+    agent.plan_step(step.id)
+    with env.sessions() as session:
+        event = session.scalar(select(OutboxEvent).where(OutboxEvent.event_type == DISPATCH_EVENT))
+
+    def sent_then_crashed(task, args):
+        env.workflow.run_step(UUID(args[0]), env.gateway, dispatch_token=args[1])
+        raise OSError("crash after publish")
+
+    with pytest.raises(OSError):
+        agent.dispatch(event.event_id, publish=sent_then_crashed)
+    agent.dispatch(
+        event.event_id,
+        publish=lambda task, args: env.workflow.run_step(
+            UUID(args[0]), env.gateway, dispatch_token=args[1]
+        ),
+    )
+    with env.sessions() as session:
+        assert session.scalar(select(func.count()).select_from(IntakeEvaluation)) == 1
+
+
+def test_ai_can_request_fresh_eligibility_through_a_validated_tool(env):
+    import json
+
+    from foodbridge.domain.orchestration import OrchestrationPlan
+
+    agent, first = pending_agent(env)
+    env.workflow.run_step(first.id, env.gateway)
+    with env.sessions() as session:
+        evaluation = session.scalar(select(IntakeEvaluation))
+    env.intake.process_evaluation(evaluation.id)
+    consume_all(env)
+    with env.sessions() as session:
+        step = session.scalar(select(WorkflowStep).where(WorkflowStep.kind == "matching"))
+
+    def generate(_settings, **kwargs):
+        facts = json.loads(kwargs["user_input"])
+        return OrchestrationPlan(
+            step_id=facts["step_id"],
+            donation_version=facts["donation_version"],
+            matching_round=facts["matching_round"],
+            tool="refresh_eligibility",
+            delay_s=0,
+            summary="Refresh candidate facts before another ranking attempt.",
+        )
+
+    agent.plan_step(step.id, generate=generate)
+    with env.sessions() as session:
+        assert session.get(Donation, step.donation_id).matching_round == 2
+        row = session.get(WorkflowStep, step.id)
+        assert row.status == "stale" and row.data["orchestrator"]["status"] == "revalidated"
+        assert (
+            session.scalar(
+                select(WorkflowStep).where(
+                    WorkflowStep.kind == "eligibility", WorkflowStep.matching_round == 2
+                )
+            ).status
+            == "pending"
+        )
+
+
+def test_ai_replans_a_failed_worker_at_its_retry_time(env):
+    agent, step = pending_agent(env, model=False)
+    agent.plan_step(step.id)
+    with env.sessions() as session:
+        token = session.get(WorkflowStep, step.id).data["orchestrator"]["dispatch_token"]
+    assert env.workflow.claim(step.id) is None  # A plan-managed step requires its token.
+    env.workflow.run_step(step.id, UnconfiguredMatching(), dispatch_token=token)
+    env.clock.now += timedelta(seconds=10)
+    claim = agent.observe(step.id)
+    assert claim is not None
+    assert claim[0].attempts == 1
+    assert claim[0].failure_code == "matching_service_unavailable"
+
+
+def test_ai_decision_that_finishes_after_deadline_cannot_dispatch(env):
+    import json
+
+    from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT
+    from foodbridge.domain.orchestration import OrchestrationPlan
+
+    agent, step = pending_agent(env)
+
+    def generate(_settings, **kwargs):
+        facts = json.loads(kwargs["user_input"])
+        env.clock.now += timedelta(hours=3)
+        return OrchestrationPlan(
+            step_id=facts["step_id"],
+            donation_version=facts["donation_version"],
+            matching_round=facts["matching_round"],
+            tool="prepare_candidates",
+            delay_s=0,
+            summary="Continue.",
+        )
+
+    agent.plan_step(step.id, generate=generate)
+    with env.sessions() as session:
+        assert session.get(WorkflowStep, step.id).data["orchestrator"]["status"] == "stale"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OutboxEvent)
+                .where(OutboxEvent.event_type == DISPATCH_EVENT)
+            )
+            == 0
+        )
+    env.workflow.sweep()
+    with env.sessions() as session:
+        assert session.get(Donation, step.donation_id).status == "expired"

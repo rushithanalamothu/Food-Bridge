@@ -2,6 +2,8 @@
 
 This feature extends the existing intake implementation. It consumes committed submission and eligibility events, coordinates versioned work, persists recipient acceptance and driver commitments, records pickup/delivery, and exposes scoped status/recovery APIs. It does not replace donor review or the shared deterministic eligibility policy.
 
+The subsequent [AI Orchestrator Agent](orchestrator-agent.md) adds model-driven tool selection and a persistent decision audit on top of this workflow. The runtime now requests an orchestrator plan before business dispatch. The original verification counts below describe the first merged workflow revision; the agent runbook describes its additional model-path tests and explicit rules/fallback modes.
+
 ## Implemented behavior
 
 - `WorkflowService.consume()` commits an event receipt with the resulting state/next step. Repeated broker delivery has one business effect. The general relay leaves intake request events to the existing intake relay.

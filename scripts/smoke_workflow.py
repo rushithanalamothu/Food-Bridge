@@ -125,6 +125,13 @@ def run():
         assert delivered["donation"]["status"] == "delivered"
         summary = request("GET", "/operations/summary", "operator")
         assert summary["synthetic"] and summary["delivered_count"] >= 1
+        audits = request(
+            "GET", f"/operations/orchestrator/decisions?donation_id={identifier}", "operator"
+        )
+        decisions = [d for audit in audits for d in audit["decisions"]]
+        assert len(decisions) >= 3, "Every dispatched workflow stage must have a saved agent plan."
+        modes = sorted({d["mode"] for d in decisions})
+        assert all(d["prompt_version"] == "orchestrator-agent-v1" for d in decisions)
         # Keep real streaming coverage bounded; use the replay stream, not in-process helpers.
         seen = False
         with client.stream(
@@ -149,6 +156,8 @@ def run():
                     "status": "delivered",
                     "http_idempotent_replay": "passed",
                     "sse_replay": "passed",
+                    "orchestrator_decisions": len(decisions),
+                    "orchestrator_modes": modes,
                 },
                 indent=2,
             )

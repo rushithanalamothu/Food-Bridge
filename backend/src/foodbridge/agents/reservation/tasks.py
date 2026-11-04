@@ -19,7 +19,7 @@ def deliver_notifications():
 
 
 @celery_app.task(name="foodbridge.reservation.assign", acks_late=True)
-def assign(step_id: str):
+def assign(step_id: str, dispatch_token: str | None = None):
     from uuid import UUID
 
     from foodbridge.agents.orchestrator.service import WorkflowService
@@ -29,4 +29,4 @@ def assign(step_id: str):
     settings = Settings()
     WorkflowService(
         settings.database_url, allow_synthetic=settings.enable_local_workflow_demo
-    ).run_step(UUID(step_id), matching_gateway(settings))
+    ).run_step(UUID(step_id), matching_gateway(settings), dispatch_token=dispatch_token)

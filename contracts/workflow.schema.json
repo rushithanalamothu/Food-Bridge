@@ -635,6 +635,288 @@
       "title": "OperationsSummary",
       "type": "object"
     },
+    "OrchestrationAudit": {
+      "additionalProperties": false,
+      "properties": {
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/OrchestrationDecision"
+          },
+          "title": "Decisions",
+          "type": "array"
+        },
+        "donation_id": {
+          "format": "uuid",
+          "title": "Donation Id",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "step_id": {
+          "format": "uuid",
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "donation_id",
+        "status",
+        "decisions"
+      ],
+      "title": "OrchestrationAudit",
+      "type": "object"
+    },
+    "OrchestrationDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure Code"
+        },
+        "generation": {
+          "title": "Generation",
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "model",
+            "rules",
+            "fallback",
+            "rejected"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "observation": {
+          "$ref": "#/$defs/OrchestrationObservation"
+        },
+        "outcome": {
+          "enum": [
+            "dispatched",
+            "deferred",
+            "escalated",
+            "revalidated",
+            "stale"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/OrchestrationPlan"
+        },
+        "prompt_version": {
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "generation",
+        "decided_at",
+        "mode",
+        "provider",
+        "model",
+        "prompt_version",
+        "failure_code",
+        "outcome",
+        "observation",
+        "plan"
+      ],
+      "title": "OrchestrationDecision",
+      "type": "object"
+    },
+    "OrchestrationObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "enum": [
+              "prepare_candidates",
+              "rank_candidates",
+              "coordinate_pickup",
+              "retry_current_agent",
+              "refresh_eligibility",
+              "wait",
+              "escalate_operator"
+            ],
+            "type": "string"
+          },
+          "title": "Allowed Tools",
+          "type": "array"
+        },
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "donation_status": {
+          "title": "Donation Status",
+          "type": "string"
+        },
+        "donation_version": {
+          "title": "Donation Version",
+          "type": "integer"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure Code"
+        },
+        "matching_round": {
+          "title": "Matching Round",
+          "type": "integer"
+        },
+        "previous_decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlanFeedback"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "previous_outcomes": {
+          "items": {
+            "$ref": "#/$defs/StepOutcome"
+          },
+          "title": "Previous Outcomes",
+          "type": "array"
+        },
+        "retry_budget": {
+          "title": "Retry Budget",
+          "type": "integer"
+        },
+        "seconds_remaining": {
+          "title": "Seconds Remaining",
+          "type": "integer"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "step_id": {
+          "format": "uuid",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "urgency": {
+          "enum": [
+            "critical",
+            "high",
+            "normal"
+          ],
+          "title": "Urgency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "donation_version",
+        "matching_round",
+        "donation_status",
+        "stage",
+        "attempts",
+        "retry_budget",
+        "failure_code",
+        "seconds_remaining",
+        "urgency",
+        "allowed_tools",
+        "previous_outcomes"
+      ],
+      "title": "OrchestrationObservation",
+      "type": "object"
+    },
+    "OrchestrationPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "delay_s": {
+          "maximum": 30,
+          "minimum": 0,
+          "title": "Delay S",
+          "type": "integer"
+        },
+        "donation_version": {
+          "minimum": 1,
+          "title": "Donation Version",
+          "type": "integer"
+        },
+        "matching_round": {
+          "minimum": 1,
+          "title": "Matching Round",
+          "type": "integer"
+        },
+        "step_id": {
+          "format": "uuid",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "tool": {
+          "enum": [
+            "prepare_candidates",
+            "rank_candidates",
+            "coordinate_pickup",
+            "retry_current_agent",
+            "refresh_eligibility",
+            "wait",
+            "escalate_operator"
+          ],
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "donation_version",
+        "matching_round",
+        "tool",
+        "delay_s",
+        "summary"
+      ],
+      "title": "OrchestrationPlan",
+      "type": "object"
+    },
     "PickupConfirmation": {
       "additionalProperties": false,
       "properties": {
@@ -793,6 +1075,52 @@
       "title": "PickupWindow",
       "type": "object"
     },
+    "PlanFeedback": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "model",
+            "rules",
+            "fallback",
+            "rejected"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "dispatched",
+            "deferred",
+            "escalated",
+            "revalidated",
+            "stale"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "tool": {
+          "enum": [
+            "prepare_candidates",
+            "rank_candidates",
+            "coordinate_pickup",
+            "retry_current_agent",
+            "refresh_eligibility",
+            "wait",
+            "escalate_operator"
+          ],
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "mode",
+        "outcome"
+      ],
+      "title": "PlanFeedback",
+      "type": "object"
+    },
     "ReplayResult": {
       "additionalProperties": false,
       "properties": {
@@ -890,6 +1218,42 @@
       "title": "ReservationRead",
       "type": "object"
     },
+    "StepOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure Code"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "status",
+        "attempts",
+        "failure_code"
+      ],
+      "title": "StepOutcome",
+      "type": "object"
+    },
     "StreamItem": {
       "additionalProperties": false,
       "properties": {
@@ -960,6 +1324,9 @@
     "offers": {
       "$ref": "#/$defs/OfferPage"
     },
+    "orchestrator_audit": {
+      "$ref": "#/$defs/OrchestrationAudit"
+    },
     "pickup": {
       "$ref": "#/$defs/PickupRead"
     },
@@ -986,6 +1353,7 @@
     }
   },
   "required": [
+    "orchestrator_audit",
     "actor",
     "version_command",
     "donation_command",

@@ -10,6 +10,8 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 
 **Orchestration and pickup:** [Tej's workflow runbook, API handoff and verification](docs/features/workflow.md).
 
+**AI Orchestrator Agent:** [model planning, supported tools, decision audit and shared AI setup](docs/features/orchestrator-agent.md).
+
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).
 
 ## What runs today
