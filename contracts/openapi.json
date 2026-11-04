@@ -1,6 +1,98 @@
 {
   "components": {
     "schemas": {
+      "Actor": {
+        "additionalProperties": false,
+        "properties": {
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "donor",
+              "recipient",
+              "driver",
+              "operator"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "organization_id",
+          "role"
+        ],
+        "title": "Actor",
+        "type": "object"
+      },
+      "DeliveryConfirmation": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_confirmed": {
+            "const": true,
+            "title": "Delivery Confirmed",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "delivery_confirmed"
+        ],
+        "title": "DeliveryConfirmation",
+        "type": "object"
+      },
+      "DonationCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_donation_version": {
+            "minimum": 1.0,
+            "title": "Expected Donation Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_donation_version"
+        ],
+        "title": "DonationCommand",
+        "type": "object"
+      },
       "DonationInput": {
         "additionalProperties": false,
         "description": "Donor-confirmed data, not unreviewed LLM extraction.",
@@ -734,6 +826,82 @@
         "title": "ExtractionResult",
         "type": "object"
       },
+      "FailurePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FailureRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FailurePage",
+        "type": "object"
+      },
+      "FailureRead": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "replay_count": {
+            "title": "Replay Count",
+            "type": "integer"
+          },
+          "step_id": {
+            "format": "uuid",
+            "title": "Step Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "donation_id",
+          "step_id",
+          "code",
+          "attempts",
+          "created_at",
+          "replay_count"
+        ],
+        "title": "FailureRead",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -908,6 +1076,329 @@
           "longitude"
         ],
         "title": "Location",
+        "type": "object"
+      },
+      "MatchRecommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm": {
+            "enum": [
+              "distance_only",
+              "multi_criteria"
+            ],
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "distance_m": {
+            "minimum": 0.0,
+            "title": "Distance M",
+            "type": "number"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "donation_version": {
+            "minimum": 1.0,
+            "title": "Donation Version",
+            "type": "integer"
+          },
+          "eligibility_policy_version": {
+            "minLength": 1,
+            "title": "Eligibility Policy Version",
+            "type": "string"
+          },
+          "explanation": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "matching_round": {
+            "minimum": 1.0,
+            "title": "Matching Round",
+            "type": "integer"
+          },
+          "offer_expires_at": {
+            "format": "date-time",
+            "title": "Offer Expires At",
+            "type": "string"
+          },
+          "ranking_config_version": {
+            "minLength": 1,
+            "title": "Ranking Config Version",
+            "type": "string"
+          },
+          "recipient_organization_id": {
+            "format": "uuid",
+            "title": "Recipient Organization Id",
+            "type": "string"
+          },
+          "travel_time_s": {
+            "minimum": 0.0,
+            "title": "Travel Time S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "donation_id",
+          "recipient_organization_id",
+          "matching_round",
+          "donation_version",
+          "distance_m",
+          "travel_time_s",
+          "offer_expires_at",
+          "explanation",
+          "algorithm",
+          "eligibility_policy_version",
+          "ranking_config_version"
+        ],
+        "title": "MatchRecommendation",
+        "type": "object"
+      },
+      "OfferPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OfferRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OfferPage",
+        "type": "object"
+      },
+      "OfferRead": {
+        "additionalProperties": false,
+        "properties": {
+          "recommendation": {
+            "$ref": "#/components/schemas/MatchRecommendation"
+          },
+          "status": {
+            "enum": [
+              "offered",
+              "accepted",
+              "declined",
+              "expired",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recommendation",
+          "status",
+          "version"
+        ],
+        "title": "OfferRead",
+        "type": "object"
+      },
+      "OperationsSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "counts_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Status",
+            "type": "object"
+          },
+          "delivered_count": {
+            "title": "Delivered Count",
+            "type": "integer"
+          },
+          "delivered_kg": {
+            "title": "Delivered Kg",
+            "type": "number"
+          },
+          "notification_counts_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Notification Counts By Status",
+            "type": "object"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "synthetic": {
+            "title": "Synthetic",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "organization_id",
+          "counts_by_status",
+          "delivered_kg",
+          "delivered_count",
+          "synthetic"
+        ],
+        "title": "OperationsSummary",
+        "type": "object"
+      },
+      "PickupConfirmation": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "handling_confirmed": {
+            "const": true,
+            "title": "Handling Confirmed",
+            "type": "boolean"
+          },
+          "observed_quantity_kg": {
+            "exclusiveMinimum": 0.0,
+            "title": "Observed Quantity Kg",
+            "type": "number"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "handling_confirmed",
+          "observed_quantity_kg"
+        ],
+        "title": "PickupConfirmation",
+        "type": "object"
+      },
+      "PickupPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PickupRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PickupPage",
+        "type": "object"
+      },
+      "PickupRead": {
+        "additionalProperties": false,
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationRead"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reservation_id": {
+            "format": "uuid",
+            "title": "Reservation Id",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "assigned",
+              "accepted",
+              "declined",
+              "collected",
+              "delivered",
+              "released",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "donation_id",
+          "reservation_id",
+          "driver_id",
+          "status",
+          "version",
+          "start",
+          "end",
+          "donation"
+        ],
+        "title": "PickupRead",
         "type": "object"
       },
       "PickupWindow": {
@@ -1111,6 +1602,124 @@
         "title": "ReadyStatus",
         "type": "object"
       },
+      "ReplayResult": {
+        "additionalProperties": false,
+        "properties": {
+          "failure_id": {
+            "format": "uuid",
+            "title": "Failure Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "queued",
+            "default": "queued",
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "format": "uuid",
+            "title": "Step Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "failure_id",
+          "step_id"
+        ],
+        "title": "ReplayResult",
+        "type": "object"
+      },
+      "ReservationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "donation_version": {
+            "title": "Donation Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "match_id": {
+            "format": "uuid",
+            "title": "Match Id",
+            "type": "string"
+          },
+          "quantity_kg": {
+            "title": "Quantity Kg",
+            "type": "number"
+          },
+          "recipient_organization_id": {
+            "format": "uuid",
+            "title": "Recipient Organization Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "released",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "storage": {
+            "title": "Storage",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "donation_id",
+          "match_id",
+          "recipient_organization_id",
+          "quantity_kg",
+          "storage",
+          "status",
+          "version",
+          "donation_version",
+          "created_at"
+        ],
+        "title": "ReservationRead",
+        "type": "object"
+      },
+      "ReservationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_donation_version": {
+            "minimum": 1.0,
+            "title": "Expected Donation Version",
+            "type": "integer"
+          },
+          "match_id": {
+            "format": "uuid",
+            "title": "Match Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_id",
+          "expected_donation_version"
+        ],
+        "title": "ReservationRequest",
+        "type": "object"
+      },
       "ReviewIssue": {
         "additionalProperties": false,
         "properties": {
@@ -1228,6 +1837,33 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VersionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "VersionCommand",
         "type": "object"
       }
     },
@@ -1520,6 +2156,74 @@
         ]
       }
     },
+    "/api/v1/donations/{identifier}/cancel": {
+      "post": {
+        "operationId": "cancel_api_v1_donations__identifier__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonationCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
     "/api/v1/donations/{identifier}/demo-eligibility": {
       "post": {
         "operationId": "demo_eligibility_api_v1_donations__identifier__demo_eligibility_post",
@@ -1575,6 +2279,53 @@
         "summary": "Demo Eligibility",
         "tags": [
           "intake"
+        ]
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "events_api_v1_events_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Events",
+        "tags": [
+          "workflow"
         ]
       }
     },
@@ -1704,6 +2455,188 @@
         ]
       }
     },
+    "/api/v1/matches": {
+      "get": {
+        "operationId": "offers_api_v1_matches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Offers",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/matches/{identifier}": {
+      "get": {
+        "operationId": "get_offer_api_v1_matches__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Offer",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/matches/{identifier}/decline": {
+      "post": {
+        "operationId": "decline_api_v1_matches__identifier__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "me_api_v1_me_get",
@@ -1727,6 +2660,656 @@
         "summary": "Me",
         "tags": [
           "intake"
+        ]
+      }
+    },
+    "/api/v1/operations/failures": {
+      "get": {
+        "operationId": "failures_api_v1_operations_failures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FailurePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Failures",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/failures/{identifier}/replay": {
+      "post": {
+        "operationId": "replay_api_v1_operations_failures__identifier__replay_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replay",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/summary": {
+      "get": {
+        "operationId": "summary_api_v1_operations_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Summary",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/pickups": {
+      "get": {
+        "operationId": "pickups_api_v1_pickups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pickups",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/pickups/{identifier}/accept": {
+      "post": {
+        "operationId": "accept_pickup_api_v1_pickups__identifier__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Pickup",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/pickups/{identifier}/confirm-delivery": {
+      "post": {
+        "operationId": "confirm_delivery_api_v1_pickups__identifier__confirm_delivery_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Delivery",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/pickups/{identifier}/confirm-pickup": {
+      "post": {
+        "operationId": "confirm_pickup_api_v1_pickups__identifier__confirm_pickup_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Pickup",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/pickups/{identifier}/decline": {
+      "post": {
+        "operationId": "decline_pickup_api_v1_pickups__identifier__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Pickup",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/reservations": {
+      "post": {
+        "operationId": "reserve_api_v1_reservations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reserve",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/reservations/{identifier}/release": {
+      "post": {
+        "operationId": "release_api_v1_reservations__identifier__release_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "session_identity_api_v1_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Actor"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Session Identity",
+        "tags": [
+          "workflow"
         ]
       }
     }

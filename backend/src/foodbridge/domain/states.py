@@ -27,7 +27,8 @@ TRANSITIONS: dict[DonationStatus, frozenset[DonationStatus]] = {
     S.DRAFT: frozenset({S.SUBMITTED, S.CANCELLED}),
     S.SUBMITTED: frozenset({S.NEEDS_REVIEW, S.MATCHING, S.EXPIRED, S.CANCELLED, S.FAILED}),
     S.NEEDS_REVIEW: frozenset({S.SUBMITTED, S.EXPIRED, S.CANCELLED}),
-    S.MATCHING: frozenset({S.OFFERED, S.NO_MATCH, S.EXPIRED, S.CANCELLED, S.FAILED}),
+    # A new round can revalidate changed route/profile facts while still matching.
+    S.MATCHING: frozenset({S.MATCHING, S.OFFERED, S.NO_MATCH, S.EXPIRED, S.CANCELLED, S.FAILED}),
     S.OFFERED: frozenset({S.RESERVED, S.MATCHING, S.EXPIRED, S.CANCELLED, S.FAILED}),
     S.RESERVED: frozenset({S.PICKUP_ASSIGNED, S.MATCHING, S.EXPIRED, S.CANCELLED, S.FAILED}),
     S.PICKUP_ASSIGNED: frozenset({S.PICKED_UP, S.RESERVED, S.EXPIRED, S.CANCELLED, S.FAILED}),

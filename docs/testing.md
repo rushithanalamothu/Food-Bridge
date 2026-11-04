@@ -1,5 +1,9 @@
 # Testing and evaluation
 
+## Workflow coverage
+
+The [workflow runbook](features/workflow.md) maps Tej’s implemented acceptance/failure tests, real PostgreSQL races and real HTTP/broker/worker smoke to Workbook AT-1–7. `make integration` runs both intake and workflow suites in isolated databases. Live matching/routing, full role-browser integration and shared-cloud promotion are separate release gates.
+
 ## Foundation coverage
 
 `make check` verifies contracts, legal status edges, worker registration/routing, API health semantics, frontend health-response validation, static types, frontend build, formatting, generated-artifact drift, documentation links and Compose syntax. The infrastructure integration test checks real PostGIS/Redis and the migration head. These are foundation tests only.

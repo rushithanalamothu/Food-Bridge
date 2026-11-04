@@ -66,9 +66,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm exec --workspace @foodbridge/web -- playwright install --with-deps chromium
-      - name: Intake HTTP, worker and browser smoke
+      - name: Intake browser and full workflow worker smoke
         env:
           FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: 'true'
+          FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO: 'true'
+          FOODBRIDGE_NOTIFICATION_MODE: sandbox
         run: |
           uv run python scripts/seed_intake_demo.py
           uv run uvicorn foodbridge.api.main:app --host 127.0.0.1 --port 8000 > /tmp/intake-api.log 2>&1 &
@@ -77,9 +79,19 @@ jobs:
           intake_worker_pid=$!
           uv run python -m foodbridge.agents.intake.relay > /tmp/intake-relay.log 2>&1 &
           intake_relay_pid=$!
-          trap 'kill "$intake_api_pid" "$intake_worker_pid" "$intake_relay_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$intake_api_pid" "$intake_worker_pid" "$intake_relay_pid" "${workflow_orchestrator_pid:-}" "${workflow_matching_pid:-}" "${workflow_reservation_pid:-}" "${workflow_runtime_pid:-}" 2>/dev/null || true' EXIT
           uv run python scripts/smoke_intake.py
           npm run test:e2e
+          uv run python scripts/seed_workflow_demo.py
+          uv run celery -A foodbridge.agents.celery_app:celery_app worker -Q orchestrator --pool=solo --loglevel=INFO --hostname=orchestrator@%h > /tmp/workflow-orchestrator.log 2>&1 &
+          workflow_orchestrator_pid=$!
+          uv run celery -A foodbridge.agents.celery_app:celery_app worker -Q matching --pool=solo --loglevel=INFO --hostname=matching@%h > /tmp/workflow-matching.log 2>&1 &
+          workflow_matching_pid=$!
+          uv run celery -A foodbridge.agents.celery_app:celery_app worker -Q reservation --pool=solo --loglevel=INFO --hostname=reservation@%h > /tmp/workflow-reservation.log 2>&1 &
+          workflow_reservation_pid=$!
+          uv run python -m foodbridge.agents.orchestrator.runtime > /tmp/workflow-runtime.log 2>&1 &
+          workflow_runtime_pid=$!
+          uv run python scripts/smoke_workflow.py
       - name: Upload browser failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

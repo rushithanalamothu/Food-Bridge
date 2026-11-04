@@ -14,6 +14,8 @@ Status: health and donor intake routes are implemented; other v1 routes are plan
 - Business errors use canonical `ApiError`: `code`, human-readable `message`, server `request_id`, structured `details`. Intake routes use canonical `ApiError`, including sanitized 422 field details and a server request ID.
 - Future-dated pickup/deadline checks use an injected server clock. The schema enforces ordering/offsets; it does not assert that a fixed fixture date is currently in the future.
 
+See the [implemented workflow runbook](../features/workflow.md) for exact request/response contracts, membership selectors, local demo boundaries and recovery behavior. `GET /session` returns the selected verified actor.
+
 ## Endpoint inventory
 
 | Method and route | Role | Meaning / response | Status |
@@ -27,29 +29,29 @@ Status: health and donor intake routes are implemented; other v1 routes are plan
 | GET `/donations` | Authenticated | Scoped cursor list; donor role implemented | Implemented for donors |
 | GET `/donations/{id}` | Resource member | Donor snapshot, version and urgency | Implemented for donors |
 | POST `/donations/{id}/confirm-details` | Owner donor | Correct `needs_review` listing; versioned, 202 | Planned, Mokshith |
-| POST `/donations/{id}/cancel` | Owner donor/operator | Versioned pre-pickup cancellation; 200 snapshot | Planned, Tej |
+| POST `/donations/{id}/cancel` | Owner donor/operator | Versioned pre-pickup cancellation; 200 snapshot | Implemented backend; see workflow runbook |
 | GET `/recipient-profile` | Recipient | Own location, categories, capacity and hours | Planned, Rushitha |
 | PUT `/recipient-profile` | Recipient | Versioned profile update; 200 profile | Planned, Rushitha |
-| GET `/matches` | Recipient | Own active and past offers, scoped cursor list | Planned, Rushitha |
-| GET `/matches/{id}` | Resource member | `MatchRecommendation` plus offer status | Planned, Rushitha |
-| POST `/reservations` | Recipient | `ReservationRequest`; 201 reservation + donation version | Planned, Tej |
-| POST `/matches/{id}/decline` | Offered recipient | Version, optional reason; 200 decision, re-match asynchronous | Planned, Tej |
-| POST `/reservations/{id}/release` | Reserving recipient/operator | Versioned pre-pickup release; 200 snapshot | Planned, Tej |
-| GET `/pickups` | Driver | Assigned/accepted tasks; scoped cursor list | Planned, Tej |
-| POST `/pickups/{id}/accept` | Assigned driver | Assignment version; 200 assignment | Planned, Tej |
-| POST `/pickups/{id}/decline` | Assigned driver | Version/reason; 200 decision; redispatch asynchronously | Planned, Tej |
-| POST `/pickups/{id}/confirm-pickup` | Accepted driver | Version, handling confirmation, observed amount | Planned, Tej |
-| POST `/pickups/{id}/confirm-delivery` | Accepted driver | Version, delivery confirmation; 200 snapshot | Planned, Tej |
-| GET `/operations/summary` | Operator | Counts, time window, units and measured/synthetic indicator | Planned, Tej + Rushitha |
-| GET `/operations/failures` | Operator | Persisted failures and replay eligibility | Planned, Tej |
-| POST `/operations/failures/{id}/replay` | Operator | Audited replay, current preconditions, 202 | Planned, Tej |
+| GET `/matches` | Recipient | Own active and past offers, scoped cursor list | Implemented scoped read model; live matching pending |
+| GET `/matches/{id}` | Resource member | `MatchRecommendation` plus offer status | Implemented scoped read model; live matching pending |
+| POST `/reservations` | Recipient | `ReservationRequest`; 201 reservation + donation version | Implemented backend; see workflow runbook |
+| POST `/matches/{id}/decline` | Offered recipient | Version, optional reason; 200 decision, re-match asynchronous | Implemented backend; see workflow runbook |
+| POST `/reservations/{id}/release` | Reserving recipient/operator | Versioned pre-pickup release; 200 snapshot | Implemented backend; see workflow runbook |
+| GET `/pickups` | Driver | Assigned/accepted tasks; scoped cursor list | Implemented backend; see workflow runbook |
+| POST `/pickups/{id}/accept` | Assigned driver | Assignment version; 200 assignment | Implemented backend; see workflow runbook |
+| POST `/pickups/{id}/decline` | Assigned driver | Version/reason; 200 decision; redispatch asynchronously | Implemented backend; see workflow runbook |
+| POST `/pickups/{id}/confirm-pickup` | Accepted driver | Version, handling confirmation, observed amount | Implemented backend; see workflow runbook |
+| POST `/pickups/{id}/confirm-delivery` | Accepted driver | Version, delivery confirmation; 200 snapshot | Implemented backend; see workflow runbook |
+| GET `/operations/summary` | Operator | Cumulative donor-org counts, delivered kilograms and synthetic indicator | Implemented backend; see workflow runbook |
+| GET `/operations/failures` | Operator | Persisted failures and replay eligibility | Implemented backend; see workflow runbook |
+| POST `/operations/failures/{id}/replay` | Operator | Audited replay, current preconditions, 202 | Implemented backend; see workflow runbook |
 | POST `/donations/{id}/demo-eligibility` | Local demo donor | 202 evaluation job using server-owned synthetic facts | Implemented, local demo only |
 | GET `/intake/evaluations/{id}` | Owner donor | Pending/completed/stale/failed eligibility result | Implemented |
-| GET `/events` | Authenticated | Authorized fetch-SSE stream with durable replay | Planned, Tej + Mithil |
+| GET `/events` | Authenticated | Authorized fetch-SSE stream with durable replay | Implemented backend; see workflow runbook |
 
-The intake slice also exports `DraftCreate`, `DraftRead`, `DonationSubmit`, `IntakeDonationRead`, `DonorIdentity`, typed eligibility inputs/results and `EvaluationRead`. See its generated schema and runbook for implemented shapes. Remaining draft revision, match/pickup and stream interfaces still require consumer review.
+The intake slice also exports `DraftCreate`, `DraftRead`, `DonationSubmit`, `IntakeDonationRead`, `DonorIdentity`, typed eligibility inputs/results and `EvaluationRead`. See its generated schema and runbook for implemented shapes. The workflow match/pickup/stream contracts are implemented and require affected-consumer review before merge; remaining draft revision stays intake-owned work.
 
-`DonationInput`, `DonationRead`, `RecipientProfile`, `MatchRecommendation`, `ReservationRequest`, `EventEnvelope` and `ApiError` remain the original foundation types. Reservation/assignment responses, remaining command bodies and stream payloads need additive Pydantic definitions in the implementing owner’s contract PR **before** consumers build against them. The endpoint table fixes responsibility and intent, not invented response fields.
+`DonationInput`, `DonationRead`, `RecipientProfile`, `MatchRecommendation`, `ReservationRequest`, `EventEnvelope` and `ApiError` remain the original foundation types. Reservation/assignment responses and command bodies are now defined in `domain/workflow.py` and its generated schema/TypeScript. Remaining interfaces require additive definitions before consumers build against them. The endpoint table fixes responsibility and intent, not invented response fields.
 
 A draft extraction request must never be accepted as `DonationInput`. The draft route uses its own text/location schema; missing values remain missing, and model output carries field provenance. Profile capacity editing requires `expected_profile_version` alongside the new profile snapshot. Preserve the public `RecipientProfile.version` to coordinate reservation checks.
 

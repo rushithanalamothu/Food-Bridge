@@ -15,3 +15,13 @@ def test_every_worker_module_is_registered_and_routed():
         assert task_name in celery_app.tasks
         route = celery_app.amqp.router.route({}, task_name)
         assert route["queue"].name == name
+    for name in (
+        "orchestrator.consume",
+        "matching.prepare",
+        "matching.rank",
+        "reservation.assign",
+        "reservation.deliver_notifications",
+    ):
+        task_name = f"foodbridge.{name}"
+        assert task_name in celery_app.tasks
+        assert celery_app.amqp.router.route({}, task_name)["queue"].name == name.split(".")[0]

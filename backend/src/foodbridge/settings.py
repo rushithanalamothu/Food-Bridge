@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
     enable_local_intake_demo: bool = False
+    enable_local_workflow_demo: bool = False
+    notification_mode: Literal["disabled", "sandbox"] = "disabled"
     enable_intake_metrics: bool = False
     ai_provider: Literal["auto", "rules", "openai", "gemini", "anthropic", "openai_compatible"] = (
         Field(
@@ -84,6 +86,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def safe_modes(self) -> Self:
+        if (
+            self.enable_local_workflow_demo or self.notification_mode == "sandbox"
+        ) and self.environment != "local":
+            raise ValueError("workflow demo and sandbox notifications are local-only")
         if self.enable_local_intake_demo and self.environment != "local":
             raise ValueError("local intake demo cannot be enabled outside local development")
         if self.enable_intake_metrics and self.environment != "local":

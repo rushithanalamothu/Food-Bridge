@@ -1,26 +1,27 @@
 """Persisted intake application service; owns transactions and version/idempotency guards."""
 
 import base64
-import hashlib
 import json
 from datetime import UTC, datetime
 from time import perf_counter
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, or_, select, text
+from sqlalchemy import and_, or_, select
 
 from foodbridge.agents.intake.config import load_policy
 from foodbridge.agents.intake.policy import evaluate, urgency, validate_confirmation
 from foodbridge.db.models import (
     Donation,
     DonationDraft,
-    IdempotencyRecord,
     IntakeEvaluation,
     OutboxEvent,
     StatusHistory,
 )
 from foodbridge.db.session import session_factory
-from foodbridge.domain.contracts import DonationInput, DonationRead, EventEnvelope
+from foodbridge.db.transactions import enqueue_event as _event
+from foodbridge.db.transactions import idempotency as _idempotency
+from foodbridge.db.transactions import remember_response as _remember
+from foodbridge.domain.contracts import DonationInput, DonationRead
 from foodbridge.domain.errors import AppError
 from foodbridge.domain.intake import (
     DonationSubmit,
@@ -34,74 +35,11 @@ from foodbridge.domain.intake import (
     IntakeDonationRead,
     IntakeHandoff,
 )
-from foodbridge.observability import decisions, duplicates, record, timed
+from foodbridge.observability import decisions, record, timed
 
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
-
-
-def _event(
-    session,
-    aggregate_id: UUID,
-    version: int,
-    event_type: str,
-    now: datetime,
-    correlation_id: UUID,
-    payload: dict,
-) -> None:
-    envelope = EventEnvelope(
-        event_id=uuid4(),
-        aggregate_id=aggregate_id,
-        aggregate_version=version,
-        event_type=event_type,
-        occurred_at=now,
-        correlation_id=correlation_id,
-        payload=payload,
-    )
-    session.add(
-        OutboxEvent(
-            event_id=envelope.event_id,
-            aggregate_id=aggregate_id,
-            aggregate_version=version,
-            event_type=event_type,
-            envelope=envelope.model_dump(mode="json"),
-        )
-    )
-
-
-def _idempotency(session, actor_id: UUID, action: str, key: UUID, body: dict):
-    identity = f"{actor_id}:{action}:{key}"
-    lock = int.from_bytes(hashlib.sha256(identity.encode()).digest()[:8], "big", signed=True)
-    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock})
-    digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
-    record = session.get(IdempotencyRecord, (actor_id, action, key))
-    legacy_digest = None
-    if action == "donations" and body.get("donation", {}).get("packaging_type") is None:
-        # Receipts created before optional packaging existed used the earlier canonical DTO.
-        legacy_body = {**body, "donation": dict(body["donation"])}
-        legacy_body["donation"].pop("packaging_type", None)
-        legacy_digest = hashlib.sha256(json.dumps(legacy_body, sort_keys=True).encode()).hexdigest()
-    if record and record.request_hash not in {digest, legacy_digest}:
-        raise AppError(
-            "idempotency_key_reused", "This request key was used for different details.", 409
-        )
-    if record:
-        duplicates.inc()
-    return record, digest
-
-
-def _remember(session, actor_id, action, key, digest, response, now):
-    session.add(
-        IdempotencyRecord(
-            actor_id=actor_id,
-            action=action,
-            key=key,
-            request_hash=digest,
-            response=response,
-            created_at=now,
-        )
-    )
 
 
 def donation_view(row: Donation, now: datetime) -> IntakeDonationRead:
@@ -264,7 +202,7 @@ class IntakeService:
                     occurred_at=now,
                 )
             )
-            _event(
+            submitted_event = _event(
                 session,
                 row.id,
                 1,
@@ -273,6 +211,10 @@ class IntakeService:
                 correlation_id,
                 {"matching_round": 1},
             )
+            submitted_event.audience = [
+                {"organization_id": str(actor.organization_id), "role": "donor"},
+                {"organization_id": str(actor.organization_id), "role": "operator"},
+            ]
             view = donation_view(row, now)
             _remember(
                 session, actor.user_id, "donations", key, digest, view.model_dump(mode="json"), now

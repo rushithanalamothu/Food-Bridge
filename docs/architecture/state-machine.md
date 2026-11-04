@@ -7,7 +7,7 @@ The canonical enum and transition graph live in [states.py](../../backend/src/fo
 | `draft` | `submitted`, `cancelled` | Donor confirms or abandons draft |
 | `submitted` | `needs_review`, `matching`, `expired`, `cancelled`, `failed` | Intake validation via orchestrator |
 | `needs_review` | `submitted`, `expired`, `cancelled` | Donor corrects required fields |
-| `matching` | `offered`, `no_match`, `expired`, `cancelled`, `failed` | Candidate/routing/ranking outcome |
+| `matching` | `matching`, `offered`, `no_match`, `expired`, `cancelled`, `failed` | Fresh-facts round or candidate/routing/ranking outcome |
 | `offered` | `reserved`, `matching`, `expired`, `cancelled`, `failed` | Recipient accepts/declines, offer times out |
 | `reserved` | `pickup_assigned`, `matching`, `expired`, `cancelled`, `failed` | Assignment or pre-pickup release |
 | `pickup_assigned` | `picked_up`, `reserved`, `expired`, `cancelled`, `failed` | Driver confirms collection or assignment released |
@@ -16,7 +16,9 @@ The canonical enum and transition graph live in [states.py](../../backend/src/fo
 
 `draft` is used by the extraction/review aggregate; only donor-confirmed input becomes a posted donation. A posted donation starts at `submitted`. Keeping the initial edge in the shared vocabulary does not require unconfirmed food to be visible in the live donation board.
 
-Match statuses: `offered`, `accepted`, `declined`, `expired`, `superseded`. Reservation statuses: `active`, `released`, `fulfilled`. Assignment statuses: `assigned`, `accepted`, `declined`, `released`, `collected`, `delivered`, `failed`. These additional lifecycle enums must be added to canonical contracts when their routes/tables are implemented.
+Match statuses: `offered`, `accepted`, `declined`, `expired`, `superseded`. Reservation statuses: `active`, `released`, `completed`, `failed`. Assignment statuses: `assigned`, `accepted`, `declined`, `released`, `collected`, `delivered`, `failed`. These are implemented in the [workflow contracts](../../backend/src/foodbridge/domain/workflow.py).
+
+Changed matching facts use a versioned `matching -> matching` transition to start fresh eligibility, capped at ten revalidation rounds. Exhausted transient work is blocked with a persisted failure pending audited replay or expiry; invalid results fail terminally. See the [implemented recovery policy](../features/workflow.md#recovery-policy).
 
 ## Re-matching and driver redispatch
 

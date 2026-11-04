@@ -1,6 +1,6 @@
 # Events, worker boundaries and failure recovery
 
-Status: implementation contract. Intake implements `foodbridge.intake.evaluate`, persisted evaluation/result events and an intake-only outbox relay. [The intake runbook](../features/intake.md) defines that slice. Generic consumer receipts, workflow recovery scheduling and matching/reservation handlers remain the respective owners’ next tasks.
+Status: intake implements evaluation/result events and its scoped relay. Tej's [workflow feature](../features/workflow.md) adds the general relay, durable receipts/steps, recovery scheduler, assignment/notification tasks and ordered SSE publication. Production matching remains an explicit unavailable adapter until Rushitha connects her candidate/ranking service. The policies below are the integration target; the runbook distinguishes actual local/sandbox behavior from pending live integrations.
 
 ## Queue ownership
 

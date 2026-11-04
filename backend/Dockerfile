@@ -7,6 +7,7 @@ COPY pyproject.toml uv.lock ./
 COPY backend ./backend
 COPY config ./config
 COPY scripts/seed_intake_demo.py ./scripts/seed_intake_demo.py
+COPY scripts/seed_workflow_demo.py ./scripts/seed_workflow_demo.py
 RUN uv sync --locked --no-dev
 RUN useradd --create-home foodbridge
 USER foodbridge

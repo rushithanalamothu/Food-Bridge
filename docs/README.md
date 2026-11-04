@@ -2,6 +2,8 @@
 
 The [implemented Intake and Eligibility feature](features/intake.md) includes its local runbook and team handoff.
 
+The [orchestration, reservation and pickup feature](features/workflow.md) includes Tej's API handoff, recovery policy, synthetic demo and verification commands.
+
 Read in this order:
 
 1. [Local setup](setup.md): get a reproducible environment running.

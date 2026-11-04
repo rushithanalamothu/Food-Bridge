@@ -38,3 +38,11 @@ Primary documentation consulted when choosing the foundation:
 - [Official PostGIS image/platform support](https://github.com/postgis/docker-postgis)
 
 Exact installed Python/npm versions are in lockfiles, not copied into this table. Revalidate runtime/image compatibility when intentionally updating them.
+
+## ADR-015 — Durable workflow integration and explicit production ports
+
+Tej’s workflow extends the intake migration with shared recipient/capacity/match integration storage, separate reservation/assignment records, fenced workflow steps, consumer receipts and an independently marked SSE publisher. Production candidate/ranking calls remain an explicit unavailable `MatchingGateway` until Rushitha integrates her services. The local-only synthetic adapter supports independent transaction/recovery testing without claiming maps or AI results.
+
+Changed matching facts may start a new `matching -> matching` round with incremented donation version/history, capped at ten revalidations. Transient budget exhaustion blocks the step pending audited additional budget or expiry; invalid results fail terminally. Reservation wire status uses `completed` for a fulfilled delivery and `failed` for a handling exception. System history actors are nullable; null identifies a system transition, with reason/correlation retained.
+
+Consumer impact: Rushitha reviews additive storage and the migration based on `36120ccc9d0d`; Mokshith reviews submission event audience metadata and reused eligibility semantics; Mithil reviews generated workflow DTOs and authenticated stream headers. The empty-database downgrade is tested; populated workflow history requires a forward fix or reviewed restoration rather than destructive automatic downgrade. See the [workflow handoff](../features/workflow.md).

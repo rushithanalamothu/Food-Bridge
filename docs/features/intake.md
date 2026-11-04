@@ -2,6 +2,8 @@
 
 Implemented feature boundary: describe food → persisted extraction draft → donor correction/confirmation → committed donation, history and handoff event → typed eligibility evaluation on a worker. Matching, recipient reservation, driver assignment and live status streaming remain their owners’ work.
 
+Tej’s subsequent [workflow feature](workflow.md) now consumes submission/result events and implements reservation/pickup and backend SSE. Live matching/data services and broader client integration remain separate dependencies. The intake details below describe its original owned boundary.
+
 ## Run the local flow
 
 Use the normal setup/migrations first. Set `FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO=true` in your private root `.env`; it defaults to false and is rejected outside `environment=local`. This is a synthetic local donor identity, not production authentication. Never enable it on a shared/public host.

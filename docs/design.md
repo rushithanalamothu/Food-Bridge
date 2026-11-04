@@ -52,7 +52,7 @@ Browser: donor | recipient | driver | operations
 
 Each worker imports domain contracts and only its own agent implementation. Shared domain services/repositories own invariant-preserving transactions. Workers do not call another agent’s task function directly; the orchestrator decides the next action based on persisted state and version. They do not expose public HTTP ports. All browser writes go through the gateway.
 
-The intake slice now implements persisted drafts/confirmation, a scoped eligibility worker and its durable outbox relay. See [the intake handoff](features/intake.md). The general orchestrator relay, recovery scheduler and matching/reservation handlers remain planned work; worker process health does not establish the complete donation workflow.
+The intake slice now implements persisted drafts/confirmation, a scoped eligibility worker and its durable outbox relay. See [the intake handoff](features/intake.md). The [workflow feature](features/workflow.md) implements the general relay/recovery scheduler, reservation/pickup and SSE. Live matching/routing/data adapters and complete client integration remain pending; worker process health alone does not establish product readiness.
 
 ## 3. Module boundaries
 
