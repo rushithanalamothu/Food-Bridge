@@ -1266,6 +1266,287 @@
         "title": "OperationsSummary",
         "type": "object"
       },
+      "OrchestrationAudit": {
+        "additionalProperties": false,
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/OrchestrationDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "donation_id": {
+            "format": "uuid",
+            "title": "Donation Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "format": "uuid",
+            "title": "Step Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "donation_id",
+          "status",
+          "decisions"
+        ],
+        "title": "OrchestrationAudit",
+        "type": "object"
+      },
+      "OrchestrationDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "model",
+              "rules",
+              "fallback",
+              "rejected"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/OrchestrationObservation"
+          },
+          "outcome": {
+            "enum": [
+              "dispatched",
+              "deferred",
+              "escalated",
+              "revalidated",
+              "stale"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/OrchestrationPlan"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generation",
+          "decided_at",
+          "mode",
+          "provider",
+          "model",
+          "prompt_version",
+          "failure_code",
+          "outcome",
+          "observation",
+          "plan"
+        ],
+        "title": "OrchestrationDecision",
+        "type": "object"
+      },
+      "OrchestrationObservation": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_tools": {
+            "items": {
+              "enum": [
+                "prepare_candidates",
+                "rank_candidates",
+                "coordinate_pickup",
+                "retry_current_agent",
+                "refresh_eligibility",
+                "wait",
+                "escalate_operator"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed Tools",
+            "type": "array"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "donation_status": {
+            "title": "Donation Status",
+            "type": "string"
+          },
+          "donation_version": {
+            "title": "Donation Version",
+            "type": "integer"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "matching_round": {
+            "title": "Matching Round",
+            "type": "integer"
+          },
+          "previous_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanFeedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/StepOutcome"
+            },
+            "title": "Previous Outcomes",
+            "type": "array"
+          },
+          "retry_budget": {
+            "title": "Retry Budget",
+            "type": "integer"
+          },
+          "seconds_remaining": {
+            "title": "Seconds Remaining",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "step_id": {
+            "format": "uuid",
+            "title": "Step Id",
+            "type": "string"
+          },
+          "urgency": {
+            "enum": [
+              "critical",
+              "high",
+              "normal"
+            ],
+            "title": "Urgency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "donation_version",
+          "matching_round",
+          "donation_status",
+          "stage",
+          "attempts",
+          "retry_budget",
+          "failure_code",
+          "seconds_remaining",
+          "urgency",
+          "allowed_tools",
+          "previous_outcomes"
+        ],
+        "title": "OrchestrationObservation",
+        "type": "object"
+      },
+      "OrchestrationPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "delay_s": {
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Delay S",
+            "type": "integer"
+          },
+          "donation_version": {
+            "minimum": 1.0,
+            "title": "Donation Version",
+            "type": "integer"
+          },
+          "matching_round": {
+            "minimum": 1.0,
+            "title": "Matching Round",
+            "type": "integer"
+          },
+          "step_id": {
+            "format": "uuid",
+            "title": "Step Id",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "tool": {
+            "enum": [
+              "prepare_candidates",
+              "rank_candidates",
+              "coordinate_pickup",
+              "retry_current_agent",
+              "refresh_eligibility",
+              "wait",
+              "escalate_operator"
+            ],
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "donation_version",
+          "matching_round",
+          "tool",
+          "delay_s",
+          "summary"
+        ],
+        "title": "OrchestrationPlan",
+        "type": "object"
+      },
       "PickupConfirmation": {
         "additionalProperties": false,
         "properties": {
@@ -1420,6 +1701,52 @@
           "end"
         ],
         "title": "PickupWindow",
+        "type": "object"
+      },
+      "PlanFeedback": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "enum": [
+              "model",
+              "rules",
+              "fallback",
+              "rejected"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "dispatched",
+              "deferred",
+              "escalated",
+              "revalidated",
+              "stale"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "tool": {
+            "enum": [
+              "prepare_candidates",
+              "rank_candidates",
+              "coordinate_pickup",
+              "retry_current_agent",
+              "refresh_eligibility",
+              "wait",
+              "escalate_operator"
+            ],
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "mode",
+          "outcome"
+        ],
+        "title": "PlanFeedback",
         "type": "object"
       },
       "ProposedFields": {
@@ -1748,6 +2075,42 @@
           "message"
         ],
         "title": "ReviewIssue",
+        "type": "object"
+      },
+      "StepOutcome": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "status",
+          "attempts",
+          "failure_code"
+        ],
+        "title": "StepOutcome",
         "type": "object"
       },
       "UrgencyAssessment": {
@@ -2792,6 +3155,118 @@
           }
         ],
         "summary": "Replay",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/orchestrator/decisions": {
+      "get": {
+        "operationId": "donation_orchestrator_decisions_api_v1_operations_orchestrator_decisions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "donation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Donation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrchestrationAudit"
+                  },
+                  "title": "Response Donation Orchestrator Decisions Api V1 Operations Orchestrator Decisions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Donation Orchestrator Decisions",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/orchestrator/decisions/{identifier}": {
+      "get": {
+        "operationId": "orchestrator_decisions_api_v1_operations_orchestrator_decisions__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrationAudit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Orchestrator Decisions",
         "tags": [
           "workflow"
         ]

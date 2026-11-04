@@ -17,6 +17,7 @@ def test_every_worker_module_is_registered_and_routed():
         assert route["queue"].name == name
     for name in (
         "orchestrator.consume",
+        "orchestrator.plan_step",
         "matching.prepare",
         "matching.rank",
         "reservation.assign",

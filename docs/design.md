@@ -27,7 +27,7 @@ In scope: the four specialized agents, role-based web surfaces, deterministic el
 | Local runtime | Docker Compose; native web/API development also supported | Same dependencies on every laptop |
 | Reproducibility | `uv.lock`, `package-lock.json`, fixed scenario seeds and clocks | Comparable installs and evaluation runs |
 
-The workbook names three React clients. Here they are separate role workspaces in one deployable frontend, not separately maintained builds. The four agents remain separate runtime processes. The orchestrator is a deterministic workflow coordinator, not an LLM that can invent state transitions. This is an implementation choice recorded in the [decision log](architecture/decisions.md).
+The workbook names three React clients. Here they are separate role workspaces in one deployable frontend. The four agents remain separate runtime processes. The [AI Orchestrator Agent](features/orchestrator-agent.md) observes persisted workflow facts, uses the shared model to choose a supported tool, and uses recorded outcomes in its next decision. Deterministic transaction guards validate every action; model output cannot invent lifecycle transitions, waive eligibility or alter capacity. This extends the original deterministic coordinator as recorded in the [decision log](architecture/decisions.md).
 
 ### Deployment boundary
 

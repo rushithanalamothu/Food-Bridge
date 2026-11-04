@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, Field
 
 from foodbridge.domain.contracts import Contract, DonationRead, EventEnvelope, MatchRecommendation
+from foodbridge.domain.orchestration import OrchestrationAudit
 
 Role = Literal["donor", "recipient", "driver", "operator"]
 
@@ -114,6 +115,7 @@ class StreamItem(Contract):
 
 
 class WorkflowContracts(Contract):
+    orchestrator_audit: OrchestrationAudit
     actor: Actor
     version_command: VersionCommand
     donation_command: DonationCommand

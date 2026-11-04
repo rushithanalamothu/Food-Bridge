@@ -95,6 +95,16 @@ class WorkflowService:
 
     def consume(self, event_id):
         """Commit receipt, state application and next step together."""
+        from foodbridge.agents.orchestrator.agent import DISPATCH_EVENT, OrchestratorAgent
+
+        with self.sessions() as session:
+            row = session.get(OutboxEvent, event_id)
+            is_dispatch = row is not None and row.event_type == DISPATCH_EVENT
+        if is_dispatch:
+            from foodbridge.settings import Settings
+
+            OrchestratorAgent(Settings(database_url=self.url), self.clock).dispatch(event_id)
+            return
         with self.sessions.begin() as session:
             event = session.get(OutboxEvent, event_id, with_for_update=True)
             if event is None or session.get(ConsumerReceipt, ("orchestrator", event_id)):
@@ -212,7 +222,7 @@ class WorkflowService:
                 )
             )
 
-    def claim(self, identifier):
+    def claim(self, identifier, dispatch_token=None):
         with self.sessions.begin() as session:
             # Every workflow write takes the donation lock before the step lock.
             initial = session.get(WorkflowStep, identifier)
@@ -228,6 +238,14 @@ class WorkflowService:
                 or row.next_attempt_at > now
                 or (row.status == "running" and row.lease_until > now)
             ):
+                return None
+            planning = row.data.get("orchestrator")
+            if (
+                planning
+                and (
+                    dispatch_token is None or planning.get("dispatch_token") != str(dispatch_token)
+                )
+            ) or (dispatch_token is not None and not planning):
                 return None
             if (
                 donation.version != row.input_version
@@ -245,6 +263,11 @@ class WorkflowService:
             row.status, row.lease_token = "running", uuid4()
             row.lease_until = now + timedelta(seconds=LEASE_SECONDS)
             row.attempts += 1
+            if planning:
+                row.data = {
+                    **row.data,
+                    "orchestrator": {**planning, "status": "executing", "lease_until": None},
+                }
             excluded = set(
                 session.scalars(
                     select(MatchOffer.recipient_organization_id).where(
@@ -264,8 +287,8 @@ class WorkflowService:
             )
             return row, snapshot(donation, now), excluded, excluded_drivers
 
-    def run_step(self, identifier, gateway):
-        claim = self.claim(identifier)
+    def run_step(self, identifier, gateway, *, dispatch_token=None):
+        claim = self.claim(identifier, dispatch_token)
         if claim is None:
             return
         row, donation, excluded, excluded_drivers = claim

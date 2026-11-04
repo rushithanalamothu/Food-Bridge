@@ -9,7 +9,7 @@ def probe() -> dict[str, str]:
     return {"worker": "matching", "status": "registered"}
 
 
-def execute(step_id):
+def execute(step_id, dispatch_token=None):
     from uuid import UUID
 
     from foodbridge.agents.orchestrator.service import WorkflowService
@@ -19,14 +19,14 @@ def execute(step_id):
     settings = Settings()
     WorkflowService(
         settings.database_url, allow_synthetic=settings.enable_local_workflow_demo
-    ).run_step(UUID(step_id), matching_gateway(settings))
+    ).run_step(UUID(step_id), matching_gateway(settings), dispatch_token=dispatch_token)
 
 
 @celery_app.task(name="foodbridge.matching.prepare", acks_late=True)
-def prepare(step_id: str):
-    execute(step_id)
+def prepare(step_id: str, dispatch_token: str | None = None):
+    execute(step_id, dispatch_token)
 
 
 @celery_app.task(name="foodbridge.matching.rank", acks_late=True)
-def rank(step_id: str):
-    execute(step_id)
+def rank(step_id: str, dispatch_token: str | None = None):
+    execute(step_id, dispatch_token)
