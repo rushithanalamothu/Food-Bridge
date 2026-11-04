@@ -1,0 +1,283 @@
+TEJ PART IMPLEMENTATION NOTES
+FOODBRIDGE — FEATURES AND TESTING
+Prepared: November 4, 2026
+
+1. WHAT MY PART COVERS
+======================
+My workstream is orchestration, reservation, pickup, notifications, backend
+live-status delivery, testing, and integration/deployment verification.
+
+This implementation builds on Mokshith's existing donor intake, extraction,
+donor confirmation, urgency, and eligibility work. Those features are not being
+claimed as my original implementation.
+
+The backend scope is implemented and has prior automated-test evidence.
+The entire team product is not yet production-complete. Live Gemini behavior,
+the latest container rebuild, and final team integrations still need verification.
+
+2. FEATURES BUILT FOR MY PART
+============================
+
+A. AI ORCHESTRATOR AGENT
+The agent observes the current donation/workflow state, asks the configured
+AI model for a structured plan, validates that plan, executes an allowed action,
+and observes the result before planning subsequent work.
+
+The supported actions are:
+- Prepare recipient candidates through the matching integration.
+- Request recipient ranking after eligibility evaluation.
+- Coordinate pickup after recipient acceptance.
+- Retry an eligible failed stage within its remaining retry budget.
+- Request a fresh eligibility/matching round.
+- Wait briefly when enough safe time remains.
+- Escalate a blocked workflow to an operator.
+
+The model's choice controls what happens; it is not just an explanation added
+to a fixed dispatcher. The model cannot run arbitrary code, select arbitrary
+worker names, approve unsafe food, reserve food directly, change capacity,
+extend deadlines, or override transaction/version checks.
+
+Each plan saves a decision audit: provider/model, input facts, selected action,
+short operational explanation, execution outcome, and fallback/rejection reason.
+The model receives sanitized workflow facts, not addresses, contact details,
+donor free text, or API keys.
+
+The shared app-wide AI configuration now detects your saved Gemini key and
+resolves to gemini-2.5-flash. This is configuration verification only; a live
+Gemini request has not yet been verified.
+
+Decision modes are deliberately different:
+- model: a real configured model supplied an accepted plan.
+- rules: the explicit deterministic baseline was used.
+- fallback: a provider/network failure caused safe baseline behavior.
+- rejected: an invalid model plan was rejected and escalated.
+
+B. DURABLE DISPATCH, RETRIES, AND RE-MATCHING
+Workflow steps, events, receipts, and outcomes are persisted in PostgreSQL.
+An outbox records work before publication to Redis/Celery. Separate queues
+handle intake, orchestration, matching, and reservation work.
+
+Version checks, matching rounds, leases, and dispatch tokens prevent outdated
+workers or duplicate messages from applying an extra business effect.
+Retries are bounded; persistent failures are saved for operator inspection
+and audited replay. Declines or changed eligibility can request another round.
+Previously declined/released recipients are excluded where applicable.
+
+Deadlines and recovery are checked independently of model availability.
+Expired or terminal donations cannot be reopened by an AI plan or replay.
+Food already collected cannot be offered to another recipient.
+
+C. RESERVATION AND DOUBLE-BOOKING PREVENTION
+Recipient acceptance atomically creates the reservation, allocates capacity,
+updates donation status/history, and records the resulting event/response.
+
+Optimistic version checks reject stale commands. Database locks and uniqueness
+constraints protect active reservations, assignments, and shared capacity.
+Two requests cannot legitimately reserve the same donation twice or allocate
+more receiving capacity than is available.
+
+Repeated requests using the same idempotency key and body return the saved
+response. Reusing that key with a different body is rejected.
+Pre-collection release/cancellation returns held capacity once.
+
+D. DRIVER ASSIGNMENT, PICKUP, AND DELIVERY
+The backend supports driver assignment, acceptance, decline, pickup, and delivery.
+Only the assigned driver can perform the relevant commands. Overlapping driver
+commitments are checked. Driver decline can request another feasible driver;
+absence of one can release the hold and request re-matching.
+
+Pickup requires explicit handling confirmation and the observed quantity.
+Timing, route freshness, and eligibility are rechecked before collection.
+Delivery requires confirmation and a current receiving window.
+
+Delivery completes the reservation, records impact once, and updates capacity
+accounting. Duplicate delivery must not count food or impact twice.
+
+The reservation/pickup agent executes transactional business rules. The new
+model-driven decision loop is specifically in the Orchestrator Agent.
+
+E. NOTIFICATIONS AND LIVE STATUS
+Notification jobs have stable effect IDs, retry limits, and persisted receipts.
+The implemented sandbox adapter records local notification delivery evidence.
+Real email/SMS delivery still requires a provider adapter and configuration.
+
+Backend SSE endpoints publish authorized committed events and support reconnect
+and replay with Last-Event-ID. This supplies the backend for live UI updates;
+Mithil's full screen integration is a separate deliverable.
+
+F. AUTHORIZATION, OPERATIONS, AND CONTRACTS
+Backend routes enforce verified identity, membership, role, and resource scope.
+Local demo identities require explicit local demo settings.
+Operators can inspect failures, request audited replay, view status/impact,
+and read orchestrator decisions. JSON Schema, TypeScript, and OpenAPI contracts
+were updated for client integration.
+
+3. WHAT WAS PUSHED TO GITHUB
+===========================
+Repository: https://github.com/rushithanalamothu/Food-Bridge
+
+Initial workflow implementation:
+- Commit: c1f2b664d2470438632324d3df395ed47c458b53
+- Branch: feat/tej-orchestration-reservation-pickup
+- PR #6 was merged into main.
+
+AI Orchestrator addition:
+- Commit: d4cee5142074073b21476cf760e9d0df84ddee80
+- Branch: feat/tej-ai-orchestrator
+- PR: https://github.com/rushithanalamothu/Food-Bridge/pull/7
+- PR #7 is merged into main (merge commit b14f1fc, verified November 4, 2026).
+
+The private .env file and your API key are not part of the pushed changes.
+The earlier Word report describes the initial workflow revision. This note
+also covers the subsequent AI Orchestrator addition.
+
+4. TEST EVIDENCE ALREADY RECORDED
+===============================
+For the AI Orchestrator revision, prior verification recorded:
+- make check: passed, including 187 Python unit tests, 6 frontend tests,
+  formatting, typing, frontend build, and contract/document checks.
+- make integration: passed, including 48 real PostgreSQL/PostGIS/Redis tests.
+- Real HTTP/broker/four-worker workflow smoke: reached delivered, verified
+  idempotent HTTP replay and SSE replay, and saved three orchestrator decisions.
+
+Important limits:
+- That running workflow used rules mode, not live Gemini.
+- Model-path tests used controlled HTTP responses through the shared AI client.
+- Your key was detected locally after saving; no live provider call was made.
+- A fresh image rebuild for the AI revision was not completed in the earlier
+  sandbox because container registry metadata retrieval stalled.
+- These are prior results, not newly rerun tests for this note.
+
+5. WHAT WE SHOULD TEST NEXT — IN ORDER
+====================================
+
+STEP 1 — START THE UPDATED LOCAL STACK
+Open Docker Desktop. Open Terminal in this folder:
+
+/Users/tejkiranyenugunti/Documents/Codex/2026-11-03/files-mentioned-by-the-user-food/outputs/Food-Bridge
+
+Run:
+  docker compose up --build -d
+  docker compose ps
+
+Expected: migrations complete successfully; API, workers, relays, web,
+database, and Redis start without restart loops. API readiness succeeds:
+  curl http://localhost:8000/api/v1/health/ready
+
+Keep the Gemini key in .env. Exactly one vendor key should be active when
+FOODBRIDGE_AI_PROVIDER=auto. Local demo flags must be true and notification
+mode sandbox for the synthetic workflow below. Do not copy .env.example over
+your saved .env or print the expanded Compose configuration containing keys.
+
+STEP 2 — RUN THE COMPLETE SYNTHETIC WORKFLOW WITH GEMINI
+Run:
+  docker compose exec -T api uv run --no-sync python scripts/seed_workflow_demo.py
+  docker compose exec -T api uv run --no-sync python scripts/smoke_workflow.py
+
+This creates clearly synthetic test data and exercises:
+donor draft -> donor confirmation -> eligibility -> offer -> reservation ->
+driver acceptance -> pickup -> delivery -> HTTP replay -> SSE replay.
+
+Expected output includes:
+  synthetic: true
+  status: delivered
+  http_idempotent_replay: passed
+  sse_replay: passed
+  orchestrator_decisions: at least 3
+  orchestrator_modes: inspect carefully
+
+This run may use your paid/quota-limited Gemini account. A successful delivery
+alone does not prove AI worked. Confirm model-backed decision evidence in Step 3.
+If the script times out, inspect the persisted workflow/failure decisions;
+do not treat it as success or keep creating donations without diagnosis.
+
+Existing fixture receiving/driver windows last one day and are preserved by
+the seed. Reseeding does not refresh expired windows. If fixtures have expired,
+use a separate fresh demo database or coordinate versioned fixture updates;
+do not delete the existing database volume as a routine test step.
+
+STEP 3 — VERIFY THE REAL AI AGENT AUDIT
+Copy donation_id from the smoke output. In the following command replace
+DONATION_ID with that value:
+
+  curl -H 'X-FoodBridge-Role: operator' 'http://localhost:8000/api/v1/operations/orchestrator/decisions?donation_id=DONATION_ID&limit=25'
+
+The role header works only in the explicitly enabled local demo. Shared
+deployments require a verified operator bearer token and membership.
+
+Confirm that decisions show mode=model, provider=gemini, the configured model,
+a valid selected tool, and an execution outcome. Review every fallback or
+rejected decision. Rules/fallback-only results do not pass live-AI verification.
+
+STEP 4 — RERUN THE AUTOMATED REGRESSION CHECKS
+From the repository root with Python 3.12/uv and Node 22 installed:
+  make check
+  make integration
+
+The integration suite needs running PostgreSQL/PostGIS and Redis. It creates
+isolated test databases; it does not truncate the normal development database.
+The tests use controlled providers rather than depending on live Gemini.
+
+Review these critical scenarios and their assertions:
+[ ] One of two simultaneous acceptances wins; the other is rejected.
+[ ] Two donations cannot over-allocate the same recipient's capacity.
+[ ] Stale expected versions fail without changing committed state.
+[ ] Repeated acceptance/delivery has one committed effect.
+[ ] Decline requests another matching round or a safe terminal outcome.
+[ ] Driver decline/overlap, cancellation, and expiry are handled safely.
+[ ] Duplicate messages and abandoned leases recover without duplicate effects.
+[ ] Dependency failure retries within a bound, then records a blocked failure.
+[ ] Operator replay is authorized, audited, and respects current deadlines.
+[ ] Invalid AI tools, IDs, versions, stages, and unsafe waits are rejected.
+[ ] Cancellation during planning prevents the returned plan from dispatching.
+[ ] Cross-organization reads, commands, and SSE are denied.
+[ ] SSE replay returns retained authorized events without losing updates.
+
+STEP 5 — TEAM/RELEASE ACCEPTANCE
+[ ] Donor screen submits a confirmed donation and shows backend status.
+[ ] Receiver and driver screens call the real reservation/pickup APIs.
+[ ] Browser reconnect reconciles snapshots and authorized SSE events.
+[ ] Rushitha's real matching/routing adapter replaces synthetic matching.
+[ ] Actual maps/ETA failure behavior is tested with the chosen service.
+[ ] Real notifications are tested after a provider adapter is integrated.
+[ ] Shared-host identity, secrets, TLS, migrations, backup/restore, and a full
+    authenticated deployment smoke are verified before claiming deployment done.
+
+The local smoke uses synthetic matching/route fixtures. A successful Gemini
+orchestrator run does not establish production matching accuracy or route quality.
+
+6. REMAINING TEAM DEPENDENCIES
+==============================
+Mokshith: intake/eligibility remains the policy authority; review event integration.
+Rushitha: production recipient search, ranking, PostGIS/routing/maps integration,
+data maintenance, and matching performance evaluation.
+Mithil: complete receiver/driver screens, live-status usability, and browser login.
+Shared: production identity provisioning, real notification provider, hosting,
+monitoring, backups, and release acceptance.
+
+7. SIMPLE EXPLANATION I CAN GIVE THE TEAM
+=======================================
+"My part connects confirmed donations to the rest of the workflow. I built an
+AI Orchestrator Agent that plans and dispatches allowed work, plus durable
+retries, re-matching, safe reservations, driver pickup/delivery, sandbox
+notifications, backend live-status events, and failure/operator tooling.
+Database transactions and version checks protect food safety, capacity, and
+double booking. Automated unit/integration tests and a real local workflow
+have passed previously. My Gemini key is configured; live model verification
+and final team/deployment integration remain to be completed."
+
+8. WHERE THE MAIN IMPLEMENTATION LIVES
+=====================================
+Inside outputs/Food-Bridge:
+- backend/src/foodbridge/agents/orchestrator/: AI planning and durable runtime.
+- backend/src/foodbridge/agents/reservation/: reservation/pickup worker entrypoints.
+- backend/src/foodbridge/domain/orchestration.py: typed plans and observations.
+- backend/src/foodbridge/domain/workflow.py: workflow command/read contracts.
+- backend/src/foodbridge/integrations/ai.py: shared structured AI client.
+- backend/tests/unit/test_orchestrator_agent.py: AI plan guard tests.
+- backend/tests/integration/test_workflow.py: transactions, races, and recovery.
+- scripts/smoke_workflow.py: running-stack donation-to-delivery check.
+- docs/features/workflow.md: workflow behavior and operations.
+- docs/features/orchestrator-agent.md: agent behavior, audit, and limitations.
+
+No private API key is included in this note.
