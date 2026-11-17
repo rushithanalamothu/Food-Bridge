@@ -39,6 +39,13 @@ export function OperationsPage() {
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<string>();
   const [currentVersion, setCurrentVersion] = useState(0);
+  const reviewRequest = useRef(0);
+  useEffect(
+    () => () => {
+      reviewRequest.current++;
+    },
+    [],
+  );
   const [boardExtra, setBoardExtra] = useState<DonationRead[]>([]);
   const [boardCursor, setBoardCursor] = useState<string | null | undefined>();
   const [extra, setExtra] = useState<FailureRead[]>([]);
@@ -56,6 +63,9 @@ export function OperationsPage() {
     ...extra.filter((item) => !view.data?.failures.items.some((first) => first.id === item.id)),
   ];
   async function review(id: string) {
+    const request = ++reviewRequest.current;
+    view.setError('');
+    setCurrentVersion(0);
     setReviewing(true);
     setAudit(undefined);
     setAuditId(id);
@@ -64,12 +74,17 @@ export function OperationsPage() {
         getDecisions(id),
         getDonationDetail('operator', id),
       ]);
+      if (request !== reviewRequest.current) return;
       setAudit(decisions);
       setCurrentVersion(detail.donation.version);
     } catch (e) {
-      view.setError((e as Error).message);
+      if (request === reviewRequest.current) {
+        setAudit(undefined);
+        setCurrentVersion(0);
+        view.setError((e as Error).message);
+      }
     } finally {
-      setReviewing(false);
+      if (request === reviewRequest.current) setReviewing(false);
     }
   }
   const version = currentVersion;
@@ -192,38 +207,42 @@ export function OperationsPage() {
             <p className="muted">{formatTime(failure.created_at)}</p>
             <button
               className="quiet-button"
-              disabled={reviewing}
+              disabled={reviewing || action.busy}
               onClick={() => void review(failure.donation_id)}
             >
               Review workflow
             </button>
-            {auditId === failure.donation_id && version > 0 && (
-              <ConfirmAction
-                label="Replay failed work"
-                disabled={action.busy}
-                onConfirm={() => {
-                  void (async () => {
-                    try {
-                      await action.run(`${failure.id}:${version}:replay`, (key) =>
-                        replayFailure(failure.id, version, key),
-                      );
-                      setMessage(
-                        'Replay queued. This does not reopen terminal or expired donations.',
-                      );
-                      setAudit(undefined);
-                      await view.refresh();
-                    } catch (e) {
-                      await view.refresh();
-                      await review(failure.donation_id);
-                      view.setError((e as Error).message);
-                    }
-                  })();
-                }}
-              >
-                Queue another bounded attempt? Current state and deadline will be checked by the
-                service.
-              </ConfirmAction>
-            )}
+            {auditId === failure.donation_id &&
+              audit !== undefined &&
+              !reviewing &&
+              version > 0 && (
+                <ConfirmAction
+                  label="Replay failed work"
+                  disabled={action.busy}
+                  onConfirm={() => {
+                    void (async () => {
+                      try {
+                        await action.run(`${failure.id}:${version}:replay`, (key) =>
+                          replayFailure(failure.id, version, key),
+                        );
+                        setMessage(
+                          'Replay queued. This does not reopen terminal or expired donations.',
+                        );
+                        setAudit(undefined);
+                        setCurrentVersion(0);
+                        await view.refresh();
+                      } catch (e) {
+                        await view.refresh();
+                        await review(failure.donation_id);
+                        view.setError((e as Error).message);
+                      }
+                    })();
+                  }}
+                >
+                  Queue another bounded attempt? Current state and deadline will be checked by the
+                  service.
+                </ConfirmAction>
+              )}
           </article>
         ))}
       </div>
