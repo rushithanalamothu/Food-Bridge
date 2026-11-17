@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { getOffers, reserve, declineOffer, releaseReservation } from '../../api/workflow';
-import type { ReservationRead } from '../../api/generated/workflow';
+import {
+  getOffers,
+  getReservations,
+  getReceivingProfile,
+  reserve,
+  declineOffer,
+  releaseReservation,
+} from '../../api/workflow';
+import type { OfferRead, ReservationDetail } from '../../api/generated/workflow';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
@@ -12,68 +19,79 @@ import {
   useNow,
   ConfirmAction,
 } from '../../components/Workspace';
-
+import { DonationTimeline } from '../../components/DonationTimeline';
+import { ReceivingProfile } from './ReceivingProfile';
+const load = async () => {
+  const [offers, reservations, profile] = await Promise.all([
+    getOffers(),
+    getReservations(),
+    getReceivingProfile(),
+  ]);
+  return { offers, reservations, profile };
+};
 export function RecipientPage() {
-  const view = useWorkspace('recipient', getOffers);
+  const view = useWorkspace('recipient', load);
   const action = useCommand();
   const now = useNow();
-  const [reservations, setReservations] = useState<Record<string, ReservationRead>>({});
-  const [more, setMore] = useState<NonNullable<typeof view.data>['items']>([]);
+  const [extra, setExtra] = useState<OfferRead[]>([]);
+  const [holds, setHolds] = useState<ReservationDetail[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>();
+  const [holdCursor, setHoldCursor] = useState<string | null | undefined>();
   const [paging, setPaging] = useState(false);
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<string>();
   useEffect(() => {
-    setMore([]);
+    setExtra([]);
+    setHolds([]);
     setCursor(undefined);
+    setHoldCursor(undefined);
   }, [view.data]);
   const offers = [
-    ...(view.data?.items ?? []),
-    ...more.filter(
+    ...(view.data?.offers.items ?? []),
+    ...extra.filter(
       (item) =>
-        !view.data?.items.some((first) => first.recommendation.id === item.recommendation.id),
+        !view.data?.offers.items.some(
+          (first) => first.recommendation.id === item.recommendation.id,
+        ),
+    ),
+  ];
+  const reservations = [
+    ...(view.data?.reservations.items ?? []),
+    ...holds.filter(
+      (item) =>
+        !view.data?.reservations.items.some(
+          (first) => first.reservation.id === item.reservation.id,
+        ),
     ),
   ];
   async function act(id: string, version: number, verb: 'accept' | 'decline' | 'release') {
     setMessage('');
     view.setError('');
     try {
-      if (verb === 'accept') {
-        const receipt = await action.run(`${id}:${version}:accept`, (key) =>
-          reserve({ match_id: id, expected_donation_version: version }, key),
-        );
-        setReservations((old) => ({ ...old, [id]: receipt }));
-        setMessage('Reservation confirmed. Driver coordination is underway.');
-      } else if (verb === 'decline') {
-        await action.run(`${id}:${version}:decline`, (key) => declineOffer(id, version, key));
-        setMessage('Offer declined. The donation can be offered to another receiver.');
-      } else {
-        const receipt = await action.run(`${id}:${version}:release`, (key) =>
-          releaseReservation(reservations[id].id, version, key),
-        );
-        setReservations((old) => ({ ...old, [id]: receipt }));
-        setMessage('Reservation released.');
-      }
-      setMore([]);
-      setCursor(undefined);
+      await action.run<unknown>(`${id}:${version}:${verb}`, (key) =>
+        verb === 'accept'
+          ? reserve({ match_id: id, expected_donation_version: version }, key)
+          : verb === 'decline'
+            ? declineOffer(id, version, key)
+            : releaseReservation(id, version, key),
+      );
+      setMessage(
+        verb === 'accept'
+          ? 'Reservation confirmed. Driver coordination is underway.'
+          : verb === 'decline'
+            ? 'Offer declined.'
+            : 'Reservation released.',
+      );
       await view.refresh();
     } catch (e) {
       await view.refresh();
-      view.setError(e instanceof Error ? e.message : 'Action failed. Refresh and retry.');
+      view.setError((e as Error).message);
     }
   }
   return (
     <section>
-      <WorkspaceHeader
-        eyebrow="Receiver workspace"
-        title="Good food. Ready to receive."
-        {...view}
-        refresh={() => {
-          setMore([]);
-          setCursor(undefined);
-          void view.refresh();
-        }}
-      >
-        <p>Review eligible offers and coordinate your next delivery.</p>
+      <WorkspaceHeader eyebrow="Receiver workspace" title="Good food. Ready to receive." {...view}>
+        <p>Review eligible offers, manage receiving preferences, and follow each delivery.</p>
       </WorkspaceHeader>
       {view.error && <Notice error>{view.error}</Notice>}
       {message && <Notice>{message}</Notice>}
@@ -86,33 +104,37 @@ export function RecipientPage() {
             ).length,
           },
           {
-            label: 'Accepted on this page',
-            value: offers.filter((o) => o.status === 'accepted').length,
+            label: 'Active holds on this page',
+            value: reservations.filter((r) => r.reservation.status === 'active').length,
           },
-          { label: 'Decisions', value: 'Server verified' },
+          {
+            label: 'Receiving capacity',
+            value: view.data
+              ? Object.values(view.data.profile.profile.available_capacity_kg_by_storage).reduce(
+                  (a, b) => a + (b ?? 0),
+                  0,
+                ) + ' kg'
+              : '—',
+          },
         ]}
       />
+      {view.data && <ReceivingProfile value={view.data.profile} refresh={view.refresh} />}
       <div className="section-heading">
-        <h2>Your offers</h2>
-        <span className="muted">All times in your browser timezone</span>
+        <h2>Your latest offers</h2>
+        <span className="muted">Newest first · receiving-location times</span>
       </div>
       {view.loading && <p role="status">Loading your offers…</p>}
-      {!view.loading && view.data && !offers.length && (
+      {view.data && !offers.length && (
         <EmptyState title="No offers just yet">
-          Eligible food offers will appear here. Keep this workspace open for live updates.
+          Eligible food offers will appear here automatically.
         </EmptyState>
       )}
       <div className="card-grid">
         {offers.map((offer) => {
           const match = offer.recommendation;
+          const food = offer.donation;
           const expired = Date.parse(match.offer_expires_at) <= now;
-          const receipt = reservations[match.id];
-          const latest = view.events.find(
-            (event) =>
-              event.aggregate_id === match.donation_id && typeof event.payload.status === 'string',
-          );
-          const canRelease =
-            !latest || ['reserved', 'pickup_assigned'].includes(String(latest.payload.status));
+          const zone = view.data?.profile.profile.location.timezone;
           return (
             <article className="card" key={match.id}>
               <div className="card-heading">
@@ -121,7 +143,25 @@ export function RecipientPage() {
                   status={offer.status === 'offered' && expired ? 'expired' : offer.status}
                 />
               </div>
-              <h3>Donation {match.donation_id.slice(0, 8)}</h3>
+              <h3>{food?.food_name ?? `Donation ${match.donation_id.slice(0, 8)}`}</h3>
+              {food && (
+                <>
+                  <p>
+                    {food.quantity_kg} kg · {food.portions ?? 'Unspecified'} portions ·{' '}
+                    {food.storage}
+                  </p>
+                  <p>
+                    <strong>Allergens:</strong> {food.allergens.join(', ') || 'None declared'}
+                  </p>
+                  <p>
+                    <strong>Diet:</strong> {food.dietary_tags?.join(', ') || 'Not specified'}
+                  </p>
+                  <p>
+                    <strong>Handling:</strong> {food.handling_notes || 'No additional notes'}
+                  </p>
+                  <StatusBadge status={food.status} />
+                </>
+              )}
               <p>{match.explanation}</p>
               <dl className="detail-grid">
                 <div>
@@ -134,69 +174,54 @@ export function RecipientPage() {
                 </div>
                 <div>
                   <dt>Accept before</dt>
-                  <dd>{formatTime(match.offer_expires_at)}</dd>
+                  <dd>{formatTime(match.offer_expires_at, zone)}</dd>
                 </div>
-                <div>
-                  <dt>Ranking</dt>
-                  <dd>
-                    {match.algorithm === 'distance_only' ? 'Distance based' : 'Multiple criteria'}
-                  </dd>
-                </div>
+                {food && (
+                  <div>
+                    <dt>Safe use by</dt>
+                    <dd>{formatTime(food.safe_use_by, zone)}</dd>
+                  </div>
+                )}
               </dl>
               {offer.status === 'offered' && !expired && (
                 <div className="actions">
                   <ConfirmAction
                     label="Accept offer"
                     disabled={action.busy}
-                    onConfirm={() => void act(match.id, match.donation_version, 'accept')}
+                    onConfirm={() =>
+                      void act(match.id, food?.version ?? match.donation_version, 'accept')
+                    }
                   >
-                    Accept the full donation? Available capacity and eligibility will be checked
-                    again.
+                    Accept the full donation? Capacity and eligibility will be checked again.
                   </ConfirmAction>
                   <ConfirmAction
                     label="Decline offer"
-                    disabled={action.busy}
                     danger
+                    disabled={action.busy}
                     onConfirm={() => void act(match.id, offer.version, 'decline')}
                   >
                     Declining allows another receiver to be considered.
                   </ConfirmAction>
                 </div>
               )}
-              {receipt && receipt.status === 'active' && canRelease && (
-                <div className="receipt">
-                  <p>
-                    <strong>{receipt.quantity_kg} kg reserved</strong> · {receipt.storage}
-                  </p>
-                  <ConfirmAction
-                    label="Release reservation"
-                    danger
-                    disabled={action.busy}
-                    onConfirm={() => void act(match.id, receipt.version, 'release')}
-                  >
-                    Release this hold and return its capacity? This is only allowed before pickup.
-                  </ConfirmAction>
-                </div>
-              )}
-              {offer.status === 'accepted' && (!receipt || !canRelease) && (
-                <p className="muted">
-                  Offer accepted. Reservation details from previous sessions are not yet exposed by
-                  the service; contact your coordinator for changes.
-                </p>
-              )}
+              <button className="text-button" onClick={() => setHistory(match.donation_id)}>
+                View donation history
+              </button>
             </article>
           );
         })}
       </div>
-      {(cursor === undefined ? view.data?.next_cursor : cursor) && (
+      {(cursor === undefined ? view.data?.offers.next_cursor : cursor) && (
         <button
-          disabled={paging}
           className="quiet-button"
+          disabled={paging}
           onClick={async () => {
             setPaging(true);
             try {
-              const page = await getOffers(cursor === undefined ? view.data?.next_cursor : cursor);
-              setMore((old) => [...old, ...page.items]);
+              const page = await getOffers(
+                cursor === undefined ? view.data?.offers.next_cursor : cursor,
+              );
+              setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
               view.setError((e as Error).message);
@@ -208,14 +233,68 @@ export function RecipientPage() {
           Load older offers
         </button>
       )}
-      <aside className="notice">
-        <h2>Receiving preferences</h2>
-        <p>
-          Capacity, dietary requirements and receiving hours are checked by the service. Profile
-          viewing and editing will become available when the receiving-profile API is connected.
-          Contact your organization coordinator to update these details.
+      <h2>Your reservations</h2>
+      {view.data && !reservations.length && (
+        <p className="muted">
+          Accepted donations will appear here and remain available after a reload.
         </p>
-      </aside>
+      )}
+      <div className="card-grid">
+        {reservations.map(({ reservation: hold, donation }) => (
+          <article className="card" key={hold.id}>
+            <StatusBadge status={donation.status} />
+            <h3>{donation.food_name}</h3>
+            <p>
+              <strong>{hold.quantity_kg} kg reserved</strong> · {hold.storage}
+            </p>
+            <p>Hold: {hold.status}</p>
+            <button className="text-button" onClick={() => setHistory(donation.id)}>
+              View donation history
+            </button>
+            {hold.status === 'active' &&
+              ['reserved', 'pickup_assigned'].includes(donation.status) && (
+                <ConfirmAction
+                  label="Release reservation"
+                  danger
+                  disabled={action.busy}
+                  onConfirm={() => void act(hold.id, hold.version, 'release')}
+                >
+                  Release this hold and return its capacity before pickup?
+                </ConfirmAction>
+              )}
+          </article>
+        ))}
+      </div>
+      {(holdCursor === undefined ? view.data?.reservations.next_cursor : holdCursor) && (
+        <button
+          className="quiet-button"
+          disabled={paging}
+          onClick={async () => {
+            setPaging(true);
+            try {
+              const page = await getReservations(
+                holdCursor === undefined ? view.data?.reservations.next_cursor : holdCursor,
+              );
+              setHolds((old) => [...old, ...page.items]);
+              setHoldCursor(page.next_cursor ?? null);
+            } catch (e) {
+              view.setError((e as Error).message);
+            } finally {
+              setPaging(false);
+            }
+          }}
+        >
+          Load older reservations
+        </button>
+      )}
+      {history && (
+        <DonationTimeline
+          role="recipient"
+          id={history}
+          version={view.events.length}
+          onClose={() => setHistory(undefined)}
+        />
+      )}
     </section>
   );
 }

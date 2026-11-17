@@ -25,7 +25,7 @@ export function App() {
         <NavLink to="/driver">Driver</NavLink>
         <NavLink to="/operations">Operations</NavLink>
       </nav>
-      <main id="content">
+      <main id="content" tabIndex={-1}>
         <SessionProvider>
           <Routes>
             <Route path="/" element={<HomePage />} />

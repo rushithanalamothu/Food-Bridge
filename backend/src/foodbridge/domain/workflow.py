@@ -5,7 +5,16 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field
 
-from foodbridge.domain.contracts import Contract, DonationRead, EventEnvelope, MatchRecommendation
+from foodbridge.domain.contracts import (
+    Contract,
+    DonationRead,
+    EventEnvelope,
+    Location,
+    MatchRecommendation,
+    NonNegativeKg,
+    RecipientProfile,
+    Storage,
+)
 from foodbridge.domain.orchestration import OrchestrationAudit
 
 Role = Literal["donor", "recipient", "driver", "operator"]
@@ -61,6 +70,8 @@ class PickupRead(Contract):
     start: AwareDatetime
     end: AwareDatetime
     donation: DonationRead
+    destination: Location | None = None
+    recipient_name: str | None = None
 
 
 class PickupPage(Contract):
@@ -72,6 +83,7 @@ class OfferRead(Contract):
     recommendation: MatchRecommendation
     status: Literal["offered", "accepted", "declined", "expired", "superseded"]
     version: int
+    donation: DonationRead | None = None
 
 
 class OfferPage(Contract):
@@ -114,6 +126,56 @@ class StreamItem(Contract):
     event: EventEnvelope
 
 
+class MembershipRead(Contract):
+    user_id: UUID
+    organization_id: UUID
+    organization_name: str
+    role: Role
+
+
+class DonationHistoryItem(Contract):
+    aggregate_version: int
+    previous_status: str | None
+    next_status: str
+    reason: str
+    occurred_at: AwareDatetime
+
+
+class DonationDetail(Contract):
+    donation: DonationRead
+    history: list[DonationHistoryItem]
+
+
+class DonationBoard(Contract):
+    items: list[DonationRead]
+    next_cursor: str | None = None
+
+
+class ReceivingProfileRead(Contract):
+    profile: "RecipientProfile"
+    reported_free_kg_by_storage: dict[str, float]
+    committed_inbound_kg_by_storage: dict[str, float]
+    capacity_versions: dict[str, int]
+    verified: bool
+
+
+class ReceivingProfileUpdate(Contract):
+    expected_version: int = Field(ge=1)
+    expected_capacity_versions: dict[str, int]
+    profile: "RecipientProfile"
+    reported_free_kg_by_storage: dict["Storage", "NonNegativeKg"]
+
+
+class ReservationDetail(Contract):
+    reservation: ReservationRead
+    donation: DonationRead
+
+
+class ReservationPage(Contract):
+    items: list[ReservationDetail]
+    next_cursor: str | None = None
+
+
 class WorkflowContracts(Contract):
     orchestrator_audit: OrchestrationAudit
     actor: Actor
@@ -131,3 +193,10 @@ class WorkflowContracts(Contract):
     replay: ReplayResult
     summary: OperationsSummary
     stream_item: StreamItem
+    memberships: list[MembershipRead]
+    donation_detail: DonationDetail
+    donation_board: DonationBoard
+    receiving_profile: ReceivingProfileRead
+    receiving_profile_update: ReceivingProfileUpdate
+    reservation_detail: ReservationDetail
+    reservation_page: ReservationPage

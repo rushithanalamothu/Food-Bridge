@@ -1,6 +1,14 @@
+import { DonationTimeline } from '../../components/DonationTimeline';
 import { useEffect, useState } from 'react';
-import { getSummary, getFailures, getDecisions, replayFailure } from '../../api/workflow';
-import type { OrchestrationAudit, FailureRead } from '../../api/generated/workflow';
+import {
+  getSummary,
+  getFailures,
+  getDecisions,
+  replayFailure,
+  getDonationBoard,
+  getDonationDetail,
+} from '../../api/workflow';
+import type { OrchestrationAudit, FailureRead, DonationRead } from '../../api/generated/workflow';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
@@ -13,8 +21,12 @@ import {
   ConfirmAction,
 } from '../../components/Workspace';
 const load = async () => {
-  const [summary, failures] = await Promise.all([getSummary(), getFailures()]);
-  return { summary, failures };
+  const [summary, failures, board] = await Promise.all([
+    getSummary(),
+    getFailures(),
+    getDonationBoard(),
+  ]);
+  return { summary, failures, board };
 };
 export function OperationsPage() {
   const view = useWorkspace('operator', load);
@@ -23,11 +35,17 @@ export function OperationsPage() {
   const [auditId, setAuditId] = useState('');
   const [reviewing, setReviewing] = useState(false);
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<string>();
+  const [currentVersion, setCurrentVersion] = useState(0);
+  const [boardExtra, setBoardExtra] = useState<DonationRead[]>([]);
+  const [boardCursor, setBoardCursor] = useState<string | null | undefined>();
   const [extra, setExtra] = useState<FailureRead[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>();
   const [paging, setPaging] = useState(false);
   useEffect(() => {
     setExtra([]);
+    setBoardExtra([]);
+    setBoardCursor(undefined);
     setCursor(undefined);
   }, [view.data]);
   const summary = view.data?.summary;
@@ -40,19 +58,19 @@ export function OperationsPage() {
     setAudit(undefined);
     setAuditId(id);
     try {
-      setAudit(await getDecisions(id));
+      const [decisions, detail] = await Promise.all([
+        getDecisions(id),
+        getDonationDetail('operator', id),
+      ]);
+      setAudit(decisions);
+      setCurrentVersion(detail.donation.version);
     } catch (e) {
       view.setError((e as Error).message);
     } finally {
       setReviewing(false);
     }
   }
-  const version = Math.max(
-    0,
-    ...(audit ?? []).flatMap((step) =>
-      step.decisions.map((decision) => decision.observation.donation_version),
-    ),
-  );
+  const version = currentVersion;
   return (
     <section>
       <WorkspaceHeader
@@ -102,6 +120,59 @@ export function OperationsPage() {
         <EmptyState title="A clear board">
           Donation activity will appear as your organization starts posting food.
         </EmptyState>
+      )}
+      <h2>Latest donations</h2>
+      <div className="card-grid">
+        {[
+          ...(view.data?.board.items ?? []),
+          ...boardExtra.filter(
+            (item) => !view.data?.board.items.some((first) => first.id === item.id),
+          ),
+        ].map((donation) => (
+          <article className="card" key={donation.id}>
+            <StatusBadge status={donation.status} />
+            <h3>{donation.food_name}</h3>
+            <p>
+              {donation.quantity_kg} kg · {donation.storage}
+            </p>
+            <p>
+              Pickup by {formatTime(donation.pickup_window.end, donation.pickup_location.timezone)}
+            </p>
+            <button className="text-button" onClick={() => setHistory(donation.id)}>
+              View donation history
+            </button>
+          </article>
+        ))}
+      </div>
+      {(boardCursor === undefined ? view.data?.board.next_cursor : boardCursor) && (
+        <button
+          className="quiet-button"
+          disabled={paging}
+          onClick={async () => {
+            setPaging(true);
+            try {
+              const page = await getDonationBoard(
+                boardCursor === undefined ? view.data?.board.next_cursor : boardCursor,
+              );
+              setBoardExtra((old) => [...old, ...page.items]);
+              setBoardCursor(page.next_cursor ?? null);
+            } catch (e) {
+              view.setError((e as Error).message);
+            } finally {
+              setPaging(false);
+            }
+          }}
+        >
+          Load older donations
+        </button>
+      )}
+      {history && (
+        <DonationTimeline
+          role="operator"
+          id={history}
+          version={view.events.length}
+          onClose={() => setHistory(undefined)}
+        />
       )}
       <h2>Work needing attention</h2>
       {view.data && !failures.length && <p className="muted">No recorded workflow failures.</p>}

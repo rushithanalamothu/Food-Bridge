@@ -28,7 +28,18 @@ from foodbridge.settings import Settings
 
 @pytest.mark.parametrize(
     "path",
-    ["/session", "/matches", "/pickups", "/operations/summary", "/operations/failures", "/events"],
+    [
+        "/session",
+        "/matches",
+        "/pickups",
+        "/operations/summary",
+        "/operations/failures",
+        "/events",
+        "/memberships",
+        "/receiving-profile",
+        "/reservations",
+        "/workflow/donations",
+    ],
 )
 def test_workflow_reads_require_verified_identity(path):
     client = TestClient(create_app(Settings(ai_provider="rules")))

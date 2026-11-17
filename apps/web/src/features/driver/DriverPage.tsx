@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPickups, pickupCommand } from '../../api/workflow';
 import type { PickupRead } from '../../api/generated/workflow';
+import { DonationTimeline } from '../../components/DonationTimeline';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
@@ -18,6 +19,7 @@ export function DriverPage() {
   const action = useCommand();
   const now = useNow();
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<string>();
   const [extra, setExtra] = useState<PickupRead[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>();
   const [paging, setPaging] = useState(false);
@@ -220,10 +222,33 @@ export function DriverPage() {
                   exception.
                 </Notice>
               )}
-              <p className="muted">
-                Delivery destination and navigation are not included in the current assignment
-                response. Obtain these from your coordinator before travel.
-              </p>
+              {pickup.destination && (
+                <p className="address">
+                  <strong>Deliver to {pickup.recipient_name}</strong>
+                  <br />
+                  {pickup.destination.address}
+                  <br />
+                  <a
+                    href={
+                      'https://www.openstreetmap.org/?mlat=' +
+                      pickup.destination.latitude +
+                      '&mlon=' +
+                      pickup.destination.longitude +
+                      '#map=16/' +
+                      pickup.destination.latitude +
+                      '/' +
+                      pickup.destination.longitude
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View delivery location on map
+                  </a>
+                </p>
+              )}
+              <button className="text-button" onClick={() => setHistory(food.id)}>
+                View donation history
+              </button>
             </article>
           );
         })}
@@ -246,6 +271,14 @@ export function DriverPage() {
         >
           Load older assignments
         </button>
+      )}
+      {history && (
+        <DonationTimeline
+          role="driver"
+          id={history}
+          version={view.events.length}
+          onClose={() => setHistory(undefined)}
+        />
       )}
     </section>
   );

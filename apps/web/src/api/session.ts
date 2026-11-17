@@ -15,3 +15,5 @@ export function sessionHeaders(role?: Role): Record<string, string> {
     ...(organization ? { 'X-Organization-ID': organization } : {}),
   };
 }
+
+export const getOrganization = () => organization;

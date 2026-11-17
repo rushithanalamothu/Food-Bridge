@@ -1,3 +1,4 @@
+import { DonationTimeline } from '../../components/DonationTimeline';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
@@ -45,6 +46,7 @@ export function DonorPage() {
   const [nextCursor, setNextCursor] = useState<string | null>();
   const [paging, setPaging] = useState(false);
   const [notice, setNotice] = useState('');
+  const [history, setHistory] = useState<string>();
   const [identity, setIdentity] = useState<DonorIdentity>();
   const [draft, setDraft] = useState<DraftRead>();
   const [posted, setPosted] = useState<IntakeDonationRead>();
@@ -765,6 +767,19 @@ export function DonorPage() {
             </button>
           </div>
         </div>
+      )}
+      {posted && (
+        <button className="quiet-button" onClick={() => setHistory(posted.donation.id)}>
+          View donation history
+        </button>
+      )}
+      {history && (
+        <DonationTimeline
+          role="donor"
+          id={history}
+          version={posted?.donation.version}
+          onClose={() => setHistory(undefined)}
+        />
       )}
       <h2>Live donation activity</h2>
       <p className="form-hint">Updates received during this session.</p>

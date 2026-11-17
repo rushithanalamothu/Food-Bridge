@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { InMemoryWebStorage, UserManager, WebStorageStateStore } from 'oidc-client-ts';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { setAccessToken, setOrganization } from '../api/session';
-import { getSession } from '../api/workflow';
-import type { Actor, Role } from '../api/generated/workflow';
+import { setAccessToken, setOrganization, getOrganization } from '../api/session';
+import { getSession, getMemberships } from '../api/workflow';
+import type { Actor, Role, MembershipRead } from '../api/generated/workflow';
 import { Notice } from './Workspace';
 
 const env = import.meta.env;
@@ -40,6 +40,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [actor, setActor] = useState<Actor>();
   const [error, setError] = useState('');
   const [org, setOrg] = useState('');
+  const [choices, setChoices] = useState<MembershipRead[]>([]);
   const [select, setSelect] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
@@ -66,13 +67,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSignedIn(true);
         setRevision((v) => v + 1);
         const target = state?.returnTo;
-        navigate(target?.startsWith('/') && !target.startsWith('//') ? target : '/', {
+        navigate(target && routeRole(target) ? '/' + target.split('/')[1] : '/', {
           replace: true,
         });
       });
       // A full navigation would discard the memory-only token. Complete routing in this document.
       void callback
         .catch(() => {
+          navigate('/', { replace: true });
           setError('Sign-in could not be completed. Please start again.');
         })
         .finally(() => setReady(true));
@@ -91,9 +93,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActor(undefined);
     setError('');
     setSelect(false);
-    void getSession(role, controller.signal)
+    void getMemberships(role)
+      .then((memberships) => {
+        if (controller.signal.aborted) return;
+        const options = memberships.filter((item) => item.role === role);
+        setChoices(options);
+        const current = getOrganization();
+        const next = options.some((item) => item.organization_id === current)
+          ? current
+          : options.length === 1
+            ? options[0].organization_id
+            : undefined;
+        setOrg(next ?? '');
+        if (next !== current) {
+          setOrganization(next);
+          setRevision((v) => v + 1);
+          return;
+        }
+        return getSession(role, controller.signal);
+      })
       .then((value) => {
-        if (!controller.signal.aborted) setActor(value);
+        if (!controller.signal.aborted && value) setActor(value);
       })
       .catch((e) => {
         if (!controller.signal.aborted) {
@@ -142,7 +162,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               Sign out of FoodBridge
             </button>
           )}
-          {role && role !== 'donor' && (
+          {role && choices.length > 1 && (
             <button className="text-button" onClick={() => setSelect((v) => !v)}>
               Choose organization
             </button>
@@ -158,13 +178,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             setRevision((v) => v + 1);
           }}
         >
-          <label htmlFor="organization">Organization ID supplied by your coordinator</label>
-          <input
+          <label htmlFor="organization">Organization</label>
+          <select
             id="organization"
             value={org}
             onChange={(event) => setOrg(event.target.value)}
-            pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-          />
+            required
+          >
+            <option value="">Choose your organization</option>
+            {choices.map((item) => (
+              <option key={item.organization_id} value={item.organization_id}>
+                {item.organization_name}
+              </option>
+            ))}
+          </select>
           <button>Use organization</button>
         </form>
       )}

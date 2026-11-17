@@ -48,7 +48,7 @@ export async function workflowRequest<T>(
   return body as T;
 }
 const page = (path: string, cursor?: string | null) =>
-  path + (cursor ? `?cursor=${encodeURIComponent(cursor)}` : '');
+  path + '?order=newest' + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : '');
 export const getSession = (role: Role, signal?: AbortSignal) =>
   workflowRequest<Actor>(role, '/session', { signal });
 export const getOffers = (cursor?: string | null) =>
@@ -98,4 +98,37 @@ export const replayFailure = (id: string, version: number, key: string) =>
     `/operations/failures/${id}/replay`,
     { expected_version: version },
     key,
+  );
+
+export const getMemberships = (role: Role) =>
+  workflowRequest<import('./generated/workflow').MembershipRead[]>(role, '/memberships');
+export const getReceivingProfile = () =>
+  workflowRequest<import('./generated/workflow').ReceivingProfileRead>(
+    'recipient',
+    '/receiving-profile',
+  );
+export const saveReceivingProfile = (
+  body: import('./generated/workflow').ReceivingProfileUpdate,
+  key: string,
+) =>
+  command<import('./generated/workflow').ReceivingProfileRead>(
+    'recipient',
+    '/receiving-profile',
+    body,
+    key,
+  );
+export const getReservations = (cursor?: string | null) =>
+  workflowRequest<import('./generated/workflow').ReservationPage>(
+    'recipient',
+    page('/reservations', cursor),
+  );
+export const getDonationDetail = (role: Role, id: string) =>
+  workflowRequest<import('./generated/workflow').DonationDetail>(
+    role,
+    `/workflow/donations/${encodeURIComponent(id)}`,
+  );
+export const getDonationBoard = (cursor?: string | null) =>
+  workflowRequest<import('./generated/workflow').DonationBoard>(
+    'operator',
+    page('/workflow/donations', cursor),
   );
