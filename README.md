@@ -17,7 +17,7 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 ## What runs today
 
 - FastAPI health, donor identity, persisted draft/confirmation, donation snapshots and intake evaluation endpoints.
-- React donor description/review/submission flow; recipient, driver and operations workspaces remain placeholders.
+- React donor intake/tracking, receiver offers, driver pickup/delivery, operations dashboards and authenticated frontend SSE. See [web applications and integration limits](apps/web/README.md).
 - Four worker queues, intake eligibility, durable orchestration/recovery and notification workers.
 - Transactional reservation/capacity accounting, driver assignment, pickup/delivery and scoped status APIs.
 - Authenticated SSE replay, failure/replay operations, and an explicit local synthetic full-workflow smoke.
@@ -25,7 +25,7 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, receiving-profile update services, identity-provider provisioning/browser login, recipient/driver screens, real email/SMS delivery and shared-cloud hosting remain team integration work. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
+**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, receiving-profile update services, identity-provider provisioning and live browser-login verification, remaining client read models/profile editing, real email/SMS delivery and shared-cloud hosting remain team integration work. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
 
 ## Local start
 

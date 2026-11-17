@@ -2,6 +2,10 @@
 
 This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake and Tej's backend workflow are implemented. Live matching/data services and complete client integration remain pending. Dates should be assigned by the team; do not invent delivery commitments.
 
+## Mithil frontend integration
+
+The role applications now implement donor tracking/cancellation, receiver offer commands, driver pickup/delivery, operations summaries/failures/audits and authenticated SSE reconciliation. Configurable OIDC/PKCE browser sign-in is wired; provider provisioning and live-provider verification remain pending. See [web handoff and limitations](../../apps/web/README.md). W02–W04 are partially integrated: receiver profile editing, offer food details, persistent reservation reads, driver destination and complete operator history require additive backend APIs and affected-owner review. Browser fixture tests do not certify full real-stack acceptance or live routing. The phase tables remain the dependency/acceptance checklist.
+
 ## Implemented Tej workflow
 
 [Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These tests do not certify Rushitha's live M01–M03 implementation, Mithil's W02–W04 screens or shared-cloud promotion. F03 now resolves all active role memberships; identity-provider selection/provisioning and browser login remain pending. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
