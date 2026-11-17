@@ -12,7 +12,12 @@ from foodbridge.db.transactions import enqueue_event
 from foodbridge.db.workflow import command, current_profile, require_role, require_version, snapshot
 from foodbridge.db.workflow_models import Assignment, Capacity, Driver, MatchOffer, Reservation
 from foodbridge.domain.errors import AppError
-from foodbridge.domain.workflow import DonationDetail, DonationHistoryItem, ReceivingProfileRead
+from foodbridge.domain.workflow import (
+    DonationDetail,
+    DonationHistoryItem,
+    OfferRead,
+    ReceivingProfileRead,
+)
 
 
 class ApplicationService:
@@ -141,13 +146,13 @@ class ApplicationService:
                         Capacity(
                             organization_id=actor.organization_id,
                             storage=storage,
-                            reported_free_kg=value,
+                            reported_free_kg=Decimal(str(value)),
                             committed_inbound_kg=0,
                             version=1,
                         )
                     )
                 else:
-                    cap.reported_free_kg = value
+                    cap.reported_free_kg = Decimal(str(value))
                     cap.version += 1
             row.profile = body.profile.model_dump(mode="json")
             row.version += 1
@@ -175,6 +180,14 @@ class ApplicationService:
             body.model_dump(mode="json"),
             self.clock,
             apply,
+        )
+
+    def offer_view(self, session, row):
+        return OfferRead(
+            recommendation=row.recommendation,
+            status=row.status,
+            version=row.version,
+            donation=snapshot(session.get(Donation, row.donation_id), self.clock()),
         )
 
     def pickup_view(self, session, row):

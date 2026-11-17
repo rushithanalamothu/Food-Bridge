@@ -314,8 +314,8 @@ export function DonorPage() {
       </p>
       {identity?.mode === 'local_demo' && (
         <p className="demo-label">
-          Local demo identity · Maya · synthetic organization. Extraction and donation records are
-          real local database operations.
+          Local demo identity · {identity.display_name} · synthetic organization. Extraction and
+          donation records are real local database operations.
         </p>
       )}
       {error && (

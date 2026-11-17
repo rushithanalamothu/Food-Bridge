@@ -186,17 +186,10 @@ def offers(
         )
         return OfferPage(
             items=[
-                OfferRead(
-                    recommendation=r.recommendation,
-                    status=r.status,
-                    version=r.version,
-                    donation=ApplicationService(
-                        request.app.state.settings.database_url, request.app.state.clock
-                    )
-                    .detail(actor, r.donation_id)
-                    .donation,
-                )
-                for r in rows
+                ApplicationService(
+                    request.app.state.settings.database_url, request.app.state.clock
+                ).offer_view(session, row)
+                for row in rows
             ],
             next_cursor=next_cursor,
         )
@@ -209,16 +202,9 @@ def get_offer(identifier: UUID, request: Request, actor: Identity):
         row = session.get(MatchOffer, identifier)
         if row is None or row.recipient_organization_id != actor.organization_id:
             raise AppError("not_found", "Not found.", 404)
-        return OfferRead(
-            recommendation=row.recommendation,
-            status=row.status,
-            version=row.version,
-            donation=ApplicationService(
-                request.app.state.settings.database_url, request.app.state.clock
-            )
-            .detail(actor, row.donation_id)
-            .donation,
-        )
+        return ApplicationService(
+            request.app.state.settings.database_url, request.app.state.clock
+        ).offer_view(session, row)
 
 
 @router.get("/pickups", response_model=PickupPage)

@@ -1,5 +1,3 @@
-# Donor workspace
+# Donor workspace — Mithil
 
-The intake slice implements description → persisted proposal → correction/confirmation → submission, urgency and a clearly synthetic eligibility-worker demo. It uses generated intake types and typed API wrappers; it never fabricates matching/reservation success.
-
-See the repository `docs/features/intake.md` for local identity setup and backend integration. Mithil owns further UI work; Mokshith owns extraction, confirmation and eligibility. Shared login, matching/SSE and profile selection remain integration work. API access tokens are accepted through the in-memory API wrapper, not persisted in browser storage.
+Implemented: describe/review/confirm, explicit-allergen validation, location-timezone input, saved draft recovery, paginated donation tracking, pre-pickup cancellation, durable history and SSE reconciliation. Server membership choices support multiple donor organizations. Intake extraction/eligibility remains Mokshith's work; shared auth/workflow is reviewed with Tej. See `apps/web/README.md` for setup, tests and handoff status.

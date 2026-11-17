@@ -1347,3 +1347,34 @@ def test_application_newest_pagination_has_stable_nonoverlapping_pages(env):
     ).json()
     assert older["items"][0]["id"] == str(first) and older["next_cursor"] is None
     assert env.client.get("/api/v1/workflow/donations?cursor=broken").status_code == 400
+
+
+def test_membership_choices_and_donor_selection_never_grant_unauthorized_org(env, monkeypatch):
+    from foodbridge.auth import identity, workflow
+
+    subject = f"workflow-test:{env.actors['donor'].user_id}"
+    monkeypatch.setattr(identity, "verified_subject", lambda *_: subject)
+    monkeypatch.setattr(workflow, "verified_subject", lambda *_: subject)
+    second = env.actors["recipient"].organization_id
+    with env.sessions.begin() as session:
+        session.add(
+            Membership(user_id=env.actors["donor"].user_id, organization_id=second, role="donor")
+        )
+    env.app.dependency_overrides.pop(current_donor)
+    headers = {"Authorization": "Bearer synthetic-verified-token"}
+    memberships = env.client.get("/api/v1/memberships", headers=headers)
+    assert memberships.status_code == 200
+    assert {item["organization_id"] for item in memberships.json()} == {
+        str(env.actors["donor"].organization_id),
+        str(second),
+    }
+    assert env.client.get("/api/v1/me", headers=headers).status_code == 409
+    assert env.client.get(
+        "/api/v1/me", headers={**headers, "X-Organization-ID": str(second)}
+    ).json()["organization_id"] == str(second)
+    assert (
+        env.client.get(
+            "/api/v1/me", headers={**headers, "X-Organization-ID": str(uuid4())}
+        ).status_code
+        == 403
+    )
