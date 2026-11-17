@@ -9,6 +9,7 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
   const [connection, setConnection] = useState<Connection>('connecting');
   const [events, setEvents] = useState<EventEnvelope[]>([]);
   const [updated, setUpdated] = useState<Date>();
+  const [snapshotVersion, setSnapshotVersion] = useState(0);
   const generation = useRef(0);
   const mounted = useRef(false);
   const refresh = useCallback(async () => {
@@ -17,6 +18,7 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
       const next = await load();
       if (mounted.current && run === generation.current) {
         setData(next);
+        setSnapshotVersion((version) => version + 1);
         setUpdated(new Date());
         setError('');
       }
@@ -56,7 +58,7 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
       window.removeEventListener('focus', onFocus);
     };
   }, [role, refresh]);
-  return { events, data, error, setError, loading, connection, updated, refresh };
+  return { events, data, error, setError, loading, connection, updated, snapshotVersion, refresh };
 }
 export function useCommand() {
   const [busy, setBusy] = useState(false);
