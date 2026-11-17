@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getPickups, pickupCommand } from '../../api/workflow';
 import type { PickupRead } from '../../api/generated/workflow';
 import { DonationTimeline } from '../../components/DonationTimeline';
@@ -16,6 +16,8 @@ import {
 
 export function DriverPage() {
   const view = useWorkspace('driver', getPickups);
+  const latestSnapshot = useRef(view.data);
+  latestSnapshot.current = view.data;
   const action = useCommand();
   const now = useNow();
   const [message, setMessage] = useState('');
@@ -258,8 +260,10 @@ export function DriverPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            const requestedSnapshot = view.data;
             try {
               const page = await getPickups(cursor === undefined ? view.data?.next_cursor : cursor);
+              if (latestSnapshot.current !== requestedSnapshot) return;
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {

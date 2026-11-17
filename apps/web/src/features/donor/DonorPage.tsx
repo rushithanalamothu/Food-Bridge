@@ -42,6 +42,8 @@ function errorText(error: unknown) {
 
 export function DonorPage() {
   const dashboard = useWorkspace('donor', listDonations);
+  const latestSnapshot = useRef(dashboard.data);
+  latestSnapshot.current = dashboard.data;
   const cancellation = useCommand();
   const [nextCursor, setNextCursor] = useState<string | null>();
   const [paging, setPaging] = useState(false);
@@ -636,8 +638,10 @@ export function DonorPage() {
                 disabled={paging}
                 onClick={async () => {
                   setPaging(true);
+                  const requestedSnapshot = dashboard.data;
                   try {
                     const page = await listDonations(nextCursor);
+                    if (latestSnapshot.current !== requestedSnapshot) return;
                     setRecent((old) => [...old, ...page.items]);
                     setNextCursor(page.next_cursor);
                   } catch (e) {

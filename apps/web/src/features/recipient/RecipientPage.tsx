@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getOffers,
   getReservations,
@@ -31,6 +31,8 @@ const load = async () => {
 };
 export function RecipientPage() {
   const view = useWorkspace('recipient', load);
+  const latestSnapshot = useRef(view.data);
+  latestSnapshot.current = view.data;
   const action = useCommand();
   const now = useNow();
   const [extra, setExtra] = useState<OfferRead[]>([]);
@@ -217,10 +219,12 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            const requestedSnapshot = view.data;
             try {
               const page = await getOffers(
                 cursor === undefined ? view.data?.offers.next_cursor : cursor,
               );
+              if (latestSnapshot.current !== requestedSnapshot) return;
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
@@ -271,10 +275,12 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            const requestedSnapshot = view.data;
             try {
               const page = await getReservations(
                 holdCursor === undefined ? view.data?.reservations.next_cursor : holdCursor,
               );
+              if (latestSnapshot.current !== requestedSnapshot) return;
               setHolds((old) => [...old, ...page.items]);
               setHoldCursor(page.next_cursor ?? null);
             } catch (e) {

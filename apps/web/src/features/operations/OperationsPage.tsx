@@ -1,5 +1,5 @@
 import { DonationTimeline } from '../../components/DonationTimeline';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getSummary,
   getFailures,
@@ -30,6 +30,8 @@ const load = async () => {
 };
 export function OperationsPage() {
   const view = useWorkspace('operator', load);
+  const latestSnapshot = useRef(view.data);
+  latestSnapshot.current = view.data;
   const action = useCommand();
   const [audit, setAudit] = useState<OrchestrationAudit[]>();
   const [auditId, setAuditId] = useState('');
@@ -150,10 +152,12 @@ export function OperationsPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            const requestedSnapshot = view.data;
             try {
               const page = await getDonationBoard(
                 boardCursor === undefined ? view.data?.board.next_cursor : boardCursor,
               );
+              if (latestSnapshot.current !== requestedSnapshot) return;
               setBoardExtra((old) => [...old, ...page.items]);
               setBoardCursor(page.next_cursor ?? null);
             } catch (e) {
@@ -228,10 +232,12 @@ export function OperationsPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            const requestedSnapshot = view.data;
             try {
               const page = await getFailures(
                 cursor === undefined ? view.data?.failures.next_cursor : cursor,
               );
+              if (latestSnapshot.current !== requestedSnapshot) return;
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {

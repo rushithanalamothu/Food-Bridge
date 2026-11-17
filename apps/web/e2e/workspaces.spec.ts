@@ -153,3 +153,46 @@ for (const path of ['/donor', '/recipient', '/driver', '/operations']) {
     );
   });
 }
+
+test('late older-page responses cannot overwrite a refreshed snapshot', async ({ page }) => {
+  const state = await fixtures(page);
+  const original = state.offers[0];
+  state.offers = Array.from({ length: 26 }, (_, i) => ({
+    ...original,
+    recommendation: { ...original.recommendation, id: String(i) },
+    donation: { ...state.donation, food_name: 'Original offer ' + i },
+  }));
+  let release: (() => void) | undefined;
+  let started: (() => void) | undefined;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/v1/matches?*cursor=*', async (route) => {
+    started?.();
+    await ready;
+    return route.fulfill({
+      json: {
+        items: [
+          {
+            ...original,
+            recommendation: { ...original.recommendation, id: 'stale-page' },
+            donation: { ...state.donation, food_name: 'Stale older page' },
+          },
+        ],
+        next_cursor: null,
+      },
+    });
+  });
+  await page.goto('/recipient');
+  await page.getByRole('button', { name: 'Load older offers' }).click();
+  await requested;
+  state.offers[0].donation.food_name = 'Fresh latest snapshot';
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Fresh latest snapshot' })).toBeVisible();
+  release?.();
+  await expect(page.getByRole('button', { name: 'Load older offers' })).toBeEnabled();
+  await expect(page.getByRole('heading', { name: 'Stale older page' })).toHaveCount(0);
+});
