@@ -84,16 +84,20 @@ test('newest offers remain visible after SSE replay and expired-cursor recovery'
   page,
 }) => {
   const state = await fixtures(page);
-  let streams = 0;
+  let expired = false;
   const cursors: (string | undefined)[] = [];
   await page.route('**/api/v1/events', async (route) => {
-    streams++;
-    cursors.push(route.request().headers()['last-event-id']);
-    if (streams === 2)
+    const cursor = route.request().headers()['last-event-id'];
+    cursors.push(cursor);
+    // React StrictMode can abort an initial connection before its first frame is read.
+    // Drive the fixture by acknowledged cursors rather than the number of requests.
+    if (cursor === '41' && !expired) {
+      expired = true;
       return route.fulfill({ status: 409, json: { code: 'stream_cursor_expired' } });
-    if (streams > 3) return route.fulfill({ status: 401, json: {} });
-    if (streams === 3) state.offers[0].donation.food_name = 'Updated from authoritative snapshot';
-    const id = streams === 1 ? '41' : '42';
+    }
+    if (cursor === '42') return route.fulfill({ status: 401, json: {} });
+    if (expired) state.offers[0].donation.food_name = 'Updated from authoritative snapshot';
+    const id = expired ? '42' : '41';
     const data = `id: ${id}\nevent: status\ndata: ${JSON.stringify({ event_id: 'event-' + id, aggregate_id: state.donation.id, aggregate_version: 5, payload: { status: 'offered' } })}\n\n`;
     return route.fulfill({ contentType: 'text/event-stream', body: data + data });
   });
@@ -102,7 +106,7 @@ test('newest offers remain visible after SSE replay and expired-cursor recovery'
     page.getByRole('heading', { name: 'Updated from authoritative snapshot' }),
   ).toBeVisible({ timeout: 15000 });
   expect(cursors).toContain('41');
-  expect(cursors[2]).toBeUndefined();
+  expect(cursors[cursors.indexOf('41') + 1]).toBeUndefined();
   await expect(page.getByText(/Session unavailable/)).toBeVisible();
 });
 test('pagination loads older offers while new live offers reset to the latest page', async ({
