@@ -177,7 +177,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {!ready ? (
         <p role="status">Completing sign-in…</p>
       ) : (
-        <div key={`${role}:${revision}:${actor?.organization_id ?? 'pending'}`}>{children}</div>
+        <div key={`${role}:${revision}`}>{children}</div>
       )}
     </SessionContext.Provider>
   );

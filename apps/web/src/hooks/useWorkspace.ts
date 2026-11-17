@@ -30,7 +30,7 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
   useEffect(() => {
     mounted.current = true;
     void refresh();
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const stop = connectStream(
       role,
       (event) => {
@@ -38,8 +38,11 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
           setEvents((old) =>
             [event, ...old.filter((item) => item.event_id !== event.event_id)].slice(0, 30),
           );
-        clearTimeout(timer);
-        timer = setTimeout(() => void refresh(), 150);
+        if (!timer)
+          timer = setTimeout(() => {
+            timer = undefined;
+            void refresh();
+          }, 150);
       },
       setConnection,
     );
