@@ -24,7 +24,23 @@ class Settings(BaseSettings):
 
     enable_local_intake_demo: bool = False
     enable_local_workflow_demo: bool = False
-    notification_mode: Literal["disabled", "sandbox"] = "disabled"
+    notification_mode: Literal["disabled", "sandbox", "smtp"] = "disabled"
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_security: Literal["starttls", "tls", "none"] = "starttls"
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    smtp_sender: str = "notifications@foodbridge.example"
+    smtp_timeout_s: float = Field(default=8, gt=0, le=10)
+    smtp_allowed_domains: list[str] = Field(default_factory=list)
+    public_url: str = "http://localhost:5173"
+    browser_auth_enabled: bool = False
+    browser_cookie_name: str = Field(default="foodbridge_session", pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    oidc_client_id: str | None = None
+    oidc_client_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    oidc_backchannel_base_url: str | None = None
+    browser_session_ttl_s: int = Field(default=28800, ge=300, le=86400)
+    metrics_token: SecretStr | None = Field(default=None, repr=False, exclude=True)
     enable_intake_metrics: bool = False
     ai_provider: Literal["auto", "rules", "openai", "gemini", "anthropic", "openai_compatible"] = (
         Field(
@@ -134,6 +150,50 @@ class Settings(BaseSettings):
                 )
         elif self.ai_base_url:
             raise ValueError("Custom base URL requires provider=openai_compatible")
-        if self.oidc_jwks_url and not self.oidc_jwks_url.startswith("https://"):
-            raise ValueError("OIDC JWKS must use HTTPS")
+        for address in (self.oidc_jwks_url, self.oidc_issuer, self.oidc_backchannel_base_url):
+            if address:
+                parsed = urlsplit(address)
+                local = self.environment == "local" and parsed.hostname in {
+                    "localhost",
+                    "127.0.0.1",
+                    "keycloak",
+                    "host.docker.internal",
+                }
+                if parsed.username or parsed.password or parsed.query or parsed.fragment:
+                    raise ValueError("OIDC URLs cannot contain credentials, query or fragment")
+                if not parsed.hostname or (
+                    parsed.scheme != "https" and not (local and parsed.scheme == "http")
+                ):
+                    raise ValueError("OIDC endpoints require HTTPS outside local development")
+        public = urlsplit(self.public_url)
+        if (
+            public.scheme not in {"http", "https"}
+            or not public.hostname
+            or public.query
+            or public.fragment
+            or public.path not in {"", "/"}
+            or public.username
+            or public.password
+        ):
+            raise ValueError("public_url must be an origin")
+        if self.environment != "local" and public.scheme != "https":
+            raise ValueError("Shared environments require an HTTPS public_url")
+        if self.browser_auth_enabled and not all(
+            (self.oidc_client_id, self.oidc_issuer, self.oidc_jwks_url, self.oidc_audience)
+        ):
+            raise ValueError(
+                "Browser authentication requires OIDC client, issuer, JWKS and audience"
+            )
+        if self.notification_mode == "smtp":
+            if (
+                not self.smtp_host
+                or "\n" in self.smtp_sender
+                or "\r" in self.smtp_sender
+                or "@" not in self.smtp_sender
+            ):
+                raise ValueError("SMTP requires a host and a valid sender")
+            if self.environment != "local" and self.smtp_security == "none":
+                raise ValueError("SMTP requires TLS outside local development")
+            if bool(self.smtp_username) != bool(self.smtp_password):
+                raise ValueError("SMTP username and password must be supplied together")
         return self

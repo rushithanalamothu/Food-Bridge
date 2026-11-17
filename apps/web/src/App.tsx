@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { loadSession } from './api/session';
+import { SessionBar } from './features/session/SessionBar';
 import { NavLink, Route, Routes } from 'react-router-dom';
 import { ApiStatus } from './components/ApiStatus';
 import { DonorPage } from './features/donor/DonorPage';
@@ -6,6 +9,12 @@ import { DriverPage } from './features/driver/DriverPage';
 import { OperationsPage } from './features/operations/OperationsPage';
 
 export function App() {
+  const [sessionReady, setSessionReady] = useState(false);
+  useEffect(() => {
+    void loadSession()
+      .catch(() => undefined)
+      .finally(() => setSessionReady(true));
+  }, []);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#content">
@@ -15,8 +24,9 @@ export function App() {
         <NavLink to="/" className="wordmark" aria-label="FoodBridge home">
           food<span>bridge</span>
         </NavLink>
-        <span className="environment-label">Development foundation</span>
+        <span className="environment-label">Team workspace</span>
       </header>
+      <SessionBar />
       <nav aria-label="Workspace">
         <NavLink to="/donor">Donor</NavLink>
         <NavLink to="/recipient">Recipient</NavLink>
@@ -24,18 +34,22 @@ export function App() {
         <NavLink to="/operations">Operations</NavLink>
       </nav>
       <main id="content">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/donor/*" element={<DonorPage />} />
-          <Route path="/recipient/*" element={<RecipientPage />} />
-          <Route path="/driver/*" element={<DriverPage />} />
-          <Route path="/operations/*" element={<OperationsPage />} />
-          <Route path="*" element={<h1>Page not found</h1>} />
-        </Routes>
+        {sessionReady ? (
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/donor/*" element={<DonorPage />} />
+            <Route path="/recipient/*" element={<RecipientPage />} />
+            <Route path="/driver/*" element={<DriverPage />} />
+            <Route path="/operations/*" element={<OperationsPage />} />
+            <Route path="*" element={<h1>Page not found</h1>} />
+          </Routes>
+        ) : (
+          <p role="status">Loading your session…</p>
+        )}
       </main>
       <footer>
-        Donor intake is available. Matching, reservation and pickup workspaces are under
-        development.
+        FoodBridge · Confirmed food, accountable handoffs. Synthetic demo data is labeled in each
+        workspace.
       </footer>
     </div>
   );
@@ -45,10 +59,10 @@ function HomePage() {
   return (
     <>
       <p className="eyebrow">FoodBridge · Team workspace</p>
-      <h1>One foundation for the whole team.</h1>
+      <h1>From donation to delivery.</h1>
       <p>
-        The role workspaces are ready for implementation. Start with your module’s README and the
-        shared design document.
+        Post confirmed food, coordinate pickup, and follow each handoff. Choose the workspace for
+        your verified organization.
       </p>
       <ApiStatus />
     </>

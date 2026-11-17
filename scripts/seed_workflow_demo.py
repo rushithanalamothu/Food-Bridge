@@ -79,6 +79,10 @@ def seed(settings):
                     )
             if (
                 role == "driver"
+                and session.get(
+                    Driver, uuid5(NAMESPACE_URL, "foodbridge:workflow-demo:driver-record")
+                )
+                is None
                 and session.scalar(select(Driver.id).where(Driver.user_id == user_id)) is None
             ):
                 driver_id = uuid5(NAMESPACE_URL, "foodbridge:workflow-demo:driver-record")

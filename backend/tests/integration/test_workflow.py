@@ -849,7 +849,7 @@ def test_client_role_selector_cannot_grant_another_membership(env, monkeypatch):
     env.app.dependency_overrides.pop(current_actor)
     with env.sessions() as session:
         subject = session.get(User, env.actors["donor"].user_id).oidc_subject
-    monkeypatch.setattr("foodbridge.auth.workflow.verified_subject", lambda *_: subject)
+    monkeypatch.setattr("foodbridge.auth.identity.verified_subject", lambda *_: subject)
     headers = {"Authorization": "Bearer test", "X-FoodBridge-Role": "recipient"}
     assert env.client.get("/api/v1/matches", headers=headers).status_code == 403
     headers["X-FoodBridge-Role"] = "donor"
@@ -1233,3 +1233,120 @@ def test_ai_decision_that_finishes_after_deadline_cannot_dispatch(env):
     env.workflow.sweep()
     with env.sessions() as session:
         assert session.get(Donation, step.donation_id).status == "expired"
+
+
+def test_operations_snapshots_history_scope_and_pagination(env):
+    first, second = submit(env), submit(env)
+    env.current.actor = env.actors["operator"]
+    page = env.client.get("/api/v1/operations/donations?limit=1")
+    assert page.status_code == 200
+    result = page.json()
+    assert len(result["items"]) == 1 and result["next_cursor"]
+    following = env.client.get(
+        "/api/v1/operations/donations", params={"limit": 1, "cursor": result["next_cursor"]}
+    ).json()
+    assert {result["items"][0]["id"], following["items"][0]["id"]} == {str(first), str(second)}
+    detail = env.client.get(f"/api/v1/operations/donations/{first}").json()
+    history = env.client.get(f"/api/v1/operations/donations/{first}/history").json()
+    assert detail["version"] == history["items"][-1]["version"]
+    env.current.actor = Actor(user_id=uuid4(), organization_id=uuid4(), role="operator")
+    assert env.client.get("/api/v1/operations/donations").json()["items"] == []
+    assert env.client.get(f"/api/v1/operations/donations/{first}").status_code == 404
+    assert env.client.get(f"/api/v1/operations/donations/{first}/history").status_code == 404
+
+
+def test_driver_reads_include_delivery_destination_and_route(env):
+    match = offer(env)
+    assignment = assign(env, match)
+    env.current.actor = driver_for(env, assignment)
+    response = env.client.get("/api/v1/pickups")
+    assert response.status_code == 200
+    pickup = response.json()["items"][0]
+    assert pickup["recipient_organization_id"] == str(match.recipient_organization_id)
+    assert pickup["delivery_location"]["address"]
+    assert pickup["route"]["source"] == "synthetic"
+
+
+def test_smtp_destination_requires_contact_consent_and_current_audience(env):
+    from foodbridge.db.workflow_models import Notification, NotificationContact
+    from foodbridge.integrations.email import SMTPNotifications
+
+    offer(env)
+    consume_all(env)
+    with env.sessions() as session:
+        notification = session.scalar(select(Notification))
+        identifier, user_id = notification.id, notification.user_id
+    adapter = SMTPNotifications(env.settings)
+    with pytest.raises(ValueError, match="unavailable"):
+        adapter.destination(str(identifier), str(user_id))
+    with env.sessions.begin() as session:
+        session.add(
+            NotificationContact(
+                user_id=user_id,
+                email="verified@example.test",
+                enabled=True,
+                updated_at=env.clock.now,
+            )
+        )
+    assert adapter.destination(str(identifier), str(user_id)) == "verified@example.test"
+    with env.sessions.begin() as session:
+        session.get(User, user_id).active = False
+    with pytest.raises(ValueError, match="unavailable"):
+        adapter.destination(str(identifier), str(user_id))
+
+
+def test_operator_release_is_scoped_to_donor_organization(env):
+    match = offer(env)
+    result = reserve(env, match)
+    identifier = UUID(result["id"])
+    outsider = Actor(user_id=uuid4(), organization_id=uuid4(), role="operator")
+    with pytest.raises(AppError) as error:
+        env.reservation.release(
+            outsider, identifier, VersionCommand(expected_version=1), uuid4(), uuid4()
+        )
+    assert error.value.status == 404
+    released = env.reservation.release(
+        env.actors["operator"], identifier, VersionCommand(expected_version=1), uuid4(), uuid4()
+    )
+    assert released["status"] == "released"
+
+
+def test_protected_metrics_expose_counts_without_actor_data(env):
+    from pydantic import SecretStr
+
+    env.app.state.settings = env.settings.model_copy(
+        update={"metrics_token": SecretStr("test-monitoring")}
+    )
+    submit(env)
+    assert env.client.get("/internal/metrics").status_code == 404
+    result = env.client.get(
+        "/internal/metrics", headers={"Authorization": "Bearer test-monitoring"}
+    )
+    assert result.status_code == 200
+    assert "foodbridge_dependencies_available 1.0" in result.text
+    assert str(env.actors["donor"].user_id) not in result.text
+    assert "foodbridge_steps" in result.text
+
+
+def test_donor_organization_selection_narrows_verified_memberships(env, monkeypatch):
+    from foodbridge.auth.identity import current_donor
+
+    actor = env.actors["donor"]
+    other_org = env.actors["recipient2"].organization_id
+    with env.sessions.begin() as session:
+        subject = session.get(User, actor.user_id).oidc_subject
+        session.add(Membership(user_id=actor.user_id, organization_id=other_org, role="donor"))
+    monkeypatch.setattr("foodbridge.auth.identity.verified_subject", lambda *args: subject)
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(settings=env.settings)),
+        headers={"authorization": "Bearer verified-token"},
+    )
+    with pytest.raises(AppError) as error:
+        current_donor(request, None)
+    assert error.value.status == 409
+    request.headers["x-organization-id"] = str(other_org)
+    assert current_donor(request, None).organization_id == other_org
+    request.headers["x-organization-id"] = str(uuid4())
+    with pytest.raises(AppError) as error:
+        current_donor(request, None)
+    assert error.value.status == 403

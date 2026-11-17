@@ -12,9 +12,11 @@ from sqlalchemy.exc import OperationalError
 
 from foodbridge import __version__
 from foodbridge.agents.intake.service import utcnow
+from foodbridge.api.metrics import router as metrics_router
 from foodbridge.api.routes.health import router
 from foodbridge.api.routes.intake import router as intake_router
 from foodbridge.api.routes.workflow import router as workflow_router
+from foodbridge.auth.browser import router as auth_router
 from foodbridge.domain.contracts import ApiError
 from foodbridge.domain.errors import AppError
 from foodbridge.observability import record, registry, requests
@@ -91,6 +93,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         def metrics():
             return Response(content=generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
 
+    app.include_router(metrics_router)
+    app.include_router(auth_router)
     app.include_router(router)
     app.include_router(intake_router)
     app.include_router(workflow_router)

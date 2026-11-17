@@ -46,6 +46,19 @@ def verified_subject(token: str, settings: Settings) -> str:
         raise AppError("invalid_token", "Your session is invalid or expired.", 401) from exc
 
 
+def request_subject(request: Request) -> str | None:
+    """Bearer identity takes precedence; cookie failures never enter demo mode."""
+    authorization = request.headers.get("authorization", "")
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token.strip():
+            raise AppError("invalid_token", "A bearer access token is required.", 401)
+        return verified_subject(token, request.app.state.settings)
+    from foodbridge.auth.browser import browser_subject
+
+    return browser_subject(request)
+
+
 def current_donor(
     request: Request,
     _credentials: Annotated[
@@ -53,18 +66,25 @@ def current_donor(
     ],
 ) -> DonorIdentity:
     settings = request.app.state.settings
-    authorization = request.headers.get("authorization", "")
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token.strip():
-            raise AppError("invalid_token", "A bearer access token is required.", 401)
-        subject = verified_subject(token, settings)
+    subject = request_subject(request)
+    if subject is not None:
         mode = "oidc"
-    elif settings.enable_local_intake_demo and settings.environment == "local":
-        # This opt-in local-only mode never chooses an identity from client input.
+    elif (
+        settings.enable_local_intake_demo
+        and settings.environment == "local"
+        and not settings.browser_auth_enabled
+    ):
         subject, mode = DEMO_SUBJECT, "local_demo"
     else:
         raise AppError("authentication_required", "Sign in through the gateway to post food.", 401)
+    selected_org = request.headers.get("x-organization-id")
+    if selected_org:
+        from uuid import UUID
+
+        try:
+            selected_org = UUID(selected_org)
+        except ValueError as exc:
+            raise AppError("invalid_organization", "Invalid organization selector.", 400) from exc
     with session_factory(settings.database_url)() as session:
         rows = session.execute(
             select(
@@ -80,6 +100,7 @@ def current_donor(
                 User.active.is_(True),
                 Organization.active.is_(True),
                 Membership.role == "donor",
+                *([Membership.organization_id == selected_org] if selected_org else []),
             )
         ).all()
         if not rows:

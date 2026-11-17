@@ -108,7 +108,7 @@ def test_bearer_selection_cannot_override_verification(monkeypatch):
     def reject(*_):
         raise AppError("invalid_token", "Rejected.", 401)
 
-    monkeypatch.setattr("foodbridge.auth.workflow.verified_subject", reject)
+    monkeypatch.setattr("foodbridge.auth.identity.verified_subject", reject)
     request = Request(
         {
             "type": "http",

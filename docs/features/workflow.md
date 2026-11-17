@@ -4,6 +4,8 @@ This feature extends the existing intake implementation. It consumes committed s
 
 The subsequent [AI Orchestrator Agent](orchestrator-agent.md) adds model-driven tool selection and a persistent decision audit on top of this workflow. The runtime now requests an orchestrator plan before business dispatch. The original verification counts below describe the first merged workflow revision; the agent runbook describes its additional model-path tests and explicit rules/fallback modes.
 
+The subsequent [release integration](release-integration.md) adds SMTP delivery, browser OIDC sessions, driver/operations screens, additional scoped reads and deployment tooling. Historical verification below describes the original workflow revision.
+
 ## Implemented behavior
 
 - `WorkflowService.consume()` commits an event receipt with the resulting state/next step. Repeated broker delivery has one business effect. The general relay leaves intake request events to the existing intake relay.
@@ -14,7 +16,7 @@ The subsequent [AI Orchestrator Agent](orchestrator-agent.md) adds model-driven 
 - Driver assignment serializes the driver row and rejects overlapping assigned/accepted/collected commitments. Driver decline preserves recipient acceptance while requesting another feasible driver. No available driver releases the hold and requests re-matching.
 - Only the assigned driver can accept, collect or deliver. Pickup requires explicit handling confirmation and the confirmed quantity; discrepancies require a reviewed adjustment. Timing, route freshness and eligibility are rechecked before collection. Delivery requires explicit confirmation and a current receiving window.
 - Deadline/assignment/offer sweepers use database state and locks. Food already collected can become a handling exception, never a new offer. Terminal donations cannot reopen.
-- Notifications use stable IDs, leases and bounded attempts. The sandbox provider records local receipts only. A real email/SMS provider must implement the existing notification port; providers without idempotency can deliver duplicates after ambiguous send failures.
+- Notifications use stable IDs, leases and bounded attempts. The sandbox provider records local receipts only. The release integration now supplies an SMTP adapter through the same port; providers without idempotency can deliver duplicates after ambiguous send failures.
 - SSE publication holds a PostgreSQL advisory transaction lock while allocating cursors over committed outbox rows. Broker and stream publication markers are independent. Clients receive only events authorized for their selected membership/task, with database replay and seven-day retention.
 
 ## Run the local synthetic workflow
@@ -119,4 +121,4 @@ Additional tests cover driver commitment races, driver redispatch, cancel/pickup
 
 Before team merge, Rushitha should review the additive recipient/capacity/match storage and migration; Mokshith should review the intake event audience addition; Mithil should review the new generated command/read contracts. The new migration is based on `36120ccc9d0d`; do not create a parallel migration history.
 
-Still required for the full product: Rushitha's live candidate/routing/ranking implementation and data/profile update repositories, configured OIDC provider/provisioning and Mithil's browser login/screens, a real notification adapter, and a chosen shared cloud host with secrets/TLS/backups. The local workflow and test adapters do not certify those integrations. Shared-cloud deployment and a complete recipient/driver browser demo remain team release gates.
+Still required for the full product: Rushitha's live candidate/routing/ranking implementation and data/profile update repositories, real identity/contact provisioning, Mithil's complete recipient/profile screens, configured public sender acceptance, and a chosen shared host with deployment verification. The release integration supplies browser login, SMTP, driver/operations screens and host tooling; those additions do not establish public deployment acceptance. The local workflow and test adapters do not certify those integrations. Shared-cloud deployment and a complete recipient/driver browser demo remain team release gates.

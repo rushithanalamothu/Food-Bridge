@@ -5,7 +5,14 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field
 
-from foodbridge.domain.contracts import Contract, DonationRead, EventEnvelope, MatchRecommendation
+from foodbridge.domain.contracts import (
+    Contract,
+    DonationRead,
+    EventEnvelope,
+    Location,
+    MatchRecommendation,
+)
+from foodbridge.domain.intake import RouteFacts
 from foodbridge.domain.orchestration import OrchestrationAudit
 
 Role = Literal["donor", "recipient", "driver", "operator"]
@@ -15,6 +22,19 @@ class Actor(Contract):
     user_id: UUID
     organization_id: UUID
     role: Role
+
+
+class SessionMembership(Contract):
+    organization_id: UUID
+    organization_name: str
+    role: Role
+
+
+class BrowserSessionRead(Contract):
+    authenticated: bool
+    login_enabled: bool
+    mode: Literal["oidc", "local_demo"] | None = None
+    memberships: list[SessionMembership]
 
 
 class VersionCommand(Contract):
@@ -61,6 +81,9 @@ class PickupRead(Contract):
     start: AwareDatetime
     end: AwareDatetime
     donation: DonationRead
+    recipient_organization_id: UUID | None = None
+    delivery_location: Location | None = None
+    route: RouteFacts | None = None
 
 
 class PickupPage(Contract):
@@ -109,6 +132,24 @@ class OperationsSummary(Contract):
     synthetic: bool
 
 
+class OperationsDonationPage(Contract):
+    items: list[DonationRead]
+    next_cursor: str | None = None
+
+
+class HistoryEntry(Contract):
+    version: int
+    previous_status: str | None
+    status: str
+    reason: str
+    occurred_at: AwareDatetime
+
+
+class HistoryPage(Contract):
+    items: list[HistoryEntry]
+    next_version: int | None = None
+
+
 class StreamItem(Contract):
     sequence: int
     event: EventEnvelope
@@ -116,6 +157,9 @@ class StreamItem(Contract):
 
 class WorkflowContracts(Contract):
     orchestrator_audit: OrchestrationAudit
+    operations_donations: OperationsDonationPage
+    history: HistoryPage
+    browser_session: BrowserSessionRead
     actor: Actor
     version_command: VersionCommand
     donation_command: DonationCommand

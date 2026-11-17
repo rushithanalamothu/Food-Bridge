@@ -115,3 +115,67 @@ footer {
     display: none;
   }
 }
+
+.session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 30px;
+  background: #e9ede7;
+}
+.session-bar label,
+.workflow-actions label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.workflow-card {
+  background: #fffefa;
+  border: 1px solid #d4dbd1;
+  border-radius: 10px;
+  padding: 22px;
+  margin: 18px 0;
+}
+.workflow-card h2 {
+  margin-top: 0;
+  font-size: 21px;
+}
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.workflow-table {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+}
+th,
+td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #d4dbd1;
+}
+button,
+select,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  padding: 8px 14px;
+  border: 1px solid #8a9d91;
+  border-radius: 6px;
+  background: #fffefa;
+  color: #233d40;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

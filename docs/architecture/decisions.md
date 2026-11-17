@@ -52,3 +52,12 @@ Consumer impact: Rushitha reviews additive storage and the migration based on `3
 At the implementation owner's request, extend ADR-006's deterministic coordinator with an AI Orchestrator Agent. It observes sanitized persisted state, asks the existing shared model for a structured tool call, validates the action against current versions/deadlines/allowlists and persists its decision with a durable dispatch command. Matching/reservation worker effects retain their transaction guards. New observations include previous outcomes so the agent can retry, defer, refresh or escalate rather than merely describe a fixed router.
 
 The shared provider/key/model configuration is unchanged. Rules, fallback and rejected plans are explicitly identified. Planning uses the existing workflow-step JSONB storage, separate leases and fencing tokens, so no migration or new agent framework is needed. See the [agent implementation contract](../features/orchestrator-agent.md). Shared wire changes require review by the API/UI consumers; lifecycle and eligibility authority remain deterministic.
+
+
+## 017 — Browser BFF sessions, SMTP and an isolated release profile
+
+Use OIDC authorization code + PKCE through the existing gateway, with opaque HttpOnly browser cookies and tokens in private Redis sessions. Validate state/nonce, serialize refresh and retain server-managed memberships. This reuses the existing JWT/JWKS verifier and avoids introducing browser token storage or trusting role claims for application provisioning.
+
+Use a bounded standard-library SMTP adapter behind the existing durable notification port. Store consent-attested contacts separately from queue payloads. Stable Message-ID values correlate retries but do not imply SMTP exactly-once delivery. The local acceptance profile uses real Keycloak and Mailpit with synthetic identities/addresses and separate ports/volumes.
+
+Ship a separate production profile with a compiled static frontend/TLS gateway, self-hosted identity, protected metrics and backup/isolated-restore/image rollback tools. Public hosting, sender verification and authenticated release acceptance remain explicit deployment gates. See the [release integration](../features/release-integration.md).

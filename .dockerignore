@@ -9,3 +9,9 @@ __pycache__
 .pytest_cache
 .ruff_cache
 output
+
+deploy/runtime
+deploy/backups
+deploy/releases
+apps/web/test-results
+apps/web/playwright-report

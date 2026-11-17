@@ -232,3 +232,8 @@ output/
 # Browser verification artifacts
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Private deployment credentials and database exports
+/deploy/runtime/
+/deploy/backups/
+/deploy/releases/

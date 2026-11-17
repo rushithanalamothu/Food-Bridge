@@ -2,9 +2,13 @@
 
 This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake and Tej's backend workflow are implemented. Live matching/data services and complete client integration remain pending. Dates should be assigned by the team; do not invent delivery commitments.
 
+## Release integration update
+
+The [release integration](../features/release-integration.md) adds OIDC browser sessions and membership selection, SMTP with consent-attested contacts, operator donation/history reads, driver delivery details, connected driver/operations pages and self-hosted deployment/backup/restore/rollback tooling. Public hosting, real sender acceptance, production matching/routing and the recipient workspace remain unverified or pending. The phase tables below are acceptance gates, not an assertion of final release completion.
+
 ## Implemented Tej workflow
 
-[Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These tests do not certify Rushitha's live M01–M03 implementation, Mithil's W02–W04 screens or shared-cloud promotion. F03 now resolves all active role memberships; identity-provider selection/provisioning and browser login remain pending. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
+[Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These tests do not certify Rushitha's live M01–M03 implementation, Mithil's W02–W04 screens or shared-cloud promotion. F03 now resolves all active role memberships; OIDC browser login is implemented in the release integration; live identity/user provisioning remains a deployment task. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
 
 ## Implemented intake slice
 
@@ -16,7 +20,7 @@ Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging
 
 ## Shared AI integration rule
 
-The app-wide provider client is implemented for intake. Future M03 ranking and any other model-backed feature must reuse `integrations.ai.generate_structured` and `Settings.ai_*`; they must not add their own provider/key/model settings. Configure the key once using [shared AI setup](../setup.md#shared-ai-configuration). Prompts/output types remain feature-specific, and model output must still pass domain constraints. This does not mark matching/ranking or the full donation pipeline implemented.
+The app-wide provider client is implemented for intake and the AI Orchestrator. Future M03 ranking and any other model-backed feature must reuse `integrations.ai.generate_structured` and `Settings.ai_*`; they must not add their own provider/key/model settings. Configure the key once using [shared AI setup](../setup.md#shared-ai-configuration). Prompts/output types remain feature-specific, and model output must still pass domain constraints. This does not mark matching/ranking or the full donation pipeline implemented.
 
 ## Phase 0 — Shared foundation (initial scaffold)
 

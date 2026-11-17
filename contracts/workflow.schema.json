@@ -32,6 +32,49 @@
       "title": "Actor",
       "type": "object"
     },
+    "BrowserSessionRead": {
+      "additionalProperties": false,
+      "properties": {
+        "authenticated": {
+          "title": "Authenticated",
+          "type": "boolean"
+        },
+        "login_enabled": {
+          "title": "Login Enabled",
+          "type": "boolean"
+        },
+        "memberships": {
+          "items": {
+            "$ref": "#/$defs/SessionMembership"
+          },
+          "title": "Memberships",
+          "type": "array"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "oidc",
+                "local_demo"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        }
+      },
+      "required": [
+        "authenticated",
+        "login_enabled",
+        "memberships"
+      ],
+      "title": "BrowserSessionRead",
+      "type": "object"
+    },
     "DeliveryConfirmation": {
       "additionalProperties": false,
       "properties": {
@@ -410,6 +453,77 @@
       "title": "FailureRead",
       "type": "object"
     },
+    "HistoryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "previous_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Previous Status"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "previous_status",
+        "status",
+        "reason",
+        "occurred_at"
+      ],
+      "title": "HistoryEntry",
+      "type": "object"
+    },
+    "HistoryPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/HistoryEntry"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Version"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "HistoryPage",
+      "type": "object"
+    },
     "Location": {
       "additionalProperties": false,
       "properties": {
@@ -588,6 +702,35 @@
         "version"
       ],
       "title": "OfferRead",
+      "type": "object"
+    },
+    "OperationsDonationPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DonationRead"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "OperationsDonationPage",
       "type": "object"
     },
     "OperationsSummary": {
@@ -989,6 +1132,17 @@
     "PickupRead": {
       "additionalProperties": false,
       "properties": {
+        "delivery_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Location"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "donation": {
           "$ref": "#/$defs/DonationRead"
         },
@@ -1012,10 +1166,34 @@
           "title": "Id",
           "type": "string"
         },
+        "recipient_organization_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipient Organization Id"
+        },
         "reservation_id": {
           "format": "uuid",
           "title": "Reservation Id",
           "type": "string"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RouteFacts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "start": {
           "format": "date-time",
@@ -1218,6 +1396,78 @@
       "title": "ReservationRead",
       "type": "object"
     },
+    "RouteFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "calculated_at": {
+          "format": "date-time",
+          "title": "Calculated At",
+          "type": "string"
+        },
+        "distance_m": {
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "estimated": {
+          "default": false,
+          "title": "Estimated",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "routing_provider",
+            "synthetic"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "travel_time_s": {
+          "minimum": 0,
+          "title": "Travel Time S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_m",
+        "travel_time_s",
+        "calculated_at",
+        "source"
+      ],
+      "title": "RouteFacts",
+      "type": "object"
+    },
+    "SessionMembership": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "organization_name": {
+          "title": "Organization Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "donor",
+            "recipient",
+            "driver",
+            "operator"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "organization_name",
+        "role"
+      ],
+      "title": "SessionMembership",
+      "type": "object"
+    },
     "StepOutcome": {
       "additionalProperties": false,
       "properties": {
@@ -1306,6 +1556,9 @@
     "actor": {
       "$ref": "#/$defs/Actor"
     },
+    "browser_session": {
+      "$ref": "#/$defs/BrowserSessionRead"
+    },
     "delivery_confirmation": {
       "$ref": "#/$defs/DeliveryConfirmation"
     },
@@ -1318,11 +1571,17 @@
     "failures": {
       "$ref": "#/$defs/FailurePage"
     },
+    "history": {
+      "$ref": "#/$defs/HistoryPage"
+    },
     "offer": {
       "$ref": "#/$defs/OfferRead"
     },
     "offers": {
       "$ref": "#/$defs/OfferPage"
+    },
+    "operations_donations": {
+      "$ref": "#/$defs/OperationsDonationPage"
     },
     "orchestrator_audit": {
       "$ref": "#/$defs/OrchestrationAudit"
@@ -1354,6 +1613,9 @@
   },
   "required": [
     "orchestrator_audit",
+    "operations_donations",
+    "history",
+    "browser_session",
     "actor",
     "version_command",
     "donation_command",

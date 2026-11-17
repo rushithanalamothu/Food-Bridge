@@ -1,3 +1,4 @@
+import { membershipHeaders, sessionExpired } from './session';
 import type {
   DonationSubmit,
   DraftCreate,
@@ -28,14 +29,17 @@ export function setIntakeAccessToken(token?: string) {
 
 export async function intakeRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
+    credentials: 'same-origin',
     ...options,
     headers: {
+      ...membershipHeaders(),
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
   });
   const body = await response.json();
+  if (response.status === 401) sessionExpired();
   if (!response.ok)
     throw new IntakeApiError(
       body.code ?? 'request_failed',

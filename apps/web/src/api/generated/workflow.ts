@@ -3,6 +3,13 @@
 export type OrganizationId = string;
 export type Role = 'donor' | 'recipient' | 'driver' | 'operator';
 export type UserId = string;
+export type Authenticated = boolean;
+export type LoginEnabled = boolean;
+export type OrganizationId1 = string;
+export type OrganizationName = string;
+export type Role1 = 'donor' | 'recipient' | 'driver' | 'operator';
+export type Memberships = SessionMembership[];
+export type Mode = ('oidc' | 'local_demo') | null;
 export type DeliveryConfirmed = true;
 export type ExpectedVersion = number;
 export type Reason = string | null;
@@ -17,6 +24,13 @@ export type ReplayCount = number;
 export type StepId = string;
 export type Items = FailureRead[];
 export type NextCursor = string | null;
+export type OccurredAt = string;
+export type PreviousStatus = string | null;
+export type Reason2 = string;
+export type Status = string;
+export type Version = number;
+export type Items1 = HistoryEntry[];
+export type NextVersion = number | null;
 export type Algorithm = 'distance_only' | 'multi_criteria';
 export type DistanceM = number;
 export type DonationId1 = string;
@@ -29,14 +43,54 @@ export type OfferExpiresAt = string;
 export type RankingConfigVersion = string;
 export type RecipientOrganizationId = string;
 export type TravelTimeS = number;
-export type Status = 'offered' | 'accepted' | 'declined' | 'expired' | 'superseded';
-export type Version = number;
-export type Items1 = OfferRead[];
+export type Status1 = 'offered' | 'accepted' | 'declined' | 'expired' | 'superseded';
+export type Version1 = number;
+export type Items2 = OfferRead[];
 export type NextCursor1 = string | null;
+/**
+ * Explicitly confirmed; [] means none declared.
+ */
+export type Allergens = string[];
+export type Category = 'prepared_meals' | 'produce' | 'bakery' | 'dairy' | 'pantry' | 'other';
+export type CreatedAt1 = string;
+export type Description = string;
+export type DietaryTags = string[];
+export type DonorOrganizationId = string;
+export type FoodName = string;
+export type HandlingNotes = string;
+export type Id2 = string;
+export type PackagingType = ('boxed' | 'sealed' | 'bulk' | 'other') | null;
+export type Address = string;
+export type Latitude = number;
+export type Longitude = number;
+export type Timezone = string;
+export type End = string;
+export type Start = string;
+export type Portions = number | null;
+export type QuantityKg = number;
+export type SafeUseBy = string;
+export type DonationStatus =
+  | 'draft'
+  | 'submitted'
+  | 'needs_review'
+  | 'matching'
+  | 'offered'
+  | 'reserved'
+  | 'pickup_assigned'
+  | 'picked_up'
+  | 'delivered'
+  | 'no_match'
+  | 'expired'
+  | 'cancelled'
+  | 'failed';
+export type Storage = 'ambient' | 'chilled' | 'frozen';
+export type Version2 = number;
+export type Items3 = DonationRead[];
+export type NextCursor2 = string | null;
 export type DecidedAt = string;
 export type FailureCode = string | null;
 export type Generation = number;
-export type Mode = 'model' | 'rules' | 'fallback' | 'rejected';
+export type Mode1 = 'model' | 'rules' | 'fallback' | 'rejected';
 export type Model = string | null;
 export type AllowedTools = (
   | 'prepare_candidates'
@@ -48,11 +102,11 @@ export type AllowedTools = (
   | 'escalate_operator'
 )[];
 export type Attempts1 = number;
-export type DonationStatus = string;
+export type DonationStatus1 = string;
 export type DonationVersion1 = number;
 export type FailureCode1 = string | null;
 export type MatchingRound1 = number;
-export type Mode1 = 'model' | 'rules' | 'fallback' | 'rejected';
+export type Mode2 = 'model' | 'rules' | 'fallback' | 'rejected';
 export type Outcome = 'dispatched' | 'deferred' | 'escalated' | 'revalidated' | 'stale';
 export type Tool =
   | 'prepare_candidates'
@@ -65,7 +119,7 @@ export type Tool =
 export type Attempts2 = number;
 export type FailureCode2 = string | null;
 export type Kind = string;
-export type Status1 = string;
+export type Status2 = string;
 export type PreviousOutcomes = StepOutcome[];
 export type RetryBudget = number;
 export type SecondsRemaining = number;
@@ -90,63 +144,31 @@ export type PromptVersion = string;
 export type Provider = string;
 export type Decisions = OrchestrationDecision[];
 export type DonationId2 = string;
-export type Status2 = string;
+export type Status3 = string;
 export type StepId3 = string;
-/**
- * Explicitly confirmed; [] means none declared.
- */
-export type Allergens = string[];
-export type Category = 'prepared_meals' | 'produce' | 'bakery' | 'dairy' | 'pantry' | 'other';
-export type CreatedAt1 = string;
-export type Description = string;
-export type DietaryTags = string[];
-export type DonorOrganizationId = string;
-export type FoodName = string;
-export type HandlingNotes = string;
-export type Id2 = string;
-export type PackagingType = ('boxed' | 'sealed' | 'bulk' | 'other') | null;
-export type Address = string;
-export type Latitude = number;
-export type Longitude = number;
-export type Timezone = string;
-export type End = string;
-export type Start = string;
-export type Portions = number | null;
-export type QuantityKg = number;
-export type SafeUseBy = string;
-export type DonationStatus1 =
-  | 'draft'
-  | 'submitted'
-  | 'needs_review'
-  | 'matching'
-  | 'offered'
-  | 'reserved'
-  | 'pickup_assigned'
-  | 'picked_up'
-  | 'delivered'
-  | 'no_match'
-  | 'expired'
-  | 'cancelled'
-  | 'failed';
-export type Storage = 'ambient' | 'chilled' | 'frozen';
-export type Version1 = number;
 export type DonationId3 = string;
 export type DriverId = string;
 export type End1 = string;
 export type Id3 = string;
+export type RecipientOrganizationId1 = string | null;
 export type ReservationId = string;
+export type CalculatedAt = string;
+export type DistanceM1 = number;
+export type Estimated = boolean;
+export type Source = 'routing_provider' | 'synthetic';
+export type TravelTimeS1 = number;
 export type Start1 = string;
-export type Status3 =
+export type Status4 =
   'assigned' | 'accepted' | 'declined' | 'collected' | 'delivered' | 'released' | 'failed';
-export type Version2 = number;
+export type Version3 = number;
 export type ExpectedVersion1 = number;
 export type HandlingConfirmed = true;
 export type ObservedQuantityKg = number;
-export type Reason2 = string | null;
-export type Items2 = PickupRead[];
-export type NextCursor2 = string | null;
+export type Reason3 = string | null;
+export type Items4 = PickupRead[];
+export type NextCursor3 = string | null;
 export type FailureId = string;
-export type Status4 = 'queued';
+export type Status5 = 'queued';
 export type StepId4 = string;
 export type CreatedAt2 = string;
 export type DonationId4 = string;
@@ -154,33 +176,36 @@ export type DonationVersion3 = number;
 export type Id4 = string;
 export type MatchId = string;
 export type QuantityKg1 = number;
-export type RecipientOrganizationId1 = string;
-export type Status5 = 'active' | 'released' | 'completed' | 'failed';
+export type RecipientOrganizationId2 = string;
+export type Status6 = 'active' | 'released' | 'completed' | 'failed';
 export type Storage1 = string;
-export type Version3 = number;
+export type Version4 = number;
 export type AggregateId = string;
 export type AggregateVersion = number;
 export type CorrelationId = string;
 export type EventId = string;
 export type EventType = string;
-export type OccurredAt = string;
+export type OccurredAt1 = string;
 export type SchemaVersion = 1;
 export type Sequence = number;
 export type DeliveredCount = number;
 export type DeliveredKg = number;
-export type OrganizationId1 = string;
+export type OrganizationId2 = string;
 export type Synthetic = boolean;
 export type ExpectedVersion2 = number;
-export type Reason3 = string | null;
+export type Reason4 = string | null;
 
 export interface WorkflowContracts {
   actor: Actor;
+  browser_session: BrowserSessionRead;
   delivery_confirmation: DeliveryConfirmation;
   donation_command: DonationCommand;
   failure: FailureRead;
   failures: FailurePage;
+  history: HistoryPage;
   offer: OfferRead;
   offers: OfferPage;
+  operations_donations: OperationsDonationPage;
   orchestrator_audit: OrchestrationAudit;
   pickup: PickupRead;
   pickup_confirmation: PickupConfirmation;
@@ -195,6 +220,17 @@ export interface Actor {
   organization_id: OrganizationId;
   role: Role;
   user_id: UserId;
+}
+export interface BrowserSessionRead {
+  authenticated: Authenticated;
+  login_enabled: LoginEnabled;
+  memberships: Memberships;
+  mode?: Mode;
+}
+export interface SessionMembership {
+  organization_id: OrganizationId1;
+  organization_name: OrganizationName;
+  role: Role1;
 }
 export interface DeliveryConfirmation {
   delivery_confirmed: DeliveryConfirmed;
@@ -218,10 +254,21 @@ export interface FailurePage {
   items: Items;
   next_cursor?: NextCursor;
 }
-export interface OfferRead {
-  recommendation: MatchRecommendation;
+export interface HistoryPage {
+  items: Items1;
+  next_version?: NextVersion;
+}
+export interface HistoryEntry {
+  occurred_at: OccurredAt;
+  previous_status: PreviousStatus;
+  reason: Reason2;
   status: Status;
   version: Version;
+}
+export interface OfferRead {
+  recommendation: MatchRecommendation;
+  status: Status1;
+  version: Version1;
 }
 export interface MatchRecommendation {
   algorithm: Algorithm;
@@ -238,71 +285,12 @@ export interface MatchRecommendation {
   travel_time_s: TravelTimeS;
 }
 export interface OfferPage {
-  items: Items1;
+  items: Items2;
   next_cursor?: NextCursor1;
 }
-export interface OrchestrationAudit {
-  decisions: Decisions;
-  donation_id: DonationId2;
-  status: Status2;
-  step_id: StepId3;
-}
-export interface OrchestrationDecision {
-  decided_at: DecidedAt;
-  failure_code: FailureCode;
-  generation: Generation;
-  mode: Mode;
-  model: Model;
-  observation: OrchestrationObservation;
-  outcome: Outcome1;
-  plan: OrchestrationPlan;
-  prompt_version: PromptVersion;
-  provider: Provider;
-}
-export interface OrchestrationObservation {
-  allowed_tools: AllowedTools;
-  attempts: Attempts1;
-  donation_status: DonationStatus;
-  donation_version: DonationVersion1;
-  failure_code: FailureCode1;
-  matching_round: MatchingRound1;
-  previous_decision?: PlanFeedback | null;
-  previous_outcomes: PreviousOutcomes;
-  retry_budget: RetryBudget;
-  seconds_remaining: SecondsRemaining;
-  stage: Stage;
-  step_id: StepId1;
-  urgency: Urgency;
-}
-export interface PlanFeedback {
-  mode: Mode1;
-  outcome: Outcome;
-  tool: Tool;
-}
-export interface StepOutcome {
-  attempts: Attempts2;
-  failure_code: FailureCode2;
-  kind: Kind;
-  status: Status1;
-}
-export interface OrchestrationPlan {
-  delay_s: DelayS;
-  donation_version: DonationVersion2;
-  matching_round: MatchingRound2;
-  step_id: StepId2;
-  summary: Summary;
-  tool: Tool1;
-}
-export interface PickupRead {
-  donation: DonationRead;
-  donation_id: DonationId3;
-  driver_id: DriverId;
-  end: End1;
-  id: Id3;
-  reservation_id: ReservationId;
-  start: Start1;
-  status: Status3;
-  version: Version2;
+export interface OperationsDonationPage {
+  items: Items3;
+  next_cursor?: NextCursor2;
 }
 export interface DonationRead {
   allergens: Allergens;
@@ -320,9 +308,9 @@ export interface DonationRead {
   portions?: Portions;
   quantity_kg: QuantityKg;
   safe_use_by: SafeUseBy;
-  status: DonationStatus1;
+  status: DonationStatus;
   storage: Storage;
-  version: Version1;
+  version: Version2;
 }
 export interface Location {
   address: Address;
@@ -334,19 +322,92 @@ export interface PickupWindow {
   end: End;
   start: Start;
 }
+export interface OrchestrationAudit {
+  decisions: Decisions;
+  donation_id: DonationId2;
+  status: Status3;
+  step_id: StepId3;
+}
+export interface OrchestrationDecision {
+  decided_at: DecidedAt;
+  failure_code: FailureCode;
+  generation: Generation;
+  mode: Mode1;
+  model: Model;
+  observation: OrchestrationObservation;
+  outcome: Outcome1;
+  plan: OrchestrationPlan;
+  prompt_version: PromptVersion;
+  provider: Provider;
+}
+export interface OrchestrationObservation {
+  allowed_tools: AllowedTools;
+  attempts: Attempts1;
+  donation_status: DonationStatus1;
+  donation_version: DonationVersion1;
+  failure_code: FailureCode1;
+  matching_round: MatchingRound1;
+  previous_decision?: PlanFeedback | null;
+  previous_outcomes: PreviousOutcomes;
+  retry_budget: RetryBudget;
+  seconds_remaining: SecondsRemaining;
+  stage: Stage;
+  step_id: StepId1;
+  urgency: Urgency;
+}
+export interface PlanFeedback {
+  mode: Mode2;
+  outcome: Outcome;
+  tool: Tool;
+}
+export interface StepOutcome {
+  attempts: Attempts2;
+  failure_code: FailureCode2;
+  kind: Kind;
+  status: Status2;
+}
+export interface OrchestrationPlan {
+  delay_s: DelayS;
+  donation_version: DonationVersion2;
+  matching_round: MatchingRound2;
+  step_id: StepId2;
+  summary: Summary;
+  tool: Tool1;
+}
+export interface PickupRead {
+  delivery_location?: Location | null;
+  donation: DonationRead;
+  donation_id: DonationId3;
+  driver_id: DriverId;
+  end: End1;
+  id: Id3;
+  recipient_organization_id?: RecipientOrganizationId1;
+  reservation_id: ReservationId;
+  route?: RouteFacts | null;
+  start: Start1;
+  status: Status4;
+  version: Version3;
+}
+export interface RouteFacts {
+  calculated_at: CalculatedAt;
+  distance_m: DistanceM1;
+  estimated?: Estimated;
+  source: Source;
+  travel_time_s: TravelTimeS1;
+}
 export interface PickupConfirmation {
   expected_version: ExpectedVersion1;
   handling_confirmed: HandlingConfirmed;
   observed_quantity_kg: ObservedQuantityKg;
-  reason?: Reason2;
+  reason?: Reason3;
 }
 export interface PickupPage {
-  items: Items2;
-  next_cursor?: NextCursor2;
+  items: Items4;
+  next_cursor?: NextCursor3;
 }
 export interface ReplayResult {
   failure_id: FailureId;
-  status?: Status4;
+  status?: Status5;
   step_id: StepId4;
 }
 export interface ReservationRead {
@@ -356,10 +417,10 @@ export interface ReservationRead {
   id: Id4;
   match_id: MatchId;
   quantity_kg: QuantityKg1;
-  recipient_organization_id: RecipientOrganizationId1;
-  status: Status5;
+  recipient_organization_id: RecipientOrganizationId2;
+  status: Status6;
   storage: Storage1;
-  version: Version3;
+  version: Version4;
 }
 export interface StreamItem {
   event: EventEnvelope;
@@ -374,7 +435,7 @@ export interface EventEnvelope {
   correlation_id: CorrelationId;
   event_id: EventId;
   event_type: EventType;
-  occurred_at: OccurredAt;
+  occurred_at: OccurredAt1;
   payload: Payload;
   schema_version?: SchemaVersion;
 }
@@ -386,7 +447,7 @@ export interface OperationsSummary {
   delivered_count: DeliveredCount;
   delivered_kg: DeliveredKg;
   notification_counts_by_status?: NotificationCountsByStatus;
-  organization_id: OrganizationId1;
+  organization_id: OrganizationId2;
   synthetic: Synthetic;
 }
 export interface CountsByStatus {
@@ -397,5 +458,5 @@ export interface NotificationCountsByStatus {
 }
 export interface VersionCommand {
   expected_version: ExpectedVersion2;
-  reason?: Reason3;
+  reason?: Reason4;
 }

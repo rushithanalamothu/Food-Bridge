@@ -62,6 +62,9 @@ class ReservationService:
             start=row.start,
             end=row.end,
             donation=snapshot(donation, now),
+            recipient_organization_id=row.candidate.get("recipient", {}).get("organization_id"),
+            delivery_location=row.candidate.get("recipient", {}).get("location"),
+            route=row.candidate.get("route"),
         ).model_dump(mode="json")
 
     def eligible(self, session, donation, offer, now, *, lock=False, driver_facts=None):
@@ -206,9 +209,16 @@ class ReservationService:
 
         def apply(session, now):
             row = session.get(Reservation, reservation_id)
-            if row is None or row.recipient_organization_id != actor.organization_id:
+            if row is None:
                 raise AppError("not_found", "Not found.", 404)
             donation = locked_donation(session, row.donation_id)
+            scope = (
+                donation.donor_organization_id
+                if actor.role == "operator"
+                else row.recipient_organization_id
+            )
+            if scope != actor.organization_id:
+                raise AppError("not_found", "Not found.", 404)
             session.refresh(row)
             require_version(row, body.expected_version)
             if row.status != "active" or donation.status not in {"reserved", "pickup_assigned"}:

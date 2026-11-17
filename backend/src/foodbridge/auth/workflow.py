@@ -7,7 +7,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 
-from foodbridge.auth.identity import DEMO_SUBJECT, verified_subject
+from foodbridge.auth.identity import DEMO_SUBJECT, request_subject
 from foodbridge.db.models import Membership, Organization, User
 from foodbridge.db.session import session_factory
 from foodbridge.domain.errors import AppError
@@ -21,15 +21,16 @@ def current_actor(
     ],
 ) -> Actor:
     settings = request.app.state.settings
-    authorization = request.headers.get("authorization", "")
     selected_role = request.headers.get("x-foodbridge-role")
     selected_org = request.headers.get("x-organization-id")
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token.strip():
-            raise AppError("invalid_token", "A bearer access token is required.", 401)
-        subject = verified_subject(token, settings)
-    elif settings.environment == "local" and settings.enable_local_workflow_demo:
+    subject = request_subject(request)
+    if subject is not None:
+        pass
+    elif (
+        settings.environment == "local"
+        and settings.enable_local_workflow_demo
+        and not settings.browser_auth_enabled
+    ):
         role = selected_role or "donor"
         subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:workflow-demo:{role}"
     else:

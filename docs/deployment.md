@@ -1,10 +1,10 @@
 # Deployment and operational plan
 
-The Compose file is a local development profile. Cloud provider/host selection remains a team task. Do not expose its example database credentials, unauthenticated placeholder routes or Vite dev server publicly.
+The root Compose file is a local development profile. A separate [release integration](features/release-integration.md) adds `deploy/compose.production.yml`, a static frontend/TLS gateway, self-hosted OIDC, SMTP, protected metrics and backup/restore/image rollback tools. Those artifacts require a configured host and acceptance evidence before shared deployment is considered verified. Cloud provider/host selection remains a team task. Do not expose its example database credentials, unauthenticated placeholder routes or Vite dev server publicly.
 
 ## Current foundation versus planned operations
 
-Current: health/dependency probes, intake, role-scoped JWT memberships, durable orchestration/expiry recovery, reservation/capacity, driver pickup/delivery, sandbox notification delivery, authenticated SSE replay and local Compose/CI wiring. See the [workflow runbook](features/workflow.md). Pending: live matching/routing/data services, identity-provider provisioning/browser login, complete recipient/driver UI, real notification delivery, broader metrics/error budgets and shared demo hosting. Local smoke evidence does not certify shared-cloud deployment.
+Current: health/dependency probes, intake, role-scoped JWT memberships, durable orchestration/expiry recovery, reservation/capacity, driver pickup/delivery, sandbox notification delivery, authenticated SSE replay and local Compose/CI wiring. See the [workflow runbook](features/workflow.md). Pending: live matching/routing/data services, real identity/user provisioning, complete recipient UI, public sender delivery verification, external alert routing/error budgets and shared demo hosting. Local smoke evidence does not certify shared-cloud deployment.
 
 ## Promotion order
 

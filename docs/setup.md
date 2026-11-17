@@ -21,14 +21,14 @@ uv run alembic -c backend/alembic.ini upgrade head
 Then separate terminals:
 
 ```sh
-uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 ```sh
 npm run dev
 ```
 
-Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission; other role pages are placeholders. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
+Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission. Driver and operations screens connect workflow commands and SSE; the recipient/profile workspace remains pending. See the [release integration](features/release-integration.md) for browser login and the isolated SMTP test stack. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
 
 A worker example:
 
@@ -36,7 +36,7 @@ A worker example:
 make worker QUEUE=intake
 ```
 
-Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. General orchestration, matching and reservation business handlers remain planned; their probes only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
+Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration and reservation/pickup business handlers are implemented. Matching has queue integration tasks, while production candidate/routing/ranking remains an explicitly unavailable adapter until integrated. On macOS, prefer containerized workers when testing process termination/limits.
 
 ## Entire stack in containers
 
@@ -63,7 +63,7 @@ Use `openai` for OpenAI/GPT or `anthropic` for Claude instead of `gemini`. `FOOD
 
 These settings apply to the API and every worker; donors and other roles do not configure separate model providers. After edits, restart native backend processes or run `docker compose up --build -d`. Keep `.env` private; never add keys to frontend `VITE_*` variables. Existing `FOODBRIDGE_EXTRACTION_*` variables are compatibility aliases for the global settings; replace them with `FOODBRIDGE_AI_*` in new setups. See [provider options and fallback behavior](features/intake.md#extraction-modes) for defaults and OpenAI-compatible endpoints.
 
-When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client today; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
+When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake and the AI Orchestrator use this client; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
 
 ## Checks
 
