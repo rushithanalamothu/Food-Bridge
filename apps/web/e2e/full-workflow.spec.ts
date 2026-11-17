@@ -41,6 +41,10 @@ test('real full browser workflow: donor -> receiver -> driver -> delivery -> sta
     page.getByText('Reservation confirmed. Driver coordination is underway.'),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Driver', exact: true }).click();
+  await expect(page).toHaveURL(/\/driver$/);
+  await expect(
+    page.getByRole('heading', { name: 'Every pickup makes a difference.' }),
+  ).toBeVisible();
   const driver = page
     .locator('article')
     .filter({ has: page.getByRole('heading', { name, exact: true }) });
@@ -61,6 +65,9 @@ test('real full browser workflow: donor -> receiver -> driver -> delivery -> sta
   );
   await expect(page.getByRole('region', { name: 'Donation history' })).toContainText('Delivered');
   await page.getByRole('link', { name: 'Operations', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'The whole picture. Every handoff.' }),
+  ).toBeVisible();
   await expect(page.getByText('Synthetic demonstration data', { exact: false })).toBeVisible();
   const board = page
     .locator('article')
