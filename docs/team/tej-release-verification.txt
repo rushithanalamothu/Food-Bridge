@@ -1,9 +1,11 @@
 TEJ KIRAN — RELEASE INTEGRATION AND VERIFICATION
 Verified November 17, 2026 (America/Los_Angeles)
-Implementation commit: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
+Initial implementation: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
+Integrated upstream main: 298030fb089bb905acf42b935e6288f4a413d804
+Review: https://github.com/rushithanalamothu/Food-Bridge/pull/11 (draft)
 Branch: feat/tej-release-integration
 
-WHAT WAS IMPLEMENTED
+WHAT TEJ ADDED TO THE EXISTING WORKFLOW
 1. Real OIDC browser login through the gateway, authorization code + PKCE,
    state/nonce and signed-token checks, server-side Redis sessions, serialized
    refresh, application logout/revocation, CSRF protection, and role/org selection.
@@ -13,13 +15,16 @@ WHAT WAS IMPLEMENTED
    configuration, bounded calls, stable message IDs, consent-attested contacts,
    destination/domain checks and retry/receipt persistence. Mailpit captures
    local test mail; no public email or SMS was sent.
-3. Operator donation snapshots and paginated status history, scoped by donor org.
-   Failure/replay and AI audit APIs are connected to an operations screen.
-4. Driver delivery location and timestamped route detail; an assignment screen
-   supports accept/decline, explicit handling/quantity confirmation and delivery.
-5. Live frontend snapshot refresh through authorized SSE, immediate connection
-   flush, visible disconnect state, replay/reconnect reconciliation and session
-   expiry handling. Existing donor review now uses the selected verified identity.
+3. Additional operator donation snapshots and paginated status history, scoped by
+   donor org. The merged operations screen uses Mithil’s workflow detail/board
+   APIs plus existing failure/replay and AI audit APIs. Both read paths are tested.
+4. Saved driver delivery location and timestamped route detail. Mithil’s merged
+   assignment screen supports accept/decline, explicit handling/quantity confirmation
+   and delivery; this release verifies it with the server-managed login identity.
+5. Server-managed login integrated with Mithil’s existing role navigation,
+   organization selection and live SSE screens. Added immediate SSE connection
+   flush and session-service failure handling. Preserved his SDK login, receiving
+   preferences, pagination, snapshot reconciliation and responsive screen designs.
 6. Static production frontend/TLS gateway, a separate self-hosted production
    profile, Keycloak provisioning templates, password-protected private Redis,
    protected operational metrics/Prometheus rules, private configuration generation,
@@ -28,15 +33,18 @@ WHAT WAS IMPLEMENTED
    driver/operations, production gateway checks and restore verification.
 
 FINAL VERIFICATION RESULTS
-- make check: PASS, including 206 Python unit tests, 7 frontend tests,
+- make check: PASS, including 210 Python unit tests, 14 frontend tests,
   formatting, types, frontend build, generated contract drift, docs and Compose.
-- Real PostgreSQL/PostGIS/Redis integration suite: 54 PASS.
+- Real PostgreSQL/PostGIS/Redis integration suite: 59 PASS.
 - Release browser acceptance: 1 PASS in a Linux Playwright container.
-  This exercised real Keycloak login/cookies, donor description/review UI,
-  confirmed donation and recipient reservation APIs, driver pickup/delivery UI,
-  operations history/decisions UI, cross-org denial, CSRF rejection, fresh SMTP
+  This exercised real Keycloak login/cookies, donor description/review/confirmation
+  and posting UI, receiver offer acceptance UI, driver pickup/delivery UI, operations
+  history UI and orchestrator audit API, cross-org denial, CSRF rejection, fresh SMTP
   inbox messages, SSE disconnect/reconnect, mobile width and actual logout.
-  Recipient acceptance is API-driven because its screen is another workstream.
+- Frontend browser regressions: 17 PASS (SDK login/callback, role workspaces,
+  receiver preferences, SSE recovery, pagination, accessibility, server sessions,
+  failed logout and session-service failure behavior). These use explicit fixtures.
+- Total completed browser checks: 18 (17 fixture regressions + 1 real release flow).
 - Clean backend image build: PASS.
 - Production static frontend image build: PASS.
 - Production Compose configuration validation: PASS.
@@ -59,7 +67,8 @@ Username: tej-demo
 Password: foodbridge-local-only
 These credentials are public, synthetic, local-only fixtures.
 
-Select the driver or operator membership in “Workspace identity.”
+Use the Donor, Receiver, Driver and Operations navigation links.
+If you have multiple organizations for one role, use “Choose organization.”
 Driver page: assignments and confirmed handoffs.
 Operations page: donation states, quantities, history, failures and decisions.
 SMTP test inbox: http://localhost:58025
@@ -73,7 +82,7 @@ From the repository root:
   FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
   FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
 
-See docs/features/release-integration.md for prerequisites, the Linux test proxy,
+See docs/features/release-integration.md for prerequisites,
 trusted provisioning, SMTP settings, deployment commands and restore safeguards.
 Do not overwrite your saved .env. Its Gemini key was not changed or committed.
 This release test uses rules mode and controlled model responses; no new claim
@@ -88,7 +97,8 @@ WHAT IS STILL EXTERNAL OR TEAM-DEPENDENT
   Local SMTP delivery is verified; public inbox delivery and SMS are not claimed.
 - Rushitha's production matching/routing/data services and matching evaluation
   remain separate deliverables. The local acceptance uses synthetic matching.
-- Mithil's recipient/profile workspace and remaining team UI work are separate.
+- Mithil’s role/profile screens are merged and preserved. Any additional UI
+  enhancements remain coordinated with him; they are not claimed as Tej’s work.
 - Cross-owner review is needed for the contact migration, shared contracts,
   authentication handoff and shared driver/operations screens before main merge.
 
@@ -96,3 +106,16 @@ ACCURATE STATUS
 The remaining implementation and local validation for Tej's release slice are
 complete. Public deployment/provider acceptance remains open until the required
 accounts/environment and other owners' production integrations are supplied.
+
+INTEGRATION AND CREDIT
+- Upstream main advanced during implementation: Mithil’s role application PR #9
+  was merged. This branch integrates that merge and keeps his UI/client work.
+- Tej’s contribution is the gateway login/session path, SMTP/contact delivery,
+  additive backend reads/guards, deployment/operations tooling and release testing.
+- Existing Mokshith intake rules and donor confirmation remain authoritative.
+- Existing Tej AI orchestrator, dispatch/retries, reservation locking, pickup and
+  failure recovery remain in place; this change does not introduce another AI key.
+- Matching in this local acceptance is explicitly synthetic. Rushitha’s production
+  data/routing/ranking is a separate workstream. No AI improvement is inferred.
+- Earlier reports are historical snapshots. This note supersedes their claims that
+  recipient UI/browser login/external notification implementation was still absent.

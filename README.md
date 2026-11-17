@@ -12,14 +12,14 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 
 **AI Orchestrator Agent:** [model planning, supported tools, decision audit and shared AI setup](docs/features/orchestrator-agent.md).
 
-**Release integration:** [browser login, SMTP, driver/operations screens and self-hosted deployment](docs/features/release-integration.md).
+**Login, email and deployment:** [Tej’s release integration and local acceptance stack](docs/features/release-integration.md), with [verification notes](docs/team/tej-release-verification.txt).
 
 **Start here:** [setup](docs/setup.md) → [system design](docs/design.md) → [your workstream](docs/team/ownership.md) → [first tasks](docs/team/implementation-plan.md).
 
 ## What runs today
 
 - FastAPI health, donor identity, persisted draft/confirmation, donation snapshots and intake evaluation endpoints.
-- React donor flow plus connected driver/operations workspaces and OIDC session/membership selection; recipient/profile workspace remains pending.
+- React donor intake/tracking, receiver offers, driver pickup/delivery, operations dashboards and authenticated frontend SSE. See [web applications and integration limits](apps/web/README.md).
 - Four worker queues, intake eligibility, durable orchestration/recovery and notification workers.
 - Transactional reservation/capacity accounting, driver assignment, pickup/delivery and scoped status APIs.
 - Authenticated SSE replay, failure/replay operations, and an explicit local synthetic full-workflow smoke.
@@ -27,7 +27,7 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, receiving-profile update services, the recipient screen, configured public sender/identity accounts and shared-host acceptance remain team integration work. SMTP and self-hosted OIDC integration code are implemented; a live host is not yet provisioned. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
+**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, public sender delivery and shared hosting remain team integration work. The release profile adds real self-hosted Keycloak login, server-side cookie sessions and an SMTP adapter verified against a local test inbox; public deployment still requires a host/domain and sender account. Role application read models, receiver preference editing and membership selection are implemented in PR #9. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
 
 ## Local start
 

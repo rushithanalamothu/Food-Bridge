@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { locationInput } from '../src/api/time';
 
 let cleanup: (() => Promise<void>) | undefined;
 test.afterEach(async () => {
@@ -15,11 +16,11 @@ test('OIDC login, scoped operations, driver delivery, SMTP capture and logout', 
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('link', { name: 'Sign in to FoodBridge' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.locator('#username').fill('tej-demo');
   await page.locator('#password').fill('foodbridge-local-only');
   await page.locator('#kc-login').click();
-  await expect(page.getByText('Signed in', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of FoodBridge' })).toBeVisible();
   await page.getByRole('link', { name: 'Donor', exact: true }).click();
   await page
     .getByLabel('Food description')
@@ -61,35 +62,29 @@ test('OIDC login, scoped operations, driver delivery, SMTP capture and logout', 
   };
   const mailpit = process.env.FOODBRIDGE_MAILPIT_URL ?? 'http://127.0.0.1:58025';
   const beforeMail = (await (await page.request.get(`${mailpit}/api/v1/messages`)).json()).total;
-  const donor = await request('GET', '/me');
   const now = Date.now();
-  const description =
-    'Synthetic release verification: vegetarian rice, 1 kg, chilled, allergens soy.';
-  const draft = await request('POST', '/donation-drafts', 'donor', {
-    description,
-    pickup_location: donor.pickup_location,
-  });
-  const submitted = await request('POST', '/donations', 'donor', {
-    draft_id: draft.id,
-    expected_draft_version: draft.version,
-    confirmed: true,
-    donation: {
-      description,
-      food_name: foodName,
-      category: 'prepared_meals',
-      quantity_kg: 1,
-      storage: 'chilled',
-      dietary_tags: ['vegetarian'],
-      allergens: ['soy'],
-      pickup_location: donor.pickup_location,
-      pickup_window: {
-        start: new Date(now - 60000).toISOString(),
-        end: new Date(now + 7200000).toISOString(),
-      },
-      safe_use_by: new Date(now + 10800000).toISOString(),
-    },
-  });
-  const id = submitted.donation.id;
+  const zone = 'America/Los_Angeles';
+  await page.locator('#food_name').fill(foodName);
+  await page.locator('#category').selectOption('prepared_meals');
+  await page.locator('#quantity_kg').fill('1');
+  await page.locator('#storage').selectOption('chilled');
+  await page.locator('#allergens').fill('soy');
+  await page.locator('#dietary_tags').fill('vegetarian');
+  await page.locator('#start').fill(locationInput(new Date(now - 120000).toISOString(), zone));
+  await page.locator('#end').fill(locationInput(new Date(now + 3600000).toISOString(), zone));
+  await page
+    .locator('#safe_use_by')
+    .fill(locationInput(new Date(now + 7200000).toISOString(), zone));
+  await page.getByRole('checkbox').check();
+  const posted = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/v1/donations' &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Confirm and post donation', exact: true }).click();
+  const submitted = await posted;
+  expect(submitted.ok(), await submitted.text()).toBe(true);
+  const id = (await submitted.json()).donation.id;
   cleanup = async () => {
     const member = memberships.find((m) => m.role === 'donor')!;
     const headers = {
@@ -115,15 +110,13 @@ test('OIDC login, scoped operations, driver delivery, SMTP capture and logout', 
       timeout: 45000,
     })
     .toBe('offered');
-  const donated = await request('GET', `/donations/${id}`);
-  const offers = await request('GET', '/matches?limit=100', 'recipient');
-  const offer = offers.items.find(
-    (item: { recommendation: { donation_id: string } }) => item.recommendation.donation_id === id,
-  );
-  await request('POST', '/reservations', 'recipient', {
-    match_id: offer.recommendation.id,
-    expected_donation_version: donated.donation.version,
-  });
+  await page.getByRole('link', { name: 'Receiver', exact: true }).click();
+  const receiver = page.getByRole('article').filter({ hasText: foodName }).first();
+  await receiver.getByRole('button', { name: 'Accept offer', exact: true }).click();
+  await receiver.getByRole('button', { name: 'Confirm accept offer' }).click();
+  await expect(
+    page.getByText('Reservation confirmed. Driver coordination is underway.'),
+  ).toBeVisible();
   await expect
     .poll(
       async () =>
@@ -133,28 +126,35 @@ test('OIDC login, scoped operations, driver delivery, SMTP capture and logout', 
       { timeout: 45000 },
     )
     .toBe(true);
-  const driver = memberships.find((m) => m.role === 'driver')!;
-  await page.getByLabel('Workspace identity').selectOption(`${driver.organization_id}:driver`);
-  await expect(page.getByRole('heading', { name: 'Your pickups' })).toBeVisible();
+  await page.getByRole('link', { name: 'Driver', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Every pickup makes a difference.' }),
+  ).toBeVisible();
   const card = page.locator('article').filter({ hasText: foodName }).first();
-  await expect(card.getByText(/Deliver to:/)).toBeVisible();
+  await expect(card.getByText(/Deliver to /)).toBeVisible();
   await card.getByRole('button', { name: 'Accept assignment' }).click();
   await card.getByRole('checkbox').check();
   await card.getByRole('button', { name: 'Confirm pickup', exact: true }).click();
   await expect(card.getByRole('button', { name: 'Confirm delivery', exact: true })).toBeVisible();
-  await card.getByRole('checkbox').check();
+  await card.getByRole('button', { name: 'Confirm delivery', exact: true }).click();
   await card.getByRole('button', { name: 'Confirm delivery', exact: true }).click();
   await expect
     .poll(async () => (await request('GET', `/donations/${id}`)).donation.status)
     .toBe('delivered');
-  const operator = memberships.find((m) => m.role === 'operator')!;
-  await page.getByLabel('Workspace identity').selectOption(`${operator.organization_id}:operator`);
-  await expect(page.getByRole('heading', { name: 'Today’s operations' })).toBeVisible();
-  const row = page.getByRole('row').filter({ hasText: foodName }).first();
-  await expect(row).toContainText('delivered');
-  await row.getByRole('button', { name: 'View history' }).click();
-  await expect(page.getByRole('heading', { name: 'Donation history', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Orchestrator decisions' })).toBeVisible();
+  await page.getByRole('link', { name: 'Operations', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'The whole picture. Every handoff.' }),
+  ).toBeVisible();
+  const row = page.getByRole('article').filter({ hasText: foodName }).first();
+  await expect(row).toContainText('Delivered');
+  await row.getByRole('button', { name: 'View donation history' }).click();
+  await expect(page.getByRole('region', { name: 'Donation history' })).toContainText('Delivered');
+  const audits = await request(
+    'GET',
+    `/operations/orchestrator/decisions?donation_id=${id}`,
+    'operator',
+  );
+  expect(audits.length).toBeGreaterThan(0);
   const cross = await page.request.get('/api/v1/operations/donations', {
     headers: { 'X-FoodBridge-Role': 'operator', 'X-Organization-ID': randomUUID() },
   });
@@ -175,19 +175,19 @@ test('OIDC login, scoped operations, driver delivery, SMTP capture and logout', 
   await expect(page.getByRole('status').filter({ hasText: 'Live' })).toBeVisible();
   await page.route('**/api/v1/events', (route) => route.abort());
   await page.reload();
-  await expect(page.getByRole('status').filter({ hasText: 'Disconnected' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Reconnecting' })).toBeVisible();
   await page.unroute('**/api/v1/events');
   await expect(page.getByRole('status').filter({ hasText: 'Live' })).toBeVisible({
     timeout: 15000,
   });
-  await expect(page.getByRole('row').filter({ hasText: foodName }).first()).toContainText(
-    'delivered',
+  await expect(page.getByRole('article').filter({ hasText: foodName }).first()).toContainText(
+    'Delivered',
   );
   await page.screenshot({ path: 'test-results/release-operations-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 360, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Sign in to FoodBridge' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign out of FoodBridge', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   expect((await (await page.request.get('/api/v1/auth/session')).json()).authenticated).toBe(false);
   expect(errors).toEqual([]);
 });

@@ -1,7 +1,3 @@
-# Operations workspace
+# Operations workspace — Mithil
 
-Lead: Mithil. Put operations-specific routes, components and hooks here. The page now connects the workflow APIs and live snapshot refresh. See docs/features/release-integration.md for authentication, authorization and remaining team release boundaries.
-
-Use the root design/API contract and generated wire types. Backend collaborators: Tej for live status/recovery; Rushitha for measured impact/evaluation.
-
-Keep fixture/mock responses separate from live API wrappers. Do not show a successful operation until the server confirms it.
+Implemented: scoped status/notification counts and synthetic-labeled impact, newest-first donation board and durable history, failures, decision audit, replay using an authoritative donation version, pagination and live snapshots. Replay still checks state/version/deadline on the server. See `apps/web/README.md`.

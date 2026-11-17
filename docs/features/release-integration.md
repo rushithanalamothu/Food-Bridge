@@ -1,10 +1,10 @@
 # Tej's release integration
 
-This extends the merged AI orchestrator and reservation/pickup workflow. It implements browser authentication, SMTP delivery, operator snapshots/history, driver delivery detail, connected driver/operations screens, and self-hosted deployment/verification tooling. It does not implement Rushitha's production matching/routing or Mithil's recipient/profile workspace.
+This extends the merged AI orchestrator and reservation/pickup workflow. It implements browser authentication, SMTP delivery, operator snapshots/history, driver delivery detail, integration with Mithil’s merged role screens, and self-hosted deployment/verification tooling. Mithil’s PR #9 owns the donor, receiver/profile, driver and operations UI, SSE client and optional browser SDK login. This change adds the server-managed login path and release acceptance without replacing his screens. Rushitha’s production matching/routing remains separate.
 
 ## Browser authentication
 
-The gateway implements OIDC authorization code + PKCE with state and nonce validation. Access/refresh tokens remain server-side in Redis under opaque-session hashes. The browser receives an HttpOnly, SameSite=Lax cookie (Secure outside local development). There are no browser-stored access tokens. Configure the existing issuer, audience and JWKS plus `FOODBRIDGE_BROWSER_AUTH_ENABLED`, `FOODBRIDGE_OIDC_CLIENT_ID` and `FOODBRIDGE_PUBLIC_URL`. A confidential provider can also use `FOODBRIDGE_OIDC_CLIENT_SECRET`.
+The gateway implements OIDC authorization code + PKCE with state and nonce validation. Access/refresh tokens remain server-side in Redis under opaque-session hashes. The browser receives an HttpOnly, SameSite=Lax cookie (Secure outside local development). In this gateway-managed mode, access/refresh tokens are never stored in browser JavaScript. The frontend discovers the gateway session before opening workspaces. When gateway login is disabled or an older gateway returns 404, Mithil’s existing memory-only browser SDK login remains available. A session-service outage fails closed. Configure the existing issuer, audience and JWKS plus `FOODBRIDGE_BROWSER_AUTH_ENABLED`, `FOODBRIDGE_OIDC_CLIENT_ID` and `FOODBRIDGE_PUBLIC_URL`. A confidential provider can also use `FOODBRIDGE_OIDC_CLIENT_SECRET`.
 
 The callback validates the signed ID token, nonce, audience/issuer and consistency with the verified access-token subject. Login state is single-use and bound to a browser cookie. Refresh is serialized with a Redis lock, rotates refresh tokens when supplied, and cannot resurrect a concurrently logged-out session. Sessions have an absolute lifetime. The callback permits only the known workspace return paths. State-changing cookie requests require a trusted Origin; bearer clients retain existing behavior. Invalid cookies never become demo identities.
 
@@ -40,7 +40,7 @@ Operator routes now include:
 - `GET /api/v1/operations/donations/{id}` for a current scoped snapshot.
 - `GET /api/v1/operations/donations/{id}/history?after_version=0&limit=100` with version pagination.
 
-The operations screen consumes those reads plus summary, failure/replay and orchestrator-audit APIs. Events trigger fresh snapshots; reconnect and expired cursors reconcile snapshots. The connection state is visible. Actor changes restart requests; server authorization remains authoritative. Driver/operations integration is shared with Mithil; visual polish and the recipient workspace remain his team's frontend work.
+The merged operations screen consumes Mithil’s `/workflow/donations` and detail/history reads plus existing summary, failure/replay and orchestrator-audit APIs. The additive `/operations/donations` endpoints remain available to other clients. Events trigger fresh snapshots; reconnect and expired cursors reconcile snapshots. The connection state is visible. Actor changes restart requests; server authorization remains authoritative. The shared integration preserves Mithil’s role workspaces, receiving-profile editing, timeline, newest-first pagination and stream reconnection behavior.
 
 The additive DTOs come from canonical Python models and regenerated schema/TypeScript/OpenAPI. A stale command refreshes current state; request identities are retained across an unchanged client retry. The operator release check is aligned with the donor-organization scope used by operations reads and failures.
 
@@ -63,7 +63,7 @@ Run the release browser acceptance against that running stack:
 FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
 ```
 
-The test uses real Keycloak login, API cookies, PostgreSQL/Redis/workers, driver/operations browser interactions and a Mailpit SMTP inbox. Recipient acceptance uses its real API because the recipient screen is another owner's pending work. Matching/routing remains explicitly synthetic. This local test defaults to rules-mode AI so it consumes no Gemini quota; model behavior is covered separately by the orchestrator suite.
+The test uses real Keycloak login, API cookies, PostgreSQL/Redis/workers, donor posting, receiver acceptance, driver pickup/delivery, operations history and a Mailpit SMTP inbox. It also verifies cross-organization denial, CSRF rejection, disconnect/reconnect, mobile width and logout. SDK login and workspace behavior have separate browser regression tests. Matching/routing remains explicitly synthetic. This local test defaults to rules-mode AI so it consumes no Gemini quota; model behavior is covered separately by the orchestrator suite.
 
 ## Self-hosted deployment and operations
 

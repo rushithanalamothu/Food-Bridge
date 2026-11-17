@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
@@ -15,6 +15,7 @@ from sqlalchemy import exists, func, select, tuple_
 from foodbridge.agents.orchestrator.service import WorkflowService
 from foodbridge.agents.reservation.service import ReservationService
 from foodbridge.api.stream import StreamService
+from foodbridge.applications.service import ApplicationService
 from foodbridge.auth.workflow import current_actor
 from foodbridge.db.models import Donation, IntakeEvaluation, StatusHistory
 from foodbridge.db.session import session_factory
@@ -73,7 +74,7 @@ def coordinator(request):
     )
 
 
-def page_query(query, model, limit, cursor, session):
+def page_query(query, model, limit, cursor, session, order="oldest"):
     if cursor:
         try:
             value = json.loads(base64.urlsafe_b64decode(cursor.encode()))
@@ -82,8 +83,19 @@ def page_query(query, model, limit, cursor, session):
                 raise ValueError
         except (ValueError, TypeError, IndexError, KeyError) as exc:
             raise AppError("invalid_cursor", "Invalid page cursor.", 400) from exc
-        query = query.where(tuple_(model.created_at, model.id) > tuple_(stamp, identifier))
-    rows = list(session.scalars(query.order_by(model.created_at, model.id).limit(limit + 1)))
+        query = query.where(
+            tuple_(model.created_at, model.id) < tuple_(stamp, identifier)
+            if order == "newest"
+            else tuple_(model.created_at, model.id) > tuple_(stamp, identifier)
+        )
+    rows = list(
+        session.scalars(
+            query.order_by(
+                model.created_at.desc() if order == "newest" else model.created_at,
+                model.id.desc() if order == "newest" else model.id,
+            ).limit(limit + 1)
+        )
+    )
     has_more = len(rows) > limit
     rows = rows[:limit]
     next_cursor = (
@@ -158,7 +170,13 @@ def confirm_delivery(
 
 
 @router.get("/matches", response_model=OfferPage)
-def offers(request: Request, actor: Identity, limit: Limit = 25, cursor: str | None = None):
+def offers(
+    request: Request,
+    actor: Identity,
+    limit: Limit = 25,
+    cursor: str | None = None,
+    order: Literal["oldest", "newest"] = "oldest",
+):
     require_role(actor, "recipient")
     with session_factory(request.app.state.settings.database_url)() as session:
         rows, next_cursor = page_query(
@@ -167,11 +185,14 @@ def offers(request: Request, actor: Identity, limit: Limit = 25, cursor: str | N
             limit,
             cursor,
             session,
+            order,
         )
         return OfferPage(
             items=[
-                OfferRead(recommendation=r.recommendation, status=r.status, version=r.version)
-                for r in rows
+                ApplicationService(
+                    request.app.state.settings.database_url, request.app.state.clock
+                ).offer_view(session, row)
+                for row in rows
             ],
             next_cursor=next_cursor,
         )
@@ -184,11 +205,19 @@ def get_offer(identifier: UUID, request: Request, actor: Identity):
         row = session.get(MatchOffer, identifier)
         if row is None or row.recipient_organization_id != actor.organization_id:
             raise AppError("not_found", "Not found.", 404)
-        return OfferRead(recommendation=row.recommendation, status=row.status, version=row.version)
+        return ApplicationService(
+            request.app.state.settings.database_url, request.app.state.clock
+        ).offer_view(session, row)
 
 
 @router.get("/pickups", response_model=PickupPage)
-def pickups(request: Request, actor: Identity, limit: Limit = 25, cursor: str | None = None):
+def pickups(
+    request: Request,
+    actor: Identity,
+    limit: Limit = 25,
+    cursor: str | None = None,
+    order: Literal["oldest", "newest"] = "oldest",
+):
     require_role(actor, "driver")
     with session_factory(request.app.state.settings.database_url)() as session:
         query = (
@@ -196,15 +225,12 @@ def pickups(request: Request, actor: Identity, limit: Limit = 25, cursor: str | 
             .join(Driver, Driver.id == Assignment.driver_id)
             .where(Driver.user_id == actor.user_id, Driver.organization_id == actor.organization_id)
         )
-        rows, next_cursor = page_query(query, Assignment, limit, cursor, session)
-        service = reservation(request)
+        rows, next_cursor = page_query(query, Assignment, limit, cursor, session, order)
+        service = ApplicationService(
+            request.app.state.settings.database_url, request.app.state.clock
+        )
         return PickupPage(
-            items=[
-                service.pickup_view(
-                    r, session.get(Donation, r.donation_id), request.app.state.clock()
-                )
-                for r in rows
-            ],
+            items=[service.pickup_view(session, r) for r in rows],
             next_cursor=next_cursor,
         )
 
@@ -326,7 +352,13 @@ def donation_orchestrator_decisions(
 
 
 @router.get("/operations/failures", response_model=FailurePage)
-def failures(request: Request, actor: Identity, limit: Limit = 25, cursor: str | None = None):
+def failures(
+    request: Request,
+    actor: Identity,
+    limit: Limit = 25,
+    cursor: str | None = None,
+    order: Literal["oldest", "newest"] = "oldest",
+):
     require_role(actor, "operator")
     with session_factory(request.app.state.settings.database_url)() as session:
         query = (
@@ -334,7 +366,7 @@ def failures(request: Request, actor: Identity, limit: Limit = 25, cursor: str |
             .join(Donation, Donation.id == TaskFailure.donation_id)
             .where(Donation.donor_organization_id == actor.organization_id)
         )
-        rows, next_cursor = page_query(query, TaskFailure, limit, cursor, session)
+        rows, next_cursor = page_query(query, TaskFailure, limit, cursor, session, order)
         return FailurePage(
             items=[
                 FailureRead(

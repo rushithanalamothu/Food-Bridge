@@ -108,6 +108,34 @@
         "title": "DeliveryConfirmation",
         "type": "object"
       },
+      "DonationBoard": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DonationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DonationBoard",
+        "type": "object"
+      },
       "DonationCommand": {
         "additionalProperties": false,
         "properties": {
@@ -133,6 +161,69 @@
           "expected_donation_version"
         ],
         "title": "DonationCommand",
+        "type": "object"
+      },
+      "DonationDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationRead"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DonationHistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          }
+        },
+        "required": [
+          "donation",
+          "history"
+        ],
+        "title": "DonationDetail",
+        "type": "object"
+      },
+      "DonationHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "aggregate_version": {
+            "title": "Aggregate Version",
+            "type": "integer"
+          },
+          "next_status": {
+            "title": "Next Status",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "previous_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Status"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "aggregate_version",
+          "previous_status",
+          "next_status",
+          "reason",
+          "occurred_at"
+        ],
+        "title": "DonationHistoryItem",
         "type": "object"
       },
       "DonationInput": {
@@ -1275,6 +1366,43 @@
         "title": "MatchRecommendation",
         "type": "object"
       },
+      "MembershipRead": {
+        "additionalProperties": false,
+        "properties": {
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "donor",
+              "recipient",
+              "driver",
+              "operator"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "organization_id",
+          "organization_name",
+          "role"
+        ],
+        "title": "MembershipRead",
+        "type": "object"
+      },
       "OfferPage": {
         "additionalProperties": false,
         "properties": {
@@ -1306,6 +1434,16 @@
       "OfferRead": {
         "additionalProperties": false,
         "properties": {
+          "donation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DonationRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "recommendation": {
             "$ref": "#/components/schemas/MatchRecommendation"
           },
@@ -1331,34 +1469,6 @@
           "version"
         ],
         "title": "OfferRead",
-        "type": "object"
-      },
-      "OperationsDonationPage": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/DonationRead"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "OperationsDonationPage",
         "type": "object"
       },
       "OperationsSummary": {
@@ -1767,6 +1877,16 @@
               }
             ]
           },
+          "destination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "donation": {
             "$ref": "#/components/schemas/DonationRead"
           },
@@ -1789,6 +1909,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
           },
           "recipient_organization_id": {
             "anyOf": [
@@ -2101,6 +2232,183 @@
         "title": "ReadyStatus",
         "type": "object"
       },
+      "ReceivingProfileRead": {
+        "additionalProperties": false,
+        "properties": {
+          "capacity_versions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Capacity Versions",
+            "type": "object"
+          },
+          "committed_inbound_kg_by_storage": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Committed Inbound Kg By Storage",
+            "type": "object"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RecipientProfile"
+          },
+          "reported_free_kg_by_storage": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Reported Free Kg By Storage",
+            "type": "object"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "profile",
+          "reported_free_kg_by_storage",
+          "committed_inbound_kg_by_storage",
+          "capacity_versions",
+          "verified"
+        ],
+        "title": "ReceivingProfileRead",
+        "type": "object"
+      },
+      "ReceivingProfileUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_capacity_versions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Expected Capacity Versions",
+            "type": "object"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RecipientProfile"
+          },
+          "reported_free_kg_by_storage": {
+            "additionalProperties": {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            "propertyNames": {
+              "enum": [
+                "ambient",
+                "chilled",
+                "frozen"
+              ]
+            },
+            "title": "Reported Free Kg By Storage",
+            "type": "object"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_capacity_versions",
+          "profile",
+          "reported_free_kg_by_storage"
+        ],
+        "title": "ReceivingProfileUpdate",
+        "type": "object"
+      },
+      "RecipientProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_categories": {
+            "items": {
+              "enum": [
+                "prepared_meals",
+                "produce",
+                "bakery",
+                "dairy",
+                "pantry",
+                "other"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Accepted Categories",
+            "type": "array"
+          },
+          "accepted_storage": {
+            "items": {
+              "enum": [
+                "ambient",
+                "chilled",
+                "frozen"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Accepted Storage",
+            "type": "array"
+          },
+          "available_capacity_kg_by_storage": {
+            "additionalProperties": {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "ambient",
+                "chilled",
+                "frozen"
+              ]
+            },
+            "title": "Available Capacity Kg By Storage",
+            "type": "object"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "receiving_window": {
+            "$ref": "#/components/schemas/PickupWindow"
+          },
+          "rejected_allergens": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejected Allergens",
+            "type": "array"
+          },
+          "required_dietary_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Dietary Tags",
+            "type": "array"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "organization_id",
+          "location",
+          "accepted_categories",
+          "accepted_storage",
+          "available_capacity_kg_by_storage",
+          "rejected_allergens",
+          "receiving_window",
+          "version"
+        ],
+        "title": "RecipientProfile",
+        "type": "object"
+      },
       "ReplayResult": {
         "additionalProperties": false,
         "properties": {
@@ -2126,6 +2434,51 @@
           "step_id"
         ],
         "title": "ReplayResult",
+        "type": "object"
+      },
+      "ReservationDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationRead"
+          },
+          "reservation": {
+            "$ref": "#/components/schemas/ReservationRead"
+          }
+        },
+        "required": [
+          "reservation",
+          "donation"
+        ],
+        "title": "ReservationDetail",
+        "type": "object"
+      },
+      "ReservationPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReservationDetail"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReservationPage",
         "type": "object"
       },
       "ReservationRead": {
@@ -3133,6 +3486,20 @@
               ],
               "title": "Cursor"
             }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "enum": [
+                "oldest",
+                "newest"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3310,6 +3677,31 @@
         ]
       }
     },
+    "/api/v1/memberships": {
+      "get": {
+        "operationId": "memberships_api_v1_memberships_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MembershipRead"
+                  },
+                  "title": "Response Memberships Api V1 Memberships Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Memberships",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
     "/api/v1/operations/donations": {
       "get": {
         "operationId": "operations_donations_api_v1_operations_donations_get",
@@ -3348,7 +3740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OperationsDonationPage"
+                  "$ref": "#/components/schemas/DonationBoard"
                 }
               }
             },
@@ -3525,6 +3917,20 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "enum": [
+                "oldest",
+                "newest"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -3797,6 +4203,20 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "enum": [
+                "oldest",
+                "newest"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],
@@ -4105,7 +4525,167 @@
         ]
       }
     },
+    "/api/v1/receiving-profile": {
+      "get": {
+        "operationId": "profile_api_v1_receiving_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivingProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Profile",
+        "tags": [
+          "applications"
+        ]
+      },
+      "post": {
+        "operationId": "update_profile_api_v1_receiving_profile_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceivingProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivingProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Profile",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
     "/api/v1/reservations": {
+      "get": {
+        "operationId": "reservations_api_v1_reservations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "enum": [
+                "oldest",
+                "newest"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reservations",
+        "tags": [
+          "applications"
+        ]
+      },
       "post": {
         "operationId": "reserve_api_v1_reservations_post",
         "parameters": [
@@ -4160,6 +4740,54 @@
         "summary": "Reserve",
         "tags": [
           "workflow"
+        ]
+      }
+    },
+    "/api/v1/reservations/{identifier}": {
+      "get": {
+        "operationId": "reservation_detail_api_v1_reservations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reservation Detail",
+        "tags": [
+          "applications"
         ]
       }
     },
@@ -4254,6 +4882,134 @@
         "summary": "Session Identity",
         "tags": [
           "workflow"
+        ]
+      }
+    },
+    "/api/v1/workflow/donations": {
+      "get": {
+        "operationId": "board_api_v1_workflow_donations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "enum": [
+                "oldest",
+                "newest"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationBoard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Board",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/workflow/donations/{identifier}": {
+      "get": {
+        "operationId": "detail_api_v1_workflow_donations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Detail",
+        "tags": [
+          "applications"
         ]
       }
     }

@@ -13,6 +13,7 @@ from sqlalchemy.exc import OperationalError
 from foodbridge import __version__
 from foodbridge.agents.intake.service import utcnow
 from foodbridge.api.metrics import router as metrics_router
+from foodbridge.api.routes.applications import router as applications_router
 from foodbridge.api.routes.health import router
 from foodbridge.api.routes.intake import router as intake_router
 from foodbridge.api.routes.workflow import router as workflow_router
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     app.include_router(intake_router)
     app.include_router(workflow_router)
+    app.include_router(applications_router)
     return app
 
 

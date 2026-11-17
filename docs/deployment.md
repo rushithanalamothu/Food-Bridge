@@ -4,7 +4,7 @@ The root Compose file is a local development profile. A separate [release integr
 
 ## Current foundation versus planned operations
 
-Current: health/dependency probes, intake, role-scoped JWT memberships, durable orchestration/expiry recovery, reservation/capacity, driver pickup/delivery, sandbox notification delivery, authenticated SSE replay and local Compose/CI wiring. See the [workflow runbook](features/workflow.md). Pending: live matching/routing/data services, real identity/user provisioning, complete recipient UI, public sender delivery verification, external alert routing/error budgets and shared demo hosting. Local smoke evidence does not certify shared-cloud deployment.
+Current: health/dependency probes, intake, role-scoped JWT memberships, durable orchestration/expiry recovery, reservation/capacity, driver pickup/delivery, sandbox notification delivery, authenticated SSE replay and local Compose/CI wiring. See the [workflow runbook](features/workflow.md). Pending: live matching/routing/data services, public identity/user provisioning, public sender delivery verification, external alert routing/error budgets and shared demo hosting. Local smoke evidence does not certify shared-cloud deployment.
 
 ## Promotion order
 

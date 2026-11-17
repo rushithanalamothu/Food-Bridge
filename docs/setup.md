@@ -28,7 +28,7 @@ uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000 --n
 npm run dev
 ```
 
-Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission. Driver and operations screens connect workflow commands and SSE; the recipient/profile workspace remains pending. See the [release integration](features/release-integration.md) for browser login and the isolated SMTP test stack. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
+Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission; receiver, driver and operations pages use the workflow APIs. See [web integration](../apps/web/README.md) for role setup and OIDC configuration. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
 
 A worker example:
 
@@ -36,7 +36,7 @@ A worker example:
 make worker QUEUE=intake
 ```
 
-Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration and reservation/pickup business handlers are implemented. Matching has queue integration tasks, while production candidate/routing/ranking remains an explicitly unavailable adapter until integrated. On macOS, prefer containerized workers when testing process termination/limits.
+Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration, reservation, pickup and workflow SSE are implemented. Matching tasks call the configured gateway; live candidate/routing/ranking remains pending, with an explicit local synthetic adapter available. Probes alone only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
 
 ## Entire stack in containers
 
@@ -49,6 +49,14 @@ Compose starts DB and Redis health checks, runs migrations once, then starts the
 This profile copies application source into images; rebuild after code changes (`docker compose up --build -d`). Use native API/web commands for hot reload. Avoid starting native and containerized API/web instances on the same ports.
 
 The official `postgis/postgis` image is amd64-only. Compose sets `platform: linux/amd64` for DB so Apple Silicon can use Docker emulation. Enable emulation in Docker Desktop. See the upstream [image support notes](https://github.com/postgis/docker-postgis). Postgres 16 uses `/var/lib/postgresql/data`; do not change to the Postgres 18 volume layout without a migration/backup plan.
+
+## Browser login and release verification
+
+The [isolated release stack](features/release-integration.md#isolated-local-acceptance-stack) runs the merged role applications with real Keycloak login, gateway-managed cookie sessions and Mailpit SMTP capture on separate local ports. It preserves the root private `.env`. Use that stack for authentication and notification acceptance; the ordinary demo profile remains available for individual development.
+
+When gateway browser authentication is enabled, the UI discovers `/api/v1/auth/session` and redirects sign-in through the gateway. Tokens remain in Redis. Mithil’s optional browser SDK flow remains supported when gateway login is disabled or the older session endpoint is absent. Set the public URL to the exact frontend origin and provision verified subjects against existing organizations. Do not enable both login approaches for a shared installation.
+
+For a public host, use the separate static/TLS profile and private configuration generator in the [deployment runbook](features/release-integration.md#self-hosted-deployment-and-operations). Root Compose runs a development server and must remain local.
 
 ## Shared AI configuration
 
@@ -63,7 +71,7 @@ Use `openai` for OpenAI/GPT or `anthropic` for Claude instead of `gemini`. `FOOD
 
 These settings apply to the API and every worker; donors and other roles do not configure separate model providers. After edits, restart native backend processes or run `docker compose up --build -d`. Keep `.env` private; never add keys to frontend `VITE_*` variables. Existing `FOODBRIDGE_EXTRACTION_*` variables are compatibility aliases for the global settings; replace them with `FOODBRIDGE_AI_*` in new setups. See [provider options and fallback behavior](features/intake.md#extraction-modes) for defaults and OpenAI-compatible endpoints.
 
-When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake and the AI Orchestrator use this client; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
+When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client today; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
 
 ## Checks
 
@@ -114,3 +122,7 @@ uv run alembic -c backend/alembic.ini current
 Read the [individual intake spec and implementation alignment](specs/README.md) before extending intake or consuming its results. Policy v2 defaults to critical <=2 hours/high <=6 hours and a 2,000-character description limit; `config/intake.json` configures units and required review fields. Restart all backend processes after versioned policy edits. The donor UI reads policy from the authenticated API.
 
 For local metrics, set `FOODBRIDGE_ENABLE_INTAKE_METRICS=true`, recreate the API, and read `/api/v1/metrics`. It exports only that API process; separate Celery worker metrics are not aggregated there. Worker diagnostics are structured JSON logs. Shared/production metric exposure is deliberately disabled until protected collection is configured.
+
+## Complete browser acceptance
+
+`npm run test:e2e` covers the real intake worker plus protocol/HTTP-fixture role tests. After seeding the workflow demo and starting all queues/runtime, run `FOODBRIDGE_RUN_FULL_BROWSER=1 npm run test:e2e --workspace @foodbridge/web -- full-workflow.spec.ts` for the real donor-to-delivery browser scenario. CI runs intake before the general workflow starts, then runs the full workflow smoke and browser scenario. This ordering avoids unrelated workers advancing the intake test's isolated donation unexpectedly. Fixture OIDC tests use a second test-only Vite server on port 5174; regular development stays on 5173.

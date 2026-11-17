@@ -109,6 +109,35 @@
       "title": "DeliveryConfirmation",
       "type": "object"
     },
+    "DonationBoard": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DonationRead"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "DonationBoard",
+      "type": "object"
+    },
     "DonationCommand": {
       "additionalProperties": false,
       "properties": {
@@ -135,6 +164,69 @@
         "expected_donation_version"
       ],
       "title": "DonationCommand",
+      "type": "object"
+    },
+    "DonationDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "donation": {
+          "$ref": "#/$defs/DonationRead"
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/DonationHistoryItem"
+          },
+          "title": "History",
+          "type": "array"
+        }
+      },
+      "required": [
+        "donation",
+        "history"
+      ],
+      "title": "DonationDetail",
+      "type": "object"
+    },
+    "DonationHistoryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregate_version": {
+          "title": "Aggregate Version",
+          "type": "integer"
+        },
+        "next_status": {
+          "title": "Next Status",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "previous_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Previous Status"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "aggregate_version",
+        "previous_status",
+        "next_status",
+        "reason",
+        "occurred_at"
+      ],
+      "title": "DonationHistoryItem",
       "type": "object"
     },
     "DonationRead": {
@@ -645,6 +737,43 @@
       "title": "MatchRecommendation",
       "type": "object"
     },
+    "MembershipRead": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "organization_name": {
+          "title": "Organization Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "donor",
+            "recipient",
+            "driver",
+            "operator"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "organization_id",
+        "organization_name",
+        "role"
+      ],
+      "title": "MembershipRead",
+      "type": "object"
+    },
     "OfferPage": {
       "additionalProperties": false,
       "properties": {
@@ -677,6 +806,17 @@
     "OfferRead": {
       "additionalProperties": false,
       "properties": {
+        "donation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DonationRead"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "recommendation": {
           "$ref": "#/$defs/MatchRecommendation"
         },
@@ -702,35 +842,6 @@
         "version"
       ],
       "title": "OfferRead",
-      "type": "object"
-    },
-    "OperationsDonationPage": {
-      "additionalProperties": false,
-      "properties": {
-        "items": {
-          "items": {
-            "$ref": "#/$defs/DonationRead"
-          },
-          "title": "Items",
-          "type": "array"
-        },
-        "next_cursor": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Next Cursor"
-        }
-      },
-      "required": [
-        "items"
-      ],
-      "title": "OperationsDonationPage",
       "type": "object"
     },
     "OperationsSummary": {
@@ -1143,6 +1254,17 @@
           ],
           "default": null
         },
+        "destination": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Location"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "donation": {
           "$ref": "#/$defs/DonationRead"
         },
@@ -1165,6 +1287,18 @@
           "format": "uuid",
           "title": "Id",
           "type": "string"
+        },
+        "recipient_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipient Name"
         },
         "recipient_organization_id": {
           "anyOf": [
@@ -1299,6 +1433,183 @@
       "title": "PlanFeedback",
       "type": "object"
     },
+    "ReceivingProfileRead": {
+      "additionalProperties": false,
+      "properties": {
+        "capacity_versions": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Capacity Versions",
+          "type": "object"
+        },
+        "committed_inbound_kg_by_storage": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Committed Inbound Kg By Storage",
+          "type": "object"
+        },
+        "profile": {
+          "$ref": "#/$defs/RecipientProfile"
+        },
+        "reported_free_kg_by_storage": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Reported Free Kg By Storage",
+          "type": "object"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "profile",
+        "reported_free_kg_by_storage",
+        "committed_inbound_kg_by_storage",
+        "capacity_versions",
+        "verified"
+      ],
+      "title": "ReceivingProfileRead",
+      "type": "object"
+    },
+    "ReceivingProfileUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_capacity_versions": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Expected Capacity Versions",
+          "type": "object"
+        },
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "profile": {
+          "$ref": "#/$defs/RecipientProfile"
+        },
+        "reported_free_kg_by_storage": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ]
+          },
+          "title": "Reported Free Kg By Storage",
+          "type": "object"
+        }
+      },
+      "required": [
+        "expected_version",
+        "expected_capacity_versions",
+        "profile",
+        "reported_free_kg_by_storage"
+      ],
+      "title": "ReceivingProfileUpdate",
+      "type": "object"
+    },
+    "RecipientProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_categories": {
+          "items": {
+            "enum": [
+              "prepared_meals",
+              "produce",
+              "bakery",
+              "dairy",
+              "pantry",
+              "other"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Categories",
+          "type": "array"
+        },
+        "accepted_storage": {
+          "items": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepted Storage",
+          "type": "array"
+        },
+        "available_capacity_kg_by_storage": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "ambient",
+              "chilled",
+              "frozen"
+            ]
+          },
+          "title": "Available Capacity Kg By Storage",
+          "type": "object"
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "organization_id": {
+          "format": "uuid",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "receiving_window": {
+          "$ref": "#/$defs/PickupWindow"
+        },
+        "rejected_allergens": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejected Allergens",
+          "type": "array"
+        },
+        "required_dietary_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Dietary Tags",
+          "type": "array"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "organization_id",
+        "location",
+        "accepted_categories",
+        "accepted_storage",
+        "available_capacity_kg_by_storage",
+        "rejected_allergens",
+        "receiving_window",
+        "version"
+      ],
+      "title": "RecipientProfile",
+      "type": "object"
+    },
     "ReplayResult": {
       "additionalProperties": false,
       "properties": {
@@ -1324,6 +1635,52 @@
         "step_id"
       ],
       "title": "ReplayResult",
+      "type": "object"
+    },
+    "ReservationDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "donation": {
+          "$ref": "#/$defs/DonationRead"
+        },
+        "reservation": {
+          "$ref": "#/$defs/ReservationRead"
+        }
+      },
+      "required": [
+        "reservation",
+        "donation"
+      ],
+      "title": "ReservationDetail",
+      "type": "object"
+    },
+    "ReservationPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ReservationDetail"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ReservationPage",
       "type": "object"
     },
     "ReservationRead": {
@@ -1562,8 +1919,14 @@
     "delivery_confirmation": {
       "$ref": "#/$defs/DeliveryConfirmation"
     },
+    "donation_board": {
+      "$ref": "#/$defs/DonationBoard"
+    },
     "donation_command": {
       "$ref": "#/$defs/DonationCommand"
+    },
+    "donation_detail": {
+      "$ref": "#/$defs/DonationDetail"
     },
     "failure": {
       "$ref": "#/$defs/FailureRead"
@@ -1574,6 +1937,13 @@
     "history": {
       "$ref": "#/$defs/HistoryPage"
     },
+    "memberships": {
+      "items": {
+        "$ref": "#/$defs/MembershipRead"
+      },
+      "title": "Memberships",
+      "type": "array"
+    },
     "offer": {
       "$ref": "#/$defs/OfferRead"
     },
@@ -1581,7 +1951,7 @@
       "$ref": "#/$defs/OfferPage"
     },
     "operations_donations": {
-      "$ref": "#/$defs/OperationsDonationPage"
+      "$ref": "#/$defs/DonationBoard"
     },
     "orchestrator_audit": {
       "$ref": "#/$defs/OrchestrationAudit"
@@ -1595,11 +1965,23 @@
     "pickups": {
       "$ref": "#/$defs/PickupPage"
     },
+    "receiving_profile": {
+      "$ref": "#/$defs/ReceivingProfileRead"
+    },
+    "receiving_profile_update": {
+      "$ref": "#/$defs/ReceivingProfileUpdate"
+    },
     "replay": {
       "$ref": "#/$defs/ReplayResult"
     },
     "reservation": {
       "$ref": "#/$defs/ReservationRead"
+    },
+    "reservation_detail": {
+      "$ref": "#/$defs/ReservationDetail"
+    },
+    "reservation_page": {
+      "$ref": "#/$defs/ReservationPage"
     },
     "stream_item": {
       "$ref": "#/$defs/StreamItem"
@@ -1613,9 +1995,9 @@
   },
   "required": [
     "orchestrator_audit",
+    "browser_session",
     "operations_donations",
     "history",
-    "browser_session",
     "actor",
     "version_command",
     "donation_command",
@@ -1630,7 +2012,14 @@
     "failures",
     "replay",
     "summary",
-    "stream_item"
+    "stream_item",
+    "memberships",
+    "donation_detail",
+    "donation_board",
+    "receiving_profile",
+    "receiving_profile_update",
+    "reservation_detail",
+    "reservation_page"
   ],
   "title": "WorkflowContracts",
   "type": "object"

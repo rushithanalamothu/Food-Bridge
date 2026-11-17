@@ -1,3 +1,16 @@
+import { DonationTimeline } from '../../components/DonationTimeline';
+import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
+import {
+  WorkspaceHeader,
+  StatusBadge,
+  Stats,
+  formatTime,
+  ConfirmAction,
+  humanize,
+} from '../../components/Workspace';
+import { cancelDonation } from '../../api/workflow';
+import { getDraft } from '../../api/intake';
+import { locationInput, locationInstant, parseAllergens } from '../../api/time';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type {
@@ -26,13 +39,16 @@ function errorText(error: unknown) {
     ? `${error.message} ${Object.values(error.details).join(' ')}`
     : 'Could not reach the API. Your details are still here; please retry.';
 }
-function datetimeLocal(value: string | null | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-}
 
 export function DonorPage() {
+  const dashboard = useWorkspace('donor', listDonations);
+  const latestSnapshot = useRef(dashboard.data);
+  latestSnapshot.current = dashboard.data;
+  const cancellation = useCommand();
+  const [nextCursor, setNextCursor] = useState<string | null>();
+  const [paging, setPaging] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [history, setHistory] = useState<string>();
   const [identity, setIdentity] = useState<DonorIdentity>();
   const [draft, setDraft] = useState<DraftRead>();
   const [posted, setPosted] = useState<IntakeDonationRead>();
@@ -66,13 +82,6 @@ export function DonorPage() {
           .catch((err) => {
             if (mounted.current) setError(errorText(err));
           });
-        void listDonations()
-          .then((list) => {
-            if (mounted.current) setRecent(list.items);
-          })
-          .catch((err) => {
-            if (mounted.current) setError(errorText(err));
-          });
       })
       .catch((err) => {
         if (mounted.current) setError(errorText(err));
@@ -81,6 +90,41 @@ export function DonorPage() {
       mounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!dashboard.data) return;
+    setRecent(dashboard.data.items);
+    setNextCursor(dashboard.data.next_cursor);
+    let active = true;
+    if (posted)
+      void getDonation(posted.donation.id)
+        .then((value) => {
+          if (active) setPosted(value);
+        })
+        .catch((e) => {
+          if (active) setError(errorText(e));
+        });
+    return () => {
+      active = false;
+    };
+  }, [dashboard.data, posted?.donation.id]);
+
+  useEffect(() => {
+    if (!identity) return;
+    const id = sessionStorage.getItem('foodbridge:draft:' + identity.organization_id);
+    if (id)
+      void getDraft(id)
+        .then((value) => {
+          if (mounted.current && value.status === 'review_required') {
+            setDraft(value);
+            setDescription(value.description);
+            setNotice('Your saved draft is ready to review.');
+          }
+        })
+        .catch(() => {
+          sessionStorage.removeItem('foodbridge:draft:' + identity.organization_id);
+        });
+  }, [identity]);
 
   useEffect(() => {
     if (!evaluation || evaluation.status !== 'pending') return;
@@ -123,6 +167,7 @@ export function DonorPage() {
         draftKey.current,
       );
       setDraft(value);
+      sessionStorage.setItem('foodbridge:draft:' + identity.organization_id, value.id);
       setReviewed(false);
     } catch (err) {
       setError(errorText(err));
@@ -134,44 +179,65 @@ export function DonorPage() {
   async function post(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!identity || !draft || !reviewed) return;
-    const values = new FormData(event.currentTarget);
-    const text = (key: string) => String(values.get(key) ?? '').trim();
-    const tokens = (key: string) =>
-      text(key)
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-    const donation: DonationInput = {
-      description: draft.description,
-      food_name: text('food_name'),
-      category: text('category') as DonationInput['category'],
-      quantity_kg: Number(text('quantity_kg')),
-      portions: text('portions') ? Number(text('portions')) : null,
-      packaging_type: (text('packaging_type') || null) as DonationInput['packaging_type'],
-      storage: text('storage') as DonationInput['storage'],
-      dietary_tags: tokens('dietary_tags'),
-      allergens: text('allergens').toLowerCase() === 'none' ? [] : tokens('allergens'),
-      pickup_location: draft.pickup_location,
-      pickup_window: {
-        start: new Date(text('start')).toISOString(),
-        end: new Date(text('end')).toISOString(),
-      },
-      safe_use_by: new Date(text('safe_use_by')).toISOString(),
-      handling_notes: text('handling_notes'),
-    };
-    setBusy(true);
     setError('');
     try {
-      const value = await submitDonation(
-        { draft_id: draft.id, expected_draft_version: draft.version, confirmed: true, donation },
-        submitKey.current,
-      );
-      setPosted(value);
-      setRecent((items) => [value, ...items]);
+      const values = new FormData(event.currentTarget);
+      const text = (key: string) => String(values.get(key) ?? '').trim();
+      const tokens = (key: string) =>
+        text(key)
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
+      const donation: DonationInput = {
+        description: draft.description,
+        food_name: text('food_name'),
+        category: text('category') as DonationInput['category'],
+        quantity_kg: Number(text('quantity_kg')),
+        portions: text('portions') ? Number(text('portions')) : null,
+        packaging_type: (text('packaging_type') || null) as DonationInput['packaging_type'],
+        storage: text('storage') as DonationInput['storage'],
+        dietary_tags: tokens('dietary_tags'),
+        allergens: parseAllergens(text('allergens')),
+        pickup_location: draft.pickup_location,
+        pickup_window: {
+          start: locationInstant(
+            text('start'),
+            draft.pickup_location.timezone ?? 'America/Los_Angeles',
+          ),
+          end: locationInstant(
+            text('end'),
+            draft.pickup_location.timezone ?? 'America/Los_Angeles',
+          ),
+        },
+        safe_use_by: locationInstant(
+          text('safe_use_by'),
+          draft.pickup_location.timezone ?? 'America/Los_Angeles',
+        ),
+        handling_notes: text('handling_notes'),
+      };
+      setBusy(true);
+      setError('');
+      try {
+        const value = await submitDonation(
+          { draft_id: draft.id, expected_draft_version: draft.version, confirmed: true, donation },
+          submitKey.current,
+        );
+        setPosted(value);
+        sessionStorage.removeItem('foodbridge:draft:' + identity.organization_id);
+        setRecent((items) => [value, ...items]);
+      } catch (err) {
+        if (err instanceof IntakeApiError && err.status === 409) {
+          const fresh = await getDraft(draft.id);
+          setDraft(fresh);
+          setReviewed(false);
+          if (fresh.donation_id) setPosted(await getDonation(fresh.donation_id));
+        }
+        setError(errorText(err));
+      } finally {
+        setBusy(false);
+      }
     } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setBusy(false);
+      setError(err instanceof Error ? err.message : 'Check the donation details.');
     }
   }
 
@@ -199,22 +265,59 @@ export function DonorPage() {
     submitKey.current = crypto.randomUUID();
     evaluationKey.current = crypto.randomUUID();
     setError('');
+    setNotice('');
+    if (identity) sessionStorage.removeItem('foodbridge:draft:' + identity.organization_id);
   }
 
   const fields = draft?.extraction.fields;
   return (
     <section className="donor-workspace">
-      <p className="eyebrow">{identity?.organization_name ?? 'Donor workspace'}</p>
-      <h1>{posted ? 'Donation posted' : 'Post today’s surplus'}</h1>
+      <WorkspaceHeader
+        eyebrow={identity?.organization_name ?? 'Donor workspace'}
+        title={posted ? 'Donation posted' : 'Post today’s surplus'}
+        {...dashboard}
+      />
+      <Stats
+        items={[
+          { label: 'Donations on this page', value: recent.length },
+          {
+            label: 'In progress',
+            value: recent.filter((item) =>
+              [
+                'submitted',
+                'matching',
+                'offered',
+                'reserved',
+                'pickup_assigned',
+                'picked_up',
+              ].includes(item.donation.status),
+            ).length,
+          },
+          {
+            label: 'Delivered on this page',
+            value: recent.filter((item) => item.donation.status === 'delivered').length,
+          },
+        ]}
+      />
+      {notice && (
+        <p role="status" className="notice">
+          {notice}
+        </p>
+      )}
+      {dashboard.error && (
+        <p role="alert" className="notice error">
+          {dashboard.error}
+        </p>
+      )}
       <p>
         {posted
-          ? 'Your confirmed details are saved. The handoff event is ready for the orchestrator.'
+          ? 'Your confirmed details and latest workflow status are shown below.'
           : 'Describe the food, then check the details before posting.'}
       </p>
       {identity?.mode === 'local_demo' && (
         <p className="demo-label">
-          Local demo identity · Maya · synthetic organization. Extraction and donation records are
-          real local database operations.
+          Local demo identity · {identity.display_name} · synthetic organization. Extraction and
+          donation records are real local database operations.
         </p>
       )}
       {error && (
@@ -411,9 +514,7 @@ export function DonorPage() {
                   placeholder="vegetarian"
                 />
                 <p className="form-hint">
-                  Times use your browser timezone:{' '}
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone}. Pickup location timezone:{' '}
-                  {draft.pickup_location.timezone}.
+                  Times use the pickup location timezone: {draft.pickup_location.timezone}.
                 </p>
                 <div className="donor-fields">
                   <div>
@@ -423,7 +524,14 @@ export function DonorPage() {
                       name="start"
                       type="datetime-local"
                       required
-                      defaultValue={datetimeLocal(fields?.pickup_window?.start)}
+                      defaultValue={
+                        fields?.pickup_window?.start
+                          ? locationInput(
+                              fields?.pickup_window?.start,
+                              draft.pickup_location.timezone ?? 'America/Los_Angeles',
+                            )
+                          : ''
+                      }
                     />
                   </div>
                   <div>
@@ -433,7 +541,14 @@ export function DonorPage() {
                       name="end"
                       type="datetime-local"
                       required
-                      defaultValue={datetimeLocal(fields?.pickup_window?.end)}
+                      defaultValue={
+                        fields?.pickup_window?.end
+                          ? locationInput(
+                              fields?.pickup_window?.end,
+                              draft.pickup_location.timezone ?? 'America/Los_Angeles',
+                            )
+                          : ''
+                      }
                     />
                   </div>
                 </div>
@@ -443,7 +558,14 @@ export function DonorPage() {
                   name="safe_use_by"
                   type="datetime-local"
                   required
-                  defaultValue={datetimeLocal(fields?.safe_use_by)}
+                  defaultValue={
+                    fields?.safe_use_by
+                      ? locationInput(
+                          fields?.safe_use_by,
+                          draft.pickup_location.timezone ?? 'America/Los_Angeles',
+                        )
+                      : ''
+                  }
                 />
                 <label htmlFor="handling_notes">
                   Pickup / handling notes{' '}
@@ -486,13 +608,51 @@ export function DonorPage() {
             ) : (
               recent.map((item) => (
                 <div className="recent-donation" key={item.donation.id}>
-                  <strong>{item.donation.food_name}</strong>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                      setPosted(item);
+                      setError('');
+                    }}
+                  >
+                    {item.donation.food_name}
+                  </button>
                   <p>
-                    {item.donation.quantity_kg} kg · {item.donation.status.replaceAll('_', ' ')}
+                    {item.donation.quantity_kg} kg · <StatusBadge status={item.donation.status} />
                   </p>
-                  <p>Pickup by {new Date(item.donation.pickup_window.end).toLocaleString()}</p>
+                  <p>
+                    Pickup by{' '}
+                    {formatTime(
+                      item.donation.pickup_window.end,
+                      item.donation.pickup_location.timezone,
+                    )}
+                  </p>
                 </div>
               ))
+            )}
+            {nextCursor && (
+              <button
+                type="button"
+                className="quiet-button"
+                disabled={paging}
+                onClick={async () => {
+                  setPaging(true);
+                  const requestedSnapshot = dashboard.data;
+                  try {
+                    const page = await listDonations(nextCursor);
+                    if (latestSnapshot.current !== requestedSnapshot) return;
+                    setRecent((old) => [...old, ...page.items]);
+                    setNextCursor(page.next_cursor);
+                  } catch (e) {
+                    setError(errorText(e));
+                  } finally {
+                    setPaging(false);
+                  }
+                }}
+              >
+                Load older donations
+              </button>
             )}
           </aside>
         </div>
@@ -506,7 +666,9 @@ export function DonorPage() {
           <dl>
             <div>
               <dt>Status</dt>
-              <dd>{posted.donation.status}</dd>
+              <dd>
+                <StatusBadge status={posted.donation.status} />
+              </dd>
             </div>
             <div>
               <dt>Urgency</dt>
@@ -514,46 +676,85 @@ export function DonorPage() {
             </div>
             <div>
               <dt>Pickup ends</dt>
-              <dd>{new Date(posted.donation.pickup_window.end).toLocaleString()}</dd>
+              <dd>
+                {formatTime(
+                  posted.donation.pickup_window.end,
+                  posted.donation.pickup_location.timezone,
+                )}
+              </dd>
             </div>
           </dl>
           <p className="form-hint">
-            ID: {posted.donation.id}. Matching and reservation integration is the next team handoff.
+            ID: {posted.donation.id}. Status updates follow confirmed workflow changes. Matching
+            requires an available matching service.
           </p>
-          {identity?.mode === 'local_demo' && (
-            <div className="eligibility-demo">
-              <h3>Try the eligibility worker</h3>
-              <p className="form-hint">
-                Uses synthetic recipients, a 14-minute route and a demo driver. It does not reserve
-                or match the food.
-              </p>
-              <button type="button" onClick={() => void preview()} disabled={busy || polling}>
-                {polling ? 'Worker evaluating…' : 'Check demo recipients'}
-              </button>
-              {evaluation?.status === 'pending' && !polling && (
-                <p role="status">
-                  Still queued. Check the intake worker / relay, then retry this button with the
-                  same request key.
+          {identity?.mode === 'local_demo' &&
+            ['submitted', 'matching', 'offered'].includes(posted.donation.status) && (
+              <div className="eligibility-demo">
+                <h3>Try the eligibility worker</h3>
+                <p className="form-hint">
+                  Uses synthetic recipients, a 14-minute route and a demo driver. It does not
+                  reserve or match the food.
                 </p>
-              )}
-              {evaluation?.failure_code && (
-                <p role="alert">{evaluation.failure_code.replaceAll('_', ' ')}</p>
-              )}
-              {evaluation?.result?.decisions.map((decision, index) => (
-                <div className="eligibility-decision" key={decision.recipient_organization_id}>
-                  <strong>
-                    Demo recipient {index + 1}: {decision.eligible ? 'Eligible' : 'Not eligible'}
-                  </strong>
-                  <p>
-                    {decision.reasons.length
-                      ? decision.reasons.map((reason) => reason.replaceAll('_', ' ')).join(' · ')
-                      : 'Category, diet, storage, capacity, route and driver checks passed.'}
+                <button type="button" onClick={() => void preview()} disabled={busy || polling}>
+                  {polling ? 'Worker evaluating…' : 'Check demo recipients'}
+                </button>
+                {evaluation?.status === 'pending' && !polling && (
+                  <p role="status">
+                    Still queued. Check the intake worker / relay, then retry this button with the
+                    same request key.
                   </p>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+                {evaluation?.failure_code && (
+                  <p role="alert">{evaluation.failure_code.replaceAll('_', ' ')}</p>
+                )}
+                {evaluation?.result?.decisions.map((decision, index) => (
+                  <div className="eligibility-decision" key={decision.recipient_organization_id}>
+                    <strong>
+                      Demo recipient {index + 1}: {decision.eligible ? 'Eligible' : 'Not eligible'}
+                    </strong>
+                    <p>
+                      {decision.reasons.length
+                        ? decision.reasons.map((reason) => reason.replaceAll('_', ' ')).join(' · ')
+                        : 'Category, diet, storage, capacity, route and driver checks passed.'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           <div className="donor-row">
+            {[
+              'submitted',
+              'needs_review',
+              'matching',
+              'offered',
+              'reserved',
+              'pickup_assigned',
+            ].includes(posted.donation.status) && (
+              <ConfirmAction
+                label="Cancel donation"
+                danger
+                disabled={cancellation.busy}
+                onConfirm={() => {
+                  void (async () => {
+                    try {
+                      await cancellation.run(
+                        `${posted.donation.id}:${posted.donation.version}:cancel`,
+                        (key) => cancelDonation(posted.donation.id, posted.donation.version, key),
+                      );
+                      setPosted(await getDonation(posted.donation.id));
+                      setNotice('Donation cancelled. Any active hold has been released.');
+                      await dashboard.refresh();
+                    } catch (e) {
+                      await dashboard.refresh();
+                      setError(errorText(e));
+                    }
+                  })();
+                }}
+              >
+                Cancel this donation and release any reservation before pickup?
+              </ConfirmAction>
+            )}
             <button
               className="quiet-button"
               type="button"
@@ -571,6 +772,29 @@ export function DonorPage() {
           </div>
         </div>
       )}
+      {posted && (
+        <button className="quiet-button" onClick={() => setHistory(posted.donation.id)}>
+          View donation history
+        </button>
+      )}
+      {history && (
+        <DonationTimeline
+          role="donor"
+          id={history}
+          version={posted?.donation.version}
+          onClose={() => setHistory(undefined)}
+        />
+      )}
+      <h2>Live donation activity</h2>
+      <p className="form-hint">Updates received during this session.</p>
+      <ol className="activity-list">
+        {dashboard.events.map((event) => (
+          <li key={event.event_id}>
+            <strong>{humanize(event.event_type.replace('.v1', '').replaceAll('.', ' '))}</strong>
+            <span>{formatTime(event.occurred_at)}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
