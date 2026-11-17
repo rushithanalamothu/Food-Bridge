@@ -1,3 +1,3 @@
 # Operations workspace — Mithil
 
-Implemented: scoped status/notification counts, synthetic-labeled recorded impact, failures, decision audits, guarded replay, pagination and live session activity. Complete historical donation details are not available through the operator API. Replay requires a version from an audit and remains subject to server state/deadline checks. See `apps/web/README.md`.
+Implemented: scoped status/notification counts and synthetic-labeled impact, newest-first donation board and durable history, failures, decision audit, replay using an authoritative donation version, pagination and live snapshots. Replay still checks state/version/deadline on the server. See `apps/web/README.md`.

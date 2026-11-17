@@ -85,3 +85,16 @@ Cancellation, capacity conflicts, offer expiry and reassignment all generate sta
 ## Intake v0.3 additive contracts
 
 `GET /api/v1/intake/policy` requires the current donor identity and returns `IntakePolicy` (generated schema). Donor clients use its configurable description limit and extra required review fields. `packaging_type` is optional on proposals and confirmed donations. Evaluation results now distinguish donation-level decision/reasons from candidate eligibility and aggregate state. `IntakeHandoff` is an internal service read model, not an HTTP or queue endpoint. Local-only opt-in `/api/v1/metrics` is excluded from OpenAPI and exports process-local non-PII metrics. See [spec amendments and remaining dispatch](../specs/intake-v0.3-alignment.md).
+
+## Role application read models and profile commands
+
+Additive application API integration in PR #9:
+
+- `GET /memberships`: verified subject's active organization/role choices; no actor IDs are trusted from the browser. `X-Organization-ID` selects one authorized membership, including donor `/me`.
+- `GET/POST /receiving-profile`: receiver-scoped profile, reported/committed capacity and versions; POST is idempotent and checks profile plus capacity versions under locks. A user cannot reduce reported free capacity below outstanding inbound commitments, grant verification, or change the verified location. Saves append scoped `recipient.updated.v1` metadata in the same transaction.
+- `GET /reservations` and `/reservations/{id}`: receiver-scoped persisted holds and current donation snapshots.
+- `GET /workflow/donations` and `/workflow/donations/{id}`: role-scoped board and durable history; donor/operator scope is the donor organization, recipients require their offer, drivers require their own assignment.
+- Offer snapshots add optional `donation`; pickup snapshots add optional `destination` and `recipient_name`. Existing command responses remain compatible.
+- Workflow lists accept `order=oldest|newest`; existing lists retain oldest-first by default, while the new board/reservation reads default to newest. The frontend explicitly requests newest. Cursor direction matches order with `(created_at,id)` tie-breaks.
+
+Reviewers: Tej (API/auth/workflow), Rushitha (profile/capacity/data), Mokshith (eligibility input review). Canonical DTOs and generated schema/OpenAPI/types are committed together. No migrations are required.

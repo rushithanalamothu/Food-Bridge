@@ -4,7 +4,8 @@ This is a dependency-ordered backlog, not a claim that the product is complete. 
 
 ## Mithil frontend integration
 
-The role applications now implement donor tracking/cancellation, receiver offer commands, driver pickup/delivery, operations summaries/failures/audits and authenticated SSE reconciliation. Configurable OIDC/PKCE browser sign-in is wired; provider provisioning and live-provider verification remain pending. See [web handoff and limitations](../../apps/web/README.md). W02–W04 are partially integrated: receiver profile editing, offer food details, persistent reservation reads, driver destination and complete operator history require additive backend APIs and affected-owner review. Browser fixture tests do not certify full real-stack acceptance or live routing. The phase tables remain the dependency/acceptance checklist.
+Mithil's role applications implement donor intake/tracking/cancellation/history, receiver offer details and persisted reservations, versioned receiving-preference editing, driver destination/pickup/delivery, operations board/history/failures/replay and authenticated SSE reconciliation. Additive API/read models reuse existing storage; no migration or lifecycle change is needed. Newest-first queries preserve old consumer defaults. Browser tests cover Code+PKCE protocol processing with a test provider, receiver edits/reload, pagination, reconnect/replay, keyboard navigation and axe WCAG checks. Live identity-provider provisioning, live matching/routing, production hosting and affected-owner sign-off remain team integration/deployment gates. See [web integration handoff](../../apps/web/README.md) and PR #9. Fixture coverage is distinguished from real-stack verification; consult the latest CI result before claiming acceptance.
+
 
 ## Implemented Tej workflow
 

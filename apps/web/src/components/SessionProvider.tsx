@@ -43,6 +43,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [choices, setChoices] = useState<MembershipRead[]>([]);
   const [select, setSelect] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [resolvedScope, setResolvedScope] = useState('');
   useEffect(() => {
     if (!manager) return;
     const loaded = (user: { access_token: string }) => {
@@ -120,6 +121,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setError(e.message);
           setSelect(e.code === 'membership_selection_required');
         }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setResolvedScope(`${role}:${revision}`);
       });
     return () => controller.abort();
   }, [ready, role, revision]);
@@ -201,8 +205,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           {!manager && ' Organization sign-in has not been configured for this installation.'}
         </Notice>
       )}
-      {!ready ? (
-        <p role="status">Completing sign-in…</p>
+      {!ready || (role && resolvedScope !== `${role}:${revision}`) ? (
+        <p role="status">Loading your workspace…</p>
       ) : (
         <div key={`${role}:${revision}`}>{children}</div>
       )}

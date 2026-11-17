@@ -1,3 +1,3 @@
 # Driver workspace — Mithil
 
-Implemented: assignments, handling/allergen/weight information, accept/decline, pickup/delivery confirmation, pagination and scoped live updates. Assignment responses omit receiver delivery location/navigation; drivers must obtain them from their coordinator. See `apps/web/README.md` for backend dependencies and browser verification.
+Implemented: assignments, pickup and receiving destinations, map link, storage/allergen/handling details, accept/decline, observed-weight/handling-confirmed pickup, delivery confirmation, durable donation history, newest-first pagination and scoped live snapshots. Real road routing remains a provider dependency; the frontend does not fabricate directions or ETA. See `apps/web/README.md`.

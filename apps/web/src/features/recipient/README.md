@@ -1,3 +1,3 @@
 # Receiver workspace — Mithil
 
-Implemented: typed offer reads, explanations/expiry, acceptance/decline, current-session reservation release, pagination, conflict refresh and scoped live updates. Receiver profile editing and reservation recovery after reload require missing backend read/update APIs. See `apps/web/README.md` for handoff owners and verification. Synthetic data is restricted to tests and the explicitly enabled backend demo.
+Implemented: full offer food details, eligibility explanation/expiry, accept/decline, persisted reservation lookup/release across reloads, scoped donation history, pagination and SSE snapshots. Receiving preferences edit categories, storage/capacity, dietary/allergen requirements and receiving hours with profile/capacity version checks. Location changes require coordinator verification. See `apps/web/README.md` for shared contract review and tests.

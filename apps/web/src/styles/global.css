@@ -677,3 +677,23 @@ footer p {
     padding: 24px 20px;
   }
 }
+fieldset {
+  border: 1px solid #ccd4c9;
+  border-radius: 7px;
+  margin: 20px 0;
+  padding: 16px;
+  min-width: 0;
+}
+legend {
+  font-size: 13px;
+  font-weight: 650;
+  padding: 0 6px;
+}
+input[readonly],
+textarea[readonly] {
+  background: #edf0e8;
+  color: #4b5f52;
+}
+#content:focus {
+  outline: none;
+}

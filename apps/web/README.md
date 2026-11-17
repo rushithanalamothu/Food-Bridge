@@ -11,8 +11,8 @@ For the explicitly synthetic local workflow enable the backend's local intake/wo
 ## Implemented applications
 
 - **Donor:** persisted extraction/review/confirmation, explicit-allergen validation, pickup-location timezone input (ambiguous/skipped DST times rejected), saved-draft ID recovery, donation detail/status, paginated recent donations, cancellation and session activity.
-- **Receiver:** paginated offers, route/explanation/expiry, explicit accept/decline, versioned reservation commands and release of holds accepted during the current mounted workspace.
-- **Driver:** paginated assignments, food/storage/allergen/handling details, accept/decline, observed-weight/handling confirmation, pickup and delivery commands.
+- **Receiver:** paginated offers, route/explanation/expiry, explicit accept/decline, versioned reservation commands and persisted reservation lookup/release after reload, full food details/history and versioned receiving-profile/capacity editing.
+- **Driver:** paginated assignments, food/storage/allergen/handling details, accept/decline, observed-weight/handling confirmation, pickup and delivery commands, verified receiving destination and map link.
 - **Operations:** organization summaries, explicitly labeled synthetic impact, status counts, paginated failures, decision audits, guarded replay and session activity. Replay uses a version observed in the decision audit; the server rejects stale or impermissible attempts.
 - **Shared:** responsive navigation/cards/forms, keyboard focus/labels, honest loading/empty/error states, verified session identity, scoped API wrappers, command idempotency and authenticated fetch SSE.
 
@@ -22,20 +22,17 @@ SSE subscribes before a reconciliation snapshot, reuses its in-memory cursor on 
 
 Copy this directory's `.env.example` to `.env.local`. Configure a public OIDC Authorization Code + PKCE client through `VITE_OIDC_AUTHORITY`, `VITE_OIDC_CLIENT_ID`, `VITE_OIDC_SCOPE` and optional `VITE_OIDC_AUDIENCE`. Register the exact `<web-origin>/auth/callback` redirect URI and allow this origin at the provider's discovery/token endpoints. Use HTTPS for shared deployments. Do not set a client secret in the SPA. Coordinate issuer, audience, JWKS, memberships and provider provisioning with Tej.
 
-The `oidc-client-ts` integration retains access/ID tokens in memory. Only temporary authorization-request state/PKCE data uses sessionStorage; donor recovery also stores a draft UUID, never draft text. Tokens are never placed in stream URLs or localStorage. A reload requires signing in again; automatic refresh/silent renewal is intentionally disabled until provider behavior is configured. Sign out removes the FoodBridge session; it does not sign out of the external identity provider. Existing gateway integrations may also supply tokens using the shared in-memory setter. Organization selection narrows existing server memberships and never grants access. Donor `/me` currently supports only one donor membership.
+The `oidc-client-ts` integration retains access/ID tokens in memory. Only temporary authorization-request state/PKCE data uses sessionStorage; donor recovery also stores a draft UUID, never draft text. Tokens are never placed in stream URLs or localStorage. A reload requires signing in again; automatic refresh/silent renewal is intentionally disabled until provider behavior is configured. Sign out removes the FoodBridge session; it does not sign out of the external identity provider. Existing gateway integrations may also supply tokens using the shared in-memory setter. Organization selection uses server-returned memberships and never grants access, including donors with multiple memberships.
 
-## Backend handoff and limitations
+## Backend integration and review
 
-No wire contracts, lifecycle states, Python service, or migrations were changed. Required follow-up reviews: Tej for OIDC/session/API/SSE integration and the new browser dependency/lockfile; Rushitha for receiver/profile/offer data; Mokshith for donor review/time handling. The following are deliberately not simulated:
+Role applications now use additive `/receiving-profile`, `/reservations`, `/workflow/donations` and `/memberships` read/command APIs. Offers include food details; pickup snapshots include receiver destination/name. Newest-first reads are explicit `order=newest` queries, preserving the existing oldest-first default for other consumers. Donation history is durable server history, separate from session-only event activity. Operator replay uses a freshly authorized donation version rather than guessing from a planning audit.
 
-1. Receiver profile/capacity/preferences read/write APIs are absent; editing is unavailable.
-2. Offers currently expose donation IDs, routing and explanation but omit food/quantity/allergen detail. Receiver food-detail screens need an authorized read model from the backend owners.
-3. Reservation list/detail reads are absent. A newly accepted hold can be released during the mounted session; after a reload/navigation the accepted offer remains visible, but hold lookup/release requires coordinator assistance. Reservation receipt data is not persisted in browser storage.
-4. Driver assignment reads omit receiver delivery destination/navigation. The UI instructs drivers to obtain it from the coordinator; no location is invented.
-5. Operator reads provide aggregate status and planning audits, not a complete donation-detail/history board. Replay can only be offered when a donation version appears in an audit.
-6. Live matching/routing and real notification providers remain backend dependencies. All test fixtures and demo impact are synthetic.
+Receiver saves require the current profile version and every capacity version, with a stable idempotency key. The transaction locks existing profile/capacity rows, preserves committed inbound weight, rejects capacity below commitments or unsupported precision, increments versions and saves an audience-scoped outbox event with the receipt. Location changes remain coordinator-verified because routing must use verified coordinates. Users can edit categories, storage, free capacity, rejected allergens, required diet and receiving windows. New receiving locations and account provisioning remain onboarding work.
 
-Agree additive read/command models in an issue or draft PR with the named owners before changing shared Python contracts; regenerate all artifacts using `make contracts`. Keep one migration history coordinated by Rushitha if storage changes become necessary.
+Membership menus list only memberships returned for the verified subject. Donor identity now honors a selected authorized organization. Cross-organization reads return 404; unauthorized roles return 403. Read models share existing tables; no migration or lifecycle change was introduced. Canonical `domain/workflow.py` changes generate JSON Schema/OpenAPI/TypeScript through `make contracts`.
+
+Affected-owner review is requested in draft PR #9: Tej for API/auth/SSE and shared dependency wiring; Rushitha for capacity/profile locking and data projections; Mokshith for eligibility/profile inputs. No approval is inferred from a review request. Live matching, routing-provider availability, external notifications, live identity-provider provisioning and production hosting remain team/deployment responsibilities.
 
 ## Verification
 
@@ -47,3 +44,5 @@ From the root: `make check`. Run `make integration` and the existing worker smok
 - `npm run test:e2e --workspace @foodbridge/web -- intake.spec.ts` requires the real local intake stack. The CI integration job runs both browser specs and real worker smoke scripts.
 
 Tests and builds use committed generated types. Never hand-edit `src/api/generated/`.
+
+Browser coverage also exercises receiver preference editing, reservation recovery after reload, newest-first pagination, SSE replay/cursor-expiry/auth failure, keyboard skip navigation and WCAG A/AA axe checks across all four workspaces. `auth.spec.ts` uses a separate test-only Vite server on 5174 and an intercepted standards-shaped OIDC provider to exercise real `oidc-client-ts` Code+PKCE processing, callback-state rejection, bearer requests and memory-only token/logout behavior. These protocol fixtures do not claim verification of an externally provisioned vendor account. The ordinary dev server does not inherit the fixture configuration.
