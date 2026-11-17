@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { IntakeApiError } from '../../api/intake';
 import {
   getOffers,
   getReservations,
@@ -42,6 +43,8 @@ export function RecipientPage() {
   const [paging, setPaging] = useState(false);
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<string>();
+  const [invalidOffers, setInvalidOffers] = useState<Set<string>>(() => new Set());
+  const previousProfile = useRef<{ version: number; offerIds: string[] } | undefined>(undefined);
   useEffect(() => {
     setExtra([]);
     setHolds([]);
@@ -57,6 +60,35 @@ export function RecipientPage() {
         ),
     ),
   ];
+  // Match IDs are immutable. Only offers already seen before a profile change are
+  // invalidated; newly generated offers must remain usable.
+  useEffect(() => {
+    if (!view.data) return;
+    const version = view.data.profile.profile.version;
+    const previous = previousProfile.current;
+    if (previous && previous.version !== version) {
+      setInvalidOffers((old) => new Set([...old, ...previous.offerIds]));
+    }
+    previousProfile.current = {
+      version,
+      offerIds: offers
+        .filter((offer) => offer.status === 'offered')
+        .map((offer) => offer.recommendation.id),
+    };
+  }, [view.data, extra]);
+
+  function invalidateCurrentOffers() {
+    setInvalidOffers(
+      (old) =>
+        new Set([
+          ...old,
+          ...offers
+            .filter((offer) => offer.status === 'offered')
+            .map((offer) => offer.recommendation.id),
+        ]),
+    );
+  }
+
   const reservations = [
     ...(view.data?.reservations.items ?? []),
     ...holds.filter(
@@ -86,8 +118,20 @@ export function RecipientPage() {
       );
       await view.refresh();
     } catch (e) {
-      await view.refresh();
-      view.setError((e as Error).message);
+      if (
+        verb === 'accept' &&
+        e instanceof IntakeApiError &&
+        e.code === 'recipient_profile_changed'
+      ) {
+        setInvalidOffers((old) => new Set([...old, id]));
+        await view.refresh();
+        view.setError(
+          'Receiving preferences changed. This offer needs revalidation before it can be accepted. Refresh for updated offers or contact your coordinator.',
+        );
+      } else {
+        await view.refresh();
+        view.setError((e as Error).message);
+      }
     }
   }
   return (
@@ -102,7 +146,10 @@ export function RecipientPage() {
           {
             label: 'Open offers on this page',
             value: offers.filter(
-              (o) => o.status === 'offered' && Date.parse(o.recommendation.offer_expires_at) > now,
+              (o) =>
+                o.status === 'offered' &&
+                !invalidOffers.has(o.recommendation.id) &&
+                Date.parse(o.recommendation.offer_expires_at) > now,
             ).length,
           },
           {
@@ -120,7 +167,13 @@ export function RecipientPage() {
           },
         ]}
       />
-      {view.data && <ReceivingProfile value={view.data.profile} refresh={view.refresh} />}
+      {view.data && (
+        <ReceivingProfile
+          value={view.data.profile}
+          refresh={view.refresh}
+          onSaved={invalidateCurrentOffers}
+        />
+      )}
       <div className="section-heading">
         <h2>Your latest offers</h2>
         <span className="muted">Newest first · receiving-location times</span>
@@ -136,6 +189,7 @@ export function RecipientPage() {
           const match = offer.recommendation;
           const food = offer.donation;
           const expired = Date.parse(match.offer_expires_at) <= now;
+          const needsRevalidation = invalidOffers.has(match.id);
           const zone = view.data?.profile.profile.location.timezone;
           return (
             <article className="card" key={match.id}>
@@ -185,11 +239,18 @@ export function RecipientPage() {
                   </div>
                 )}
               </dl>
+              {offer.status === 'offered' && !expired && needsRevalidation && (
+                <Notice>
+                  Receiving preferences changed. This offer needs revalidation before it can be
+                  accepted. Refresh for updated offers or contact your coordinator if it remains
+                  here.
+                </Notice>
+              )}
               {offer.status === 'offered' && !expired && (
                 <div className="actions">
                   <ConfirmAction
                     label="Accept offer"
-                    disabled={action.busy}
+                    disabled={action.busy || needsRevalidation}
                     onConfirm={() =>
                       void act(match.id, food?.version ?? match.donation_version, 'accept')
                     }
