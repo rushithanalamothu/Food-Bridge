@@ -28,7 +28,7 @@ uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000
 npm run dev
 ```
 
-Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission; other role pages are placeholders. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
+Frontend: <http://localhost:5173>. API docs: <http://localhost:8000/docs>. Vite proxies `/api` to port 8000, keeping browser requests on the same origin. Health and intake routes are available. The donor screen is connected to persisted drafts/submission; receiver, driver and operations pages use the workflow APIs. See [web integration](../apps/web/README.md) for role setup and OIDC configuration. Follow [the intake runbook](features/intake.md) to enable the local demo identity and worker.
 
 A worker example:
 
@@ -36,7 +36,7 @@ A worker example:
 make worker QUEUE=intake
 ```
 
-Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. General orchestration, matching and reservation business handlers remain planned; their probes only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
+Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration, reservation, pickup and workflow SSE are implemented. Matching tasks call the configured gateway; live candidate/routing/ranking remains pending, with an explicit local synthetic adapter available. Probes alone only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
 
 ## Entire stack in containers
 
@@ -114,3 +114,7 @@ uv run alembic -c backend/alembic.ini current
 Read the [individual intake spec and implementation alignment](specs/README.md) before extending intake or consuming its results. Policy v2 defaults to critical <=2 hours/high <=6 hours and a 2,000-character description limit; `config/intake.json` configures units and required review fields. Restart all backend processes after versioned policy edits. The donor UI reads policy from the authenticated API.
 
 For local metrics, set `FOODBRIDGE_ENABLE_INTAKE_METRICS=true`, recreate the API, and read `/api/v1/metrics`. It exports only that API process; separate Celery worker metrics are not aggregated there. Worker diagnostics are structured JSON logs. Shared/production metric exposure is deliberately disabled until protected collection is configured.
+
+## Complete browser acceptance
+
+`npm run test:e2e` covers the real intake worker plus protocol/HTTP-fixture role tests. After seeding the workflow demo and starting all queues/runtime, run `FOODBRIDGE_RUN_FULL_BROWSER=1 npm run test:e2e --workspace @foodbridge/web -- full-workflow.spec.ts` for the real donor-to-delivery browser scenario. CI runs intake before the general workflow starts, then runs the full workflow smoke and browser scenario. This ordering avoids unrelated workers advancing the intake test's isolated donation unexpectedly. Fixture OIDC tests use a second test-only Vite server on port 5174; regular development stays on 5173.

@@ -92,7 +92,7 @@ test('OIDC PKCE callback, bearer session, logout and token storage boundaries', 
   expect(tokenIssued).toBe(true);
   const requestPromise = page.waitForRequest(
     (request) =>
-      request.url().endsWith('/pickups') &&
+      new URL(request.url()).pathname.endsWith('/pickups') &&
       request.headers()['authorization'] === 'Bearer synthetic-memory-access-token',
   );
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();

@@ -25,7 +25,7 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, receiving-profile update services, identity-provider provisioning and live browser-login verification, remaining client read models/profile editing, real email/SMS delivery and shared-cloud hosting remain team integration work. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
+**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, identity-provider provisioning and vendor-specific login verification, real email/SMS delivery and shared-cloud hosting remain team integration work. Role application read models, receiver preference editing and membership selection are implemented in PR #9. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
 
 ## Local start
 

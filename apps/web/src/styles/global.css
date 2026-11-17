@@ -697,3 +697,10 @@ textarea[readonly] {
 #content:focus {
   outline: none;
 }
+/* The footer uses a light surface; its wordmark needs a darker accent. */
+footer {
+  color: #4e6256;
+}
+footer .wordmark span {
+  color: #934429;
+}
