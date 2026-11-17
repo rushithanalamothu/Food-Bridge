@@ -84,6 +84,7 @@ export function DonorPage() {
 
   function selectDonation(value: IntakeDonationRead) {
     stopDraftRecovery();
+    setNotice('');
     selection.current = { id: value.donation.id };
     detailRequest.current++;
     setHistory(undefined);
