@@ -280,7 +280,7 @@ export function DriverPage() {
         <DonationTimeline
           role="driver"
           id={history}
-          version={view.events.length}
+          version={view.snapshotVersion}
           onClose={() => setHistory(undefined)}
         />
       )}

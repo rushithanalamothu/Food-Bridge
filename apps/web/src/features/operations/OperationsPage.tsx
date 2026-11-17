@@ -189,7 +189,7 @@ export function OperationsPage() {
         <DonationTimeline
           role="operator"
           id={history}
-          version={view.events.length}
+          version={view.snapshotVersion}
           onClose={() => setHistory(undefined)}
         />
       )}

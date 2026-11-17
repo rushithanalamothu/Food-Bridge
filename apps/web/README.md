@@ -18,6 +18,10 @@ For the explicitly synthetic local workflow enable the backend's local intake/wo
 
 SSE subscribes before a reconciliation snapshot, reuses its in-memory cursor on reconnect, drops repeated cursor IDs, resets expired cursors and refreshes authoritative snapshots. Streams stop on authorization failure. Workspace changes close streams, clear role-local data and reconnect under the selected membership. Older list pages reset after a fresh live snapshot so stale actions are not retained. Activity lists contain only events received during the mounted session; they are not a complete historical timeline.
 
+Open receiver, driver and operations histories reconcile after every successful workspace snapshot, including manual refresh and reconnect without a new event. The bounded activity list is independent of this snapshot revision, so history continues updating after 30 events.
+
+Donor startup errors expose a retry action, and the workspace Refresh retries identity/policy loading when setup is incomplete. Saved-draft recovery stops applying responses as soon as the donor starts newer work or selects another donation. Temporary retrieval failures preserve the recovery UUID and offer retry; only an authoritative missing/confirmed-draft result retires the matching pointer. No draft text is stored in browser storage.
+
 Donation detail refreshes are tied to the current donor selection. Starting another donation invalidates outstanding detail requests. History clears the previous resource immediately when selecting a different donation, including when the new request fails. Operations replay is available only after both the selected donation snapshot and its audit load successfully; a failed or pending review cannot reuse a previous donation's version.
 
 ## Organization sign-in
@@ -48,6 +52,7 @@ From the root: `make check`. Run `make integration` and the existing worker smok
 
 - `npm run test:e2e --workspace @foodbridge/web -- workspaces.spec.ts` exercises contract-shaped mocked HTTP receiver/driver/operations interactions, conflicts and mobile layout. These are browser integration tests with synthetic fixtures, not proof of database transactions or live model behavior.
 - `npm run test:e2e --workspace @foodbridge/web -- state-recovery.spec.ts` covers delayed donor refresh success/failure after starting a new donation, cross-donation history loading/failure, replay review/version isolation, preference-save invalidation, acceptance conflicts and replacement offers. Requests are explicitly gated to reproduce races deterministically.
+- `npm run test:e2e --workspace @foodbridge/web -- history-draft-recovery.spec.ts` covers manual history refresh in all three workspaces, reconnect without new events, event 31, delayed draft recovery success/failure after newer work, retained recovery across retry/reload, authoritative missing drafts and retryable donor setup.
 - `npm run test:e2e --workspace @foodbridge/web -- intake.spec.ts` requires the real local intake stack. The CI integration job runs both browser specs and real worker smoke scripts.
 
 Tests and builds use committed generated types. Never hand-edit `src/api/generated/`.
