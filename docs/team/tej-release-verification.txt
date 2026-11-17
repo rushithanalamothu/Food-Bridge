@@ -1,0 +1,98 @@
+TEJ KIRAN — RELEASE INTEGRATION AND VERIFICATION
+Verified November 17, 2026 (America/Los_Angeles)
+Implementation commit: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
+Branch: feat/tej-release-integration
+
+WHAT WAS IMPLEMENTED
+1. Real OIDC browser login through the gateway, authorization code + PKCE,
+   state/nonce and signed-token checks, server-side Redis sessions, serialized
+   refresh, application logout/revocation, CSRF protection, and role/org selection.
+   Invalid/expired cookies never become demo identities. Browser auth takes
+   precedence over demo mode. The isolated stack uses its own cookie name.
+2. An actual SMTP adapter using the existing durable notification jobs, TLS/auth
+   configuration, bounded calls, stable message IDs, consent-attested contacts,
+   destination/domain checks and retry/receipt persistence. Mailpit captures
+   local test mail; no public email or SMS was sent.
+3. Operator donation snapshots and paginated status history, scoped by donor org.
+   Failure/replay and AI audit APIs are connected to an operations screen.
+4. Driver delivery location and timestamped route detail; an assignment screen
+   supports accept/decline, explicit handling/quantity confirmation and delivery.
+5. Live frontend snapshot refresh through authorized SSE, immediate connection
+   flush, visible disconnect state, replay/reconnect reconciliation and session
+   expiry handling. Existing donor review now uses the selected verified identity.
+6. Static production frontend/TLS gateway, a separate self-hosted production
+   profile, Keycloak provisioning templates, password-protected private Redis,
+   protected operational metrics/Prometheus rules, private configuration generation,
+   database backup/isolated restore checks and versioned image promotion/rollback.
+7. Additional unit/integration/browser checks and a CI job for login, SMTP,
+   driver/operations, production gateway checks and restore verification.
+
+FINAL VERIFICATION RESULTS
+- make check: PASS, including 206 Python unit tests, 7 frontend tests,
+  formatting, types, frontend build, generated contract drift, docs and Compose.
+- Real PostgreSQL/PostGIS/Redis integration suite: 54 PASS.
+- Release browser acceptance: 1 PASS in a Linux Playwright container.
+  This exercised real Keycloak login/cookies, donor description/review UI,
+  confirmed donation and recipient reservation APIs, driver pickup/delivery UI,
+  operations history/decisions UI, cross-org denial, CSRF rejection, fresh SMTP
+  inbox messages, SSE disconnect/reconnect, mobile width and actual logout.
+  Recipient acceptance is API-driven because its screen is another workstream.
+- Clean backend image build: PASS.
+- Production static frontend image build: PASS.
+- Production Compose configuration validation: PASS.
+- Gateway: static assets and API readiness PASS; internal metrics return 404;
+  local HTTPS certificate verification PASS using the generated local test CA.
+  This is not public DNS/certificate issuance evidence.
+- Actual custom-format database backup and isolated restore: PASS. Migration
+  74f61c890a12 and source/restored counts matched; active-reservation duplicates = 0.
+- Production Redis service: authenticated PING PASS; unauthenticated PING denied.
+- Image rollback command planning is tested to preserve previous references and
+  avoid database downgrade/old-image migration execution. A cloud rollback has
+  not been performed. Release records still require authenticated acceptance.
+- macOS sandbox Chromium could not launch; the completed browser run used the
+  cached Linux Playwright runtime against the real local services.
+
+HOW TO VIEW THE NEW WORK
+Keep Docker Desktop running.
+Website: http://localhost:55173
+Username: tej-demo
+Password: foodbridge-local-only
+These credentials are public, synthetic, local-only fixtures.
+
+Select the driver or operator membership in “Workspace identity.”
+Driver page: assignments and confirmed handoffs.
+Operations page: donation states, quantities, history, failures and decisions.
+SMTP test inbox: http://localhost:58025
+API reference: http://localhost:58000/docs
+The ordinary previous development stack uses different ports; this verification
+stack has its own Compose project, database, Redis and session-cookie name.
+
+REPEAT THE LOCAL CHECK
+From the repository root:
+  FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml up --build -d
+  FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
+  FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
+
+See docs/features/release-integration.md for prerequisites, the Linux test proxy,
+trusted provisioning, SMTP settings, deployment commands and restore safeguards.
+Do not overwrite your saved .env. Its Gemini key was not changed or committed.
+This release test uses rules mode and controlled model responses; no new claim
+of all-stages live Gemini success or improved matching quality is being made.
+
+WHAT IS STILL EXTERNAL OR TEAM-DEPENDENT
+- A real server and domain must exist before public deployment can be executed
+  and public TLS, host backups, monitoring delivery and cloud rollback verified.
+  You said you do not have those accounts. Deployable tooling is ready; a shared
+  environment has not been provisioned or certified.
+- Public email needs a chosen SMTP account/host, verified sender and test address.
+  Local SMTP delivery is verified; public inbox delivery and SMS are not claimed.
+- Rushitha's production matching/routing/data services and matching evaluation
+  remain separate deliverables. The local acceptance uses synthetic matching.
+- Mithil's recipient/profile workspace and remaining team UI work are separate.
+- Cross-owner review is needed for the contact migration, shared contracts,
+  authentication handoff and shared driver/operations screens before main merge.
+
+ACCURATE STATUS
+The remaining implementation and local validation for Tej's release slice are
+complete. Public deployment/provider acceptance remains open until the required
+accounts/environment and other owners' production integrations are supplied.
