@@ -1233,3 +1233,148 @@ def test_ai_decision_that_finishes_after_deadline_cannot_dispatch(env):
     env.workflow.sweep()
     with env.sessions() as session:
         assert session.get(Donation, step.donation_id).status == "expired"
+
+
+def test_application_profile_update_is_versioned_idempotent_and_audited(env):
+    env.current.actor = env.actors["recipient"]
+    current = env.client.get("/api/v1/receiving-profile").json()
+    body = {
+        "expected_version": current["profile"]["version"],
+        "expected_capacity_versions": current["capacity_versions"],
+        "profile": current["profile"],
+        "reported_free_kg_by_storage": {"chilled": 30},
+    }
+    key = str(uuid4())
+    response = env.client.post(
+        "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": key}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["profile"]["available_capacity_kg_by_storage"] == {"chilled": 30}
+    assert response.json()["profile"]["version"] == 2
+    assert (
+        env.client.post(
+            "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": key}
+        ).json()
+        == response.json()
+    )
+    assert (
+        env.client.post(
+            "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": str(uuid4())}
+        ).status_code
+        == 409
+    )
+    with env.sessions() as session:
+        event = session.scalar(
+            select(OutboxEvent).where(OutboxEvent.event_type == "recipient.updated.v1")
+        )
+        assert event and event.aggregate_version == 2
+        assert "Synthetic kitchen" not in str(event.envelope)
+    env.current.actor = env.actors["driver"]
+    assert env.client.get("/api/v1/receiving-profile").status_code == 403
+
+
+def test_profile_edit_cannot_overwrite_concurrent_reservation_capacity(env):
+    match = offer(env)
+    env.current.actor = recipient_for(env, match)
+    current = env.client.get("/api/v1/receiving-profile").json()
+    reserve(env, match)
+    body = {
+        "expected_version": current["profile"]["version"],
+        "expected_capacity_versions": current["capacity_versions"],
+        "profile": current["profile"],
+        "reported_free_kg_by_storage": {"chilled": 5},
+    }
+    response = env.client.post(
+        "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": str(uuid4())}
+    )
+    assert response.status_code == 409 and response.json()["code"] == "capacity_changed"
+    fresh = env.client.get("/api/v1/receiving-profile").json()
+    body["expected_capacity_versions"] = fresh["capacity_versions"]
+    response = env.client.post(
+        "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": str(uuid4())}
+    )
+    assert response.status_code == 409 and response.json()["code"] == "capacity_committed"
+    body["reported_free_kg_by_storage"] = {"chilled": 25}
+    response = env.client.post(
+        "/api/v1/receiving-profile", json=body, headers={"Idempotency-Key": str(uuid4())}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["profile"]["available_capacity_kg_by_storage"] == {"chilled": 15}
+
+
+def test_application_reads_persist_reservations_destinations_history_and_scope(env):
+    match = offer(env)
+    env.current.actor = recipient_for(env, match)
+    offers = env.client.get("/api/v1/matches?order=newest").json()
+    assert offers["items"][0]["donation"]["food_name"] == "Rice"
+    assignment = assign(env, match)
+    page = env.client.get("/api/v1/reservations").json()
+    assert page["items"][0]["reservation"]["status"] == "active"
+    identifier = page["items"][0]["reservation"]["id"]
+    assert env.client.get(f"/api/v1/reservations/{identifier}").status_code == 200
+    env.current.actor = (
+        env.actors["recipient2"]
+        if env.current.actor == env.actors["recipient"]
+        else env.actors["recipient"]
+    )
+    assert env.client.get(f"/api/v1/reservations/{identifier}").status_code == 404
+    assert env.client.get(f"/api/v1/workflow/donations/{match.donation_id}").status_code == 404
+    env.current.actor = driver_for(env, assignment)
+    pickups = env.client.get("/api/v1/pickups?order=newest").json()
+    assert pickups["items"][0]["destination"]["address"] == "Synthetic kitchen"
+    assert pickups["items"][0]["recipient_name"].startswith("Synthetic recipient")
+    env.current.actor = env.actors["operator"]
+    detail = env.client.get(f"/api/v1/workflow/donations/{match.donation_id}").json()
+    assert detail["donation"]["status"] == "pickup_assigned"
+    assert detail["history"][0]["next_status"] == "submitted"
+    assert detail["history"][-1]["next_status"] == "pickup_assigned"
+    assert env.client.get("/api/v1/workflow/donations").json()["items"]
+    env.current.actor = Actor(user_id=uuid4(), organization_id=uuid4(), role="operator")
+    assert env.client.get("/api/v1/workflow/donations").json()["items"] == []
+    assert env.client.get(f"/api/v1/workflow/donations/{match.donation_id}").status_code == 404
+
+
+def test_application_newest_pagination_has_stable_nonoverlapping_pages(env):
+    first = submit(env)
+    env.clock.now += timedelta(seconds=1)
+    second = submit(env)
+    env.current.actor = env.actors["operator"]
+    newest = env.client.get("/api/v1/workflow/donations?limit=1&order=newest").json()
+    assert newest["items"][0]["id"] == str(second)
+    older = env.client.get(
+        "/api/v1/workflow/donations",
+        params={"limit": 1, "order": "newest", "cursor": newest["next_cursor"]},
+    ).json()
+    assert older["items"][0]["id"] == str(first) and older["next_cursor"] is None
+    assert env.client.get("/api/v1/workflow/donations?cursor=broken").status_code == 400
+
+
+def test_membership_choices_and_donor_selection_never_grant_unauthorized_org(env, monkeypatch):
+    from foodbridge.auth import identity, workflow
+
+    subject = f"workflow-test:{env.actors['donor'].user_id}"
+    monkeypatch.setattr(identity, "verified_subject", lambda *_: subject)
+    monkeypatch.setattr(workflow, "verified_subject", lambda *_: subject)
+    second = env.actors["recipient"].organization_id
+    with env.sessions.begin() as session:
+        session.add(
+            Membership(user_id=env.actors["donor"].user_id, organization_id=second, role="donor")
+        )
+    env.app.dependency_overrides.pop(current_donor)
+    headers = {"Authorization": "Bearer synthetic-verified-token"}
+    memberships = env.client.get("/api/v1/memberships", headers=headers)
+    assert memberships.status_code == 200
+    assert {item["organization_id"] for item in memberships.json()} == {
+        str(env.actors["donor"].organization_id),
+        str(second),
+    }
+    assert env.client.get("/api/v1/me", headers=headers).status_code == 409
+    assert env.client.get(
+        "/api/v1/me", headers={**headers, "X-Organization-ID": str(second)}
+    ).json()["organization_id"] == str(second)
+    assert (
+        env.client.get(
+            "/api/v1/me", headers={**headers, "X-Organization-ID": str(uuid4())}
+        ).status_code
+        == 403
+    )

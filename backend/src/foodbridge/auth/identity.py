@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from typing import Annotated
+from uuid import UUID
 
 import jwt
 from fastapi import Depends, Request
@@ -65,6 +66,11 @@ def current_donor(
         subject, mode = DEMO_SUBJECT, "local_demo"
     else:
         raise AppError("authentication_required", "Sign in through the gateway to post food.", 401)
+    selected = request.headers.get("x-organization-id")
+    try:
+        selected_id = UUID(selected) if selected else None
+    except ValueError as exc:
+        raise AppError("invalid_organization", "Invalid organization selector.", 400) from exc
     with session_factory(settings.database_url)() as session:
         rows = session.execute(
             select(
@@ -80,6 +86,7 @@ def current_donor(
                 User.active.is_(True),
                 Organization.active.is_(True),
                 Membership.role == "donor",
+                True if selected_id is None else Organization.id == selected_id,
             )
         ).all()
         if not rows:

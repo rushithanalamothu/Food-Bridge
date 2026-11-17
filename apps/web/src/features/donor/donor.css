@@ -171,3 +171,30 @@
     font-size: 16px;
   }
 }
+.donor-workspace {
+  max-width: none;
+}
+.donor-sheet {
+  border-radius: 10px;
+  border-color: #dce0d5;
+}
+.donor-workspace button {
+  border-radius: 7px;
+  background: #a84125;
+  border-color: #a84125;
+}
+.donor-workspace .text-button {
+  color: #24483c;
+  background: transparent;
+  border: 0;
+}
+.donor-workspace .quiet-button {
+  background: transparent;
+  border-color: #becac1;
+}
+.donor-workspace .danger {
+  color: #96361f;
+}
+.donor-workspace .stat strong {
+  font-size: clamp(24px, 3vw, 34px);
+}

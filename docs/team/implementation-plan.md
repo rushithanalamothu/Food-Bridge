@@ -1,10 +1,15 @@
 # Implementation plan and acceptance gates
 
-This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake and Tej's backend workflow are implemented. Live matching/data services and complete client integration remain pending. Dates should be assigned by the team; do not invent delivery commitments.
+This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake, backend workflow and Mithil's role applications are implemented. Live matching/routing, deployment/provider configuration and affected-owner review remain team integration gates. Dates should be assigned by the team; do not invent delivery commitments.
+
+## Mithil frontend integration
+
+Mithil's role applications implement donor intake/tracking/cancellation/history, receiver offer details and persisted reservations, versioned receiving-preference editing, driver destination/pickup/delivery, operations board/history/failures/replay and authenticated SSE reconciliation. Additive API/read models reuse existing storage; no migration or lifecycle change is needed. Newest-first queries preserve old consumer defaults. Browser tests cover Code+PKCE protocol processing with a test provider, receiver edits/reload, pagination, reconnect/replay, keyboard navigation and axe WCAG checks. Live identity-provider provisioning, live matching/routing, production hosting and affected-owner sign-off remain team integration/deployment gates. See [web integration handoff](../../apps/web/README.md) and PR #9. Fixture coverage is distinguished from real-stack verification; consult the latest CI result before claiming acceptance.
+
 
 ## Implemented Tej workflow
 
-[Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These tests do not certify Rushitha's live M01–M03 implementation, Mithil's W02–W04 screens or shared-cloud promotion. F03 now resolves all active role memberships; identity-provider selection/provisioning and browser login remain pending. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
+[Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These backend tests do not certify Rushitha's live M01–M03 implementation or shared-cloud promotion. Mithil's frontend coverage is tracked separately in PR #9. F03 now resolves all active role memberships; identity-provider selection/provisioning and vendor-specific login verification remain deployment work; the configurable browser OIDC client is implemented. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
 
 ## Implemented intake slice
 

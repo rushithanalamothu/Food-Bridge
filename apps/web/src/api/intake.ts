@@ -1,3 +1,4 @@
+import { sessionHeaders, setAccessToken } from './session';
 import type {
   DonationSubmit,
   DraftCreate,
@@ -21,9 +22,9 @@ export class IntakeApiError extends Error {
 }
 
 // The gateway can provide an in-memory access token; never persist it in localStorage or URLs.
-let accessToken: string | undefined;
+
 export function setIntakeAccessToken(token?: string) {
-  accessToken = token;
+  setAccessToken(token);
 }
 
 export async function intakeRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -31,11 +32,20 @@ export async function intakeRequest<T>(path: string, options: RequestInit = {}):
     ...options,
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...sessionHeaders(),
       ...options.headers,
     },
   });
-  const body = await response.json();
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new IntakeApiError(
+      'invalid_response',
+      'The service returned an unreadable response. Retry shortly.',
+      response.status,
+    );
+  }
   if (!response.ok)
     throw new IntakeApiError(
       body.code ?? 'request_failed',
@@ -59,7 +69,11 @@ export const submitDonation = (body: DonationSubmit, key: string) =>
     body: JSON.stringify(body),
   });
 export const getDonation = (id: string) => intakeRequest<IntakeDonationRead>(`/donations/${id}`);
-export const listDonations = () => intakeRequest<DonationPage>('/donations');
+export const listDonations = (cursor?: string | null) =>
+  intakeRequest<DonationPage>(
+    '/donations' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''),
+  );
+export const getDraft = (id: string) => intakeRequest<DraftRead>(`/donation-drafts/${id}`);
 export const demoEligibility = (id: string, key: string) =>
   intakeRequest<EvaluationRead>(`/donations/${id}/demo-eligibility`, {
     method: 'POST',

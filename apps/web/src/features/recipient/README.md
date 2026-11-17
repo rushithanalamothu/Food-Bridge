@@ -1,7 +1,3 @@
-# Recipient workspace
+# Receiver workspace — Mithil
 
-Lead: Mithil. Put recipient-specific routes, components and hooks here. The current page is a placeholder, not an implemented business flow.
-
-Use the root design/API contract and generated wire types. Backend collaborators: Rushitha for profile/match read models; Tej for acceptance/auth.
-
-Keep fixture/mock responses separate from live API wrappers. Do not show a successful operation until the server confirms it.
+Implemented: full offer food details, eligibility explanation/expiry, accept/decline, persisted reservation lookup/release across reloads, scoped donation history, pagination and SSE snapshots. Receiving preferences edit categories, storage/capacity, dietary/allergen requirements and receiving hours with profile/capacity version checks. Location changes require coordinator verification. See `apps/web/README.md` for shared contract review and tests.

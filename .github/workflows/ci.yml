@@ -92,6 +92,7 @@ jobs:
           uv run python -m foodbridge.agents.orchestrator.runtime > /tmp/workflow-runtime.log 2>&1 &
           workflow_runtime_pid=$!
           uv run python scripts/smoke_workflow.py
+          FOODBRIDGE_RUN_FULL_BROWSER=1 npm run test:e2e --workspace @foodbridge/web -- full-workflow.spec.ts
       - name: Upload browser failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

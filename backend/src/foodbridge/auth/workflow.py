@@ -61,3 +61,41 @@ def current_actor(
         return Actor(
             user_id=rows[0].user_id, organization_id=rows[0].organization_id, role=rows[0].role
         )
+
+
+def membership_choices(request: Request):
+    from foodbridge.domain.workflow import MembershipRead
+
+    settings = request.app.state.settings
+    authorization = request.headers.get("authorization", "")
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token.strip():
+            raise AppError("invalid_token", "A bearer access token is required.", 401)
+        subject = verified_subject(token, settings)
+    elif settings.environment == "local" and settings.enable_local_workflow_demo:
+        role = request.headers.get("x-foodbridge-role", "donor")
+        if role not in {"donor", "recipient", "driver", "operator"}:
+            raise AppError("invalid_role", "Unknown role.", 400)
+        subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:workflow-demo:{role}"
+    else:
+        raise AppError("authentication_required", "Sign in through the gateway.", 401)
+    with session_factory(settings.database_url)() as session:
+        rows = session.execute(
+            select(Membership, Organization.name)
+            .join(User, User.id == Membership.user_id)
+            .join(Organization, Organization.id == Membership.organization_id)
+            .where(
+                User.oidc_subject == subject, User.active.is_(True), Organization.active.is_(True)
+            )
+            .order_by(Organization.name, Membership.role)
+        ).all()
+        return [
+            MembershipRead(
+                user_id=row.user_id,
+                organization_id=row.organization_id,
+                organization_name=name,
+                role=row.role,
+            )
+            for row, name in rows
+        ]
