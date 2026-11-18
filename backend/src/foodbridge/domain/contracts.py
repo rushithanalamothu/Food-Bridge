@@ -95,6 +95,17 @@ class RecipientProfile(Contract):
         return self
 
 
+class RankingEvidence(Contract):
+    """Auditable normalized components and the model path actually used."""
+
+    score: float = Field(ge=0, le=1, allow_inf_nan=False)
+    features: dict[str, float]
+    provider: str | None = None
+    model: str | None = None
+    prompt_version: str | None = None
+    fallback_reason: str | None = None
+
+
 class MatchRecommendation(Contract):
     id: UUID
     donation_id: UUID
@@ -108,6 +119,7 @@ class MatchRecommendation(Contract):
     algorithm: Literal["distance_only", "multi_criteria"]
     eligibility_policy_version: str = Field(min_length=1)
     ranking_config_version: str = Field(min_length=1)
+    ranking_evidence: RankingEvidence | None = None
 
 
 class ReservationRequest(Contract):

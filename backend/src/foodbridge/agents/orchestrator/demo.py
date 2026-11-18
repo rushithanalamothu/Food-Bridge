@@ -8,10 +8,10 @@ from sqlalchemy import select
 from foodbridge.agents.intake.service import utcnow
 from foodbridge.db.models import Organization, User
 from foodbridge.db.session import session_factory
-from foodbridge.db.workflow import current_profile
+from foodbridge.db.workflow import current_driver_facts, current_profile
 from foodbridge.db.workflow_models import Assignment, Driver, RecipientState
 from foodbridge.domain.contracts import MatchRecommendation
-from foodbridge.domain.intake import DriverFacts, EligibilityBatch, EligibilityCandidate, RouteFacts
+from foodbridge.domain.intake import EligibilityBatch, EligibilityCandidate, RouteFacts
 
 
 class DemoMatching:
@@ -37,7 +37,7 @@ class DemoMatching:
             )
             driver = next(
                 (
-                    DriverFacts.model_validate(row.facts)
+                    current_driver_facts(row)
                     for row in drivers
                     if row.id not in excluded_drivers and row.facts.get("available")
                 ),

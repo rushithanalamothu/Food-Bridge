@@ -17,6 +17,8 @@ from foodbridge.domain.errors import AppError
 from foodbridge.domain.workflow import (
     DonationBoard,
     DonationDetail,
+    DriverOriginRead,
+    DriverOriginUpdate,
     MembershipRead,
     ReceivingProfileRead,
     ReceivingProfileUpdate,
@@ -64,6 +66,16 @@ def profile(request: Request, actor: Identity):
 @router.post("/receiving-profile", response_model=ReceivingProfileRead)
 def update_profile(body: ReceivingProfileUpdate, request: Request, actor: Identity, key: Key):
     return service(request).update_profile(actor, body, key, request.state.request_id)
+
+
+@router.post("/driver-origin", response_model=DriverOriginRead)
+def update_driver_origin(body: DriverOriginUpdate, request: Request, actor: Identity, key: Key):
+    return service(request).update_driver_origin(actor, body, key, request.state.request_id)
+
+
+@router.get("/driver-origin", response_model=DriverOriginRead)
+def driver_origin(request: Request, actor: Identity):
+    return service(request).driver_origin(actor)
 
 
 @router.get("/reservations", response_model=ReservationPage)

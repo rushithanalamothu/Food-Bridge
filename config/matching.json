@@ -1,17 +1,17 @@
 {
-  "version": "ranking-v1",
-  "eligibility_policy_version": "eligibility-v1",
+  "version": "ranking-v2",
+  "eligibility_policy_version": "eligibility-v2",
   "weights": {
-    "urgency": 0.25,
-    "capacity": 0.2,
-    "dietary": 0.15,
+    "distance": 0.35,
+    "capacity": 0.25,
     "fairness": 0.15,
-    "distance": 0.25
+    "slack": 0.25
   },
   "max_search_radius_m": 20000,
   "offer_ttl_s": 300,
-  "max_matching_rounds": 6,
-  "provider_timeout_s": 10,
-  "max_provider_attempts": 3,
-  "note": "Ranking design defaults only. Hard eligibility and handling buffers come from config/intake.json; no food-safety deadline is inferred."
+  "fairness_window_days": 30,
+  "slack_horizon_s": 21600,
+  "max_candidates": 15,
+  "max_driver_routes": 5,
+  "note": "Ranking design defaults, not measured optimum. Fairness counts active/completed reservations. Hard eligibility comes from config/intake.json. Slack is candidate-specific; required diet is never a score."
 }

@@ -1,5 +1,6 @@
 """Application read models and invariant-preserving profile commands; no provider calls."""
 
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import exists, select
@@ -15,6 +16,7 @@ from foodbridge.domain.errors import AppError
 from foodbridge.domain.workflow import (
     DonationDetail,
     DonationHistoryItem,
+    DriverOriginRead,
     OfferRead,
     ReceivingProfileRead,
 )
@@ -85,6 +87,62 @@ class ApplicationService:
         require_role(actor, "recipient")
         with self.sessions() as session:
             return self.profile_view(session, actor.organization_id)
+
+    def update_driver_origin(self, actor, body, key, correlation_id):
+        require_role(actor, "driver")
+
+        def apply(session, now):
+            driver = session.scalar(
+                select(Driver)
+                .where(
+                    Driver.user_id == actor.user_id, Driver.organization_id == actor.organization_id
+                )
+                .with_for_update()
+            )
+            if driver is None:
+                raise AppError("driver_unavailable", "Driver profile is not provisioned.", 404)
+            require_version(driver, body.expected_version)
+            driver.version += 1
+            driver.facts = {
+                **driver.facts,
+                "routing_origin": body.origin.model_dump(mode="json"),
+                "routing_origin_observed_at": now.isoformat(),
+            }
+            return DriverOriginRead(
+                driver_id=driver.id, version=driver.version, origin=body.origin, observed_at=now
+            ).model_dump(mode="json")
+
+        return command(
+            self.sessions,
+            actor,
+            "POST /api/v1/driver-origin",
+            key,
+            body.model_dump(mode="json"),
+            self.clock,
+            apply,
+        )
+
+    def driver_origin(self, actor):
+        require_role(actor, "driver")
+        with self.sessions() as session:
+            driver = session.scalar(
+                select(Driver).where(
+                    Driver.user_id == actor.user_id, Driver.organization_id == actor.organization_id
+                )
+            )
+            if driver is None:
+                raise AppError("driver_unavailable", "Driver profile is not provisioned.", 404)
+            data = driver.facts
+            return DriverOriginRead(
+                driver_id=driver.id,
+                version=driver.version,
+                origin=data.get("routing_origin"),
+                observed_at=(
+                    datetime.fromisoformat(data["routing_origin_observed_at"])
+                    if "routing_origin_observed_at" in data
+                    else None
+                ),
+            )
 
     def update_profile(self, actor, body, key, correlation_id):
         require_role(actor, "recipient")

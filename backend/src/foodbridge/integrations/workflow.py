@@ -42,4 +42,9 @@ def matching_gateway(settings):
         from foodbridge.agents.orchestrator.demo import DemoMatching
 
         return DemoMatching(settings.database_url)
+    if settings.routing_base_url:
+        from foodbridge.agents.matching.routing import OSRMRouting
+        from foodbridge.agents.matching.service import LiveMatching
+
+        return LiveMatching(settings, OSRMRouting(settings.routing_base_url, timeout_s=2))
     return UnconfiguredMatching()

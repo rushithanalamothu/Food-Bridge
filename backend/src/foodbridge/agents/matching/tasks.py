@@ -1,4 +1,4 @@
-"""Matching queue integration; production candidate/ranking adapters remain Rushitha's work."""
+"""Matching queue integration through the configured routing/matching gateway."""
 
 from foodbridge.agents.celery_app import celery_app
 

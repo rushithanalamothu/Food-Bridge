@@ -14,7 +14,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
 
+from foodbridge.agents.intake.policy import evaluate
 from foodbridge.agents.intake.service import IntakeService
+from foodbridge.agents.matching.routing import FakeRouting
+from foodbridge.agents.matching.service import LiveMatching
 from foodbridge.agents.orchestrator.demo import DemoMatching
 from foodbridge.agents.orchestrator.relay import dispatch_pending
 from foodbridge.agents.orchestrator.service import WorkflowService
@@ -35,6 +38,7 @@ from foodbridge.db.models import (
     User,
 )
 from foodbridge.db.session import engine_for, session_factory
+from foodbridge.db.workflow import snapshot
 from foodbridge.db.workflow_models import (
     Assignment,
     Capacity,
@@ -283,8 +287,9 @@ def consume_all(env):
         env.workflow.consume(identifier)
 
 
-def offer(env, identifier=None):
+def offer(env, identifier=None, gateway=None):
     identifier = identifier or submit(env)
+    gateway = gateway or env.gateway
     consume_all(env)
     with env.sessions() as session:
         step = session.scalar(
@@ -294,7 +299,7 @@ def offer(env, identifier=None):
                 WorkflowStep.status == "pending",
             )
         )
-    env.workflow.run_step(step.id, env.gateway)
+    env.workflow.run_step(step.id, gateway)
     with env.sessions() as session:
         evaluation = session.scalar(
             select(IntakeEvaluation)
@@ -315,7 +320,7 @@ def offer(env, identifier=None):
                 WorkflowStep.status == "pending",
             )
         )
-    env.workflow.run_step(step.id, env.gateway)
+    env.workflow.run_step(step.id, gateway)
     with env.sessions() as session:
         row = session.scalar(
             select(MatchOffer).where(
@@ -330,6 +335,98 @@ def recipient_for(env, match):
         a
         for a in env.actors.values()
         if a.role == "recipient" and a.organization_id == match.recipient_organization_id
+    )
+
+
+def test_driver_origin_is_scoped_versioned_and_idempotent(env):
+    env.current.actor = env.actors["driver"]
+    before = env.client.get("/api/v1/driver-origin")
+    assert before.status_code == 200
+    assert before.json()["origin"] is None
+    body = {"expected_version": 1, "origin": env.donor.pickup_location.model_dump(mode="json")}
+    key = str(uuid4())
+    response = env.client.post("/api/v1/driver-origin", json=body, headers={"Idempotency-Key": key})
+    assert response.status_code == 200
+    assert response.json()["version"] == 2
+    assert (
+        env.client.post("/api/v1/driver-origin", json=body, headers={"Idempotency-Key": key}).json()
+        == response.json()
+    )
+    assert env.client.get("/api/v1/driver-origin").json()["observed_at"]
+    assert (
+        env.client.post(
+            "/api/v1/driver-origin",
+            json=body,
+            headers={"Idempotency-Key": str(uuid4())},
+        ).status_code
+        == 409
+    )
+    env.current.actor = env.actors["recipient"]
+    assert env.client.get("/api/v1/driver-origin").status_code == 403
+    assert (
+        env.client.post(
+            "/api/v1/driver-origin",
+            json=body,
+            headers={"Idempotency-Key": str(uuid4())},
+        ).status_code
+        == 403
+    )
+
+
+def test_live_postgis_candidates_and_offer_use_real_capacity_and_driver_origin(env):
+    identifier = submit(env)
+    with env.sessions.begin() as session:
+        row = session.get(Driver, env.drivers[0])
+        row.facts = {
+            **row.facts,
+            "routing_origin": env.donor.pickup_location.model_dump(mode="json"),
+            "routing_origin_observed_at": NOW.isoformat(),
+        }
+        distant = env.actors["recipient2"].organization_id
+        session.get(Organization, distant).location = "SRID=4326;POINT(-122.6 38.0)"
+        capacity = session.get(Capacity, (env.actors["recipient"].organization_id, "chilled"))
+        capacity.reported_free_kg = 10
+    point = env.donor.pickup_location
+    key = (point.latitude, point.longitude, point.latitude, point.longitude)
+    gateway = LiveMatching(
+        Settings(database_url=env.url, ai_provider="rules", matching_algorithm="distance_only"),
+        FakeRouting({key: (1200, 250)}),
+        clock=lambda: env.clock.now,
+    )
+    with env.sessions() as session:
+        donation = snapshot(session.get(Donation, identifier), env.clock.now)
+    batch = gateway.candidates(donation, set(), set())
+    assert len(batch.candidates) == 1  # PostGIS excludes the distant organization.
+    assert batch.candidates[0].recipient.available_capacity_kg_by_storage["chilled"] == 10
+    assert batch.candidates[0].driver.id == env.drivers[0]
+    assert batch.candidates[0].route.distance_m == 1200
+    assert (
+        gateway.candidates(donation, {env.actors["recipient"].organization_id}, set()).candidates
+        == []
+    )
+    assert gateway.candidates(donation, set(), {env.drivers[0]}).candidates[0].driver is None
+    matched = offer(env, identifier, gateway)
+    assert matched is not None
+    assert matched.recommendation["ranking_evidence"]["features"]["distance_m"] == 1200
+    assert matched.recipient_organization_id == env.actors["recipient"].organization_id
+
+
+def test_missing_driver_location_never_invents_pickup_eta(env):
+    identifier = submit(env)
+    with env.sessions() as session:
+        donation = snapshot(session.get(Donation, identifier), NOW)
+    point = donation.pickup_location
+    key = (point.latitude, point.longitude, point.latitude, point.longitude)
+    gateway = LiveMatching(
+        Settings(database_url=env.url, ai_provider="rules"),
+        FakeRouting({key: (1000, 200)}),
+        clock=lambda: NOW,
+    )
+    batch = gateway.candidates(donation, set(), set())
+    assert batch.candidates
+    assert all(candidate.driver is None for candidate in batch.candidates)
+    assert not any(
+        decision.eligible for decision in evaluate(donation, batch, NOW, gateway.policy).decisions
     )
 
 
