@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import type { DriverOriginRead } from '../src/api/generated/workflow';
 export const org = '00000000-0000-4000-8000-000000000001';
 export const donationId = '00000000-0000-4000-8000-000000000002';
 export const matchId = '00000000-0000-4000-8000-000000000003';
@@ -34,6 +35,12 @@ export async function fixtures(page: Page) {
   const donation = food();
   const state = {
     donation,
+    driverOrigin: {
+      driver_id: org,
+      version: 1,
+      origin: null,
+      observed_at: null,
+    } as DriverOriginRead,
     offers: [
       {
         version: 1,
@@ -184,12 +191,24 @@ export async function fixtures(page: Page) {
         state.profile.profile.available_capacity_kg_by_storage = body.reported_free_kg_by_storage;
         return json(state.profile);
       }
+      if (path === '/driver-origin') {
+        if (body.expected_version !== state.driverOrigin.version)
+          return json({ code: 'version_conflict', message: 'Driver details changed.' }, 409);
+        state.driverOrigin = {
+          driver_id: org,
+          version: state.driverOrigin.version + 1,
+          origin: body.origin,
+          observed_at: new Date().toISOString(),
+        };
+        return json(state.driverOrigin);
+      }
       return json(
         { code: 'unsupported_fixture', message: 'Synthetic fixture route missing.' },
         404,
       );
     }
     if (path === '/receiving-profile') return json(state.profile);
+    if (path === '/driver-origin') return json(state.driverOrigin);
     if (path === '/matches') {
       const start = Number(url.searchParams.get('cursor') || 0);
       return json({
