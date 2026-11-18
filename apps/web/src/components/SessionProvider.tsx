@@ -71,6 +71,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
   useEffect(() => {
+    if (
+      serverLogin === undefined ||
+      location.pathname !== '/auth/callback' ||
+      (!serverLogin && manager)
+    )
+      return;
+    navigate('/', { replace: true });
+    setError('Sign-in could not be completed. Please start again.');
+  }, [serverLogin, location.pathname, navigate]);
+  useEffect(() => {
     if (serverLogin !== false || !manager) return;
     const loaded = (user: { access_token: string }) => {
       setAccessToken(user.access_token);
