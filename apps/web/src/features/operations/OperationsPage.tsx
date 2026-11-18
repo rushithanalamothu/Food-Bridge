@@ -179,7 +179,7 @@ export function OperationsPage() {
               setBoardExtra((old) => [...old, ...page.items]);
               setBoardCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
@@ -266,7 +266,7 @@ export function OperationsPage() {
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }

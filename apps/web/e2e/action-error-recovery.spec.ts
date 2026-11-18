@@ -153,4 +153,9 @@ test('fresh receiver snapshots block a stale offer and enable a new validated ma
   stale = false;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Accept offer', exact: true })).toBeEnabled();
+  // Profile and offer GETs can reconcile on different snapshots; the server-validated
+  // replacement ID must remain actionable when the profile response catches up.
+  state.profile.profile.version++;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Accept offer', exact: true })).toBeEnabled();
 });

@@ -61,8 +61,9 @@ export function RecipientPage() {
         ),
     ),
   ];
-  // Match IDs are immutable. Only offers already seen before a profile change are
-  // invalidated; newly generated offers must remain usable.
+  // Older gateways lack server-side validity. Keep the legacy observation guard
+  // only for those offers; independently loaded profile/offer snapshots may differ
+  // briefly, so an explicit server flag must not poison a fresh replacement ID.
   useEffect(() => {
     if (!view.data) return;
     const version = view.data.profile.profile.version;
@@ -73,7 +74,7 @@ export function RecipientPage() {
     previousProfile.current = {
       version,
       offerIds: offers
-        .filter((offer) => offer.status === 'offered')
+        .filter((offer) => offer.status === 'offered' && offer.requires_revalidation === undefined)
         .map((offer) => offer.recommendation.id),
     };
   }, [view.data, extra]);
@@ -292,7 +293,7 @@ export function RecipientPage() {
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
@@ -349,7 +350,7 @@ export function RecipientPage() {
               setHolds((old) => [...old, ...page.items]);
               setHoldCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }

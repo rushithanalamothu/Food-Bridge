@@ -271,7 +271,7 @@ export function DriverPage() {
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
