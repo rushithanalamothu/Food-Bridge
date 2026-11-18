@@ -63,6 +63,7 @@ export function OperationsPage() {
     ...extra.filter((item) => !view.data?.failures.items.some((first) => first.id === item.id)),
   ];
   async function review(id: string) {
+    setMessage('');
     const request = ++reviewRequest.current;
     view.setError('');
     setCurrentVersion(0);
@@ -220,6 +221,7 @@ export function OperationsPage() {
                   label="Replay failed work"
                   disabled={action.busy}
                   onConfirm={() => {
+                    setMessage('');
                     void (async () => {
                       try {
                         await action.run(`${failure.id}:${version}:replay`, (key) =>
