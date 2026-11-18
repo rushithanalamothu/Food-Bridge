@@ -1,0 +1,137 @@
+TEJ KIRAN — RELEASE INTEGRATION AND VERIFICATION
+Verified November 17, 2026 (America/Los_Angeles)
+Initial implementation: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
+Integrated upstream main: b1c6ffd (Mithil PRs #10, #12, #13; Rushitha PR #14)
+Review: https://github.com/rushithanalamothu/Food-Bridge/pull/11 (draft)
+Branch: feat/tej-release-integration
+
+WHAT TEJ ADDED TO THE EXISTING WORKFLOW
+1. Real OIDC browser login through the gateway, authorization code + PKCE,
+   state/nonce and signed-token checks, server-side Redis sessions, serialized
+   refresh, application logout/revocation, CSRF protection, and role/org selection.
+   Invalid/expired cookies never become demo identities. Browser auth takes
+   precedence over demo mode. The isolated stack uses its own cookie name.
+2. An actual SMTP adapter using the existing durable notification jobs, TLS/auth
+   configuration, bounded calls, stable message IDs, consent-attested contacts,
+   destination/domain checks and retry/receipt persistence. Mailpit captures
+   local test mail; no public email or SMS was sent.
+3. Additional operator donation snapshots and paginated status history, scoped by
+   donor org. The merged operations screen uses Mithil’s workflow detail/board
+   APIs plus existing failure/replay and AI audit APIs. Both read paths are tested.
+4. Saved driver delivery location and timestamped route detail. Mithil’s merged
+   assignment screen supports accept/decline, explicit handling/quantity confirmation
+   and delivery; this release verifies it with the server-managed login identity.
+5. Server-managed login integrated with Mithil’s existing role navigation,
+   organization selection and live SSE screens. Added immediate SSE connection
+   flush and session-service failure handling. Preserved his SDK login, receiving
+   preferences, pagination, snapshot reconciliation and responsive screen designs.
+6. Static production frontend/TLS gateway, a separate self-hosted production
+   profile, Keycloak provisioning templates, password-protected private Redis,
+   protected operational metrics/Prometheus rules, private configuration generation,
+   database backup/isolated restore checks and versioned image promotion/rollback.
+7. Additional unit/integration/browser checks and a CI job for login, SMTP,
+   driver/operations, production gateway checks and restore verification.
+
+FINAL VERIFICATION RESULTS
+- make check: PASS, including 225 Python unit tests, 14 frontend tests,
+  formatting, types, frontend build, generated contract drift, docs and Compose.
+- Real PostgreSQL/PostGIS/Redis integration suite: 62 PASS.
+- Release browser acceptance: 1 PASS in a Linux Playwright container.
+  This exercised real Keycloak login/cookies, donor description/review/confirmation
+  and posting UI, receiver offer acceptance UI, driver pickup/delivery UI, operations
+  history UI and orchestrator audit API, cross-org denial, CSRF rejection, fresh SMTP
+  inbox messages, SSE disconnect/reconnect, mobile width and actual logout.
+- Frontend browser regressions: 24 PASS after PR #10 (SDK login/callback, role workspaces,
+  receiver preferences, SSE recovery, pagination, accessibility, server sessions,
+  failed logout and session-service failure behavior). These use explicit fixtures.
+- Browser evidence: 24 fixture regressions after PR #10, plus the prior real
+  release flow. The real release flow is rerun by GitHub CI on this merge.
+- Clean backend image build: PASS.
+- Production static frontend image build: PASS.
+- Production Compose configuration validation: PASS.
+- Gateway: static assets and API readiness PASS; internal metrics return 404;
+  local HTTPS certificate verification PASS using the generated local test CA.
+  This is not public DNS/certificate issuance evidence.
+- Actual custom-format database backup and isolated restore: PASS. Migration
+  74f61c890a12 and source/restored counts matched; active-reservation duplicates = 0.
+- Production Redis service: authenticated PING PASS; unauthenticated PING denied.
+- Image rollback command planning is tested to preserve previous references and
+  avoid database downgrade/old-image migration execution. A cloud rollback has
+  not been performed. Release records still require authenticated acceptance.
+- macOS sandbox Chromium could not launch; the completed browser run used the
+  cached Linux Playwright runtime against the real local services.
+
+HOW TO VIEW THE NEW WORK
+Keep Docker Desktop running.
+Website: http://localhost:55173
+Username: tej-demo
+Password: foodbridge-local-only
+These credentials are public, synthetic, local-only fixtures.
+
+Use the Donor, Receiver, Driver and Operations navigation links.
+If you have multiple organizations for one role, use “Choose organization.”
+Driver page: assignments and confirmed handoffs.
+Operations page: donation states, quantities, history, failures and decisions.
+SMTP test inbox: http://localhost:58025
+API reference: http://localhost:58000/docs
+The ordinary previous development stack uses different ports; this verification
+stack has its own Compose project, database, Redis and session-cookie name.
+
+REPEAT THE LOCAL CHECK
+From the repository root:
+  FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml up --build -d
+  FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
+  FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
+
+See docs/features/release-integration.md for prerequisites,
+trusted provisioning, SMTP settings, deployment commands and restore safeguards.
+Do not overwrite your saved .env. Its Gemini key was not changed or committed.
+This release test uses rules mode and controlled model responses; no new claim
+of all-stages live Gemini success or improved matching quality is being made.
+
+WHAT IS STILL EXTERNAL OR TEAM-DEPENDENT
+- A real server and domain must exist before public deployment can be executed
+  and public TLS, host backups, monitoring delivery and cloud rollback verified.
+  You said you do not have those accounts. Deployable tooling is ready; a shared
+  environment has not been provisioned or certified.
+- Public email needs a chosen SMTP account/host, verified sender and test address.
+  Local SMTP delivery is verified; public inbox delivery and SMS are not claimed.
+- Rushitha’s PostGIS matching/routing adapter and offline evaluation are merged.
+  A live routing provider and production verification remain team work. The
+  earlier local acceptance used synthetic matching.
+- Mithil’s role/profile screens are merged and preserved. Any additional UI
+  enhancements remain coordinated with him; they are not claimed as Tej’s work.
+- Cross-owner review is needed for the contact migration, shared contracts,
+  authentication handoff and shared driver/operations screens before main merge.
+
+ACCURATE STATUS
+The remaining implementation and local validation for Tej's release slice are
+complete. Public deployment/provider acceptance remains open until the required
+accounts/environment and other owners' production integrations are supplied.
+
+INTEGRATION AND CREDIT
+- Upstream main advanced during implementation: Mithil’s role application PR #9
+  was merged. This branch integrates that merge and keeps his UI/client work.
+- Tej’s contribution is the gateway login/session path, SMTP/contact delivery,
+  additive backend reads/guards, deployment/operations tooling and release testing.
+- Existing Mokshith intake rules and donor confirmation remain authoritative.
+- Existing Tej AI orchestrator, dispatch/retries, reservation locking, pickup and
+  failure recovery remain in place; this change does not introduce another AI key.
+- Matching in this local acceptance is explicitly synthetic. Rushitha’s production
+  data/routing/ranking is a separate workstream. No AI improvement is inferred.
+- Earlier reports are historical snapshots. This note supersedes their claims that
+  recipient UI/browser login/external notification implementation was still absent.
+
+LATEST MITHIL INTEGRATION
+- PR #10 fixes stale donor/history responses, replay authorization state and
+  acceptance of offers invalidated by changed receiving preferences. Its
+  browser race tests passed with Tej gateway/session integration (24 total).
+- The frontend still needs backend revalidation/rematching when recipient
+  preferences change, as documented in apps/web/README.md. This is a separate
+  Tej/Rushitha/Mokshith contract follow-up; existing reservation checks reject
+  stale offers, so the browser does not promise a new match automatically.
+
+LATEST MAIN INTEGRATION
+- Mithil’s history/draft recovery and posted-draft notice fixes are preserved.
+- Rushitha’s PostGIS matching, road-routing adapter and evaluation are merged.
+  This report distinguishes code integration from a verified external router.

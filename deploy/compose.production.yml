@@ -1,0 +1,212 @@
+name: foodbridge-production
+x-backend: &backend
+  image: ${FOODBRIDGE_BACKEND_IMAGE:?Set a reviewed backend image tag or digest}
+  env_file: ['${FOODBRIDGE_RUNTIME_ENV:-runtime/runtime.env}']
+  restart: unless-stopped
+  depends_on:
+    db: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    migrate: { condition: service_completed_successfully }
+  logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
+services:
+  db:
+    image: postgis/postgis:16-3.6
+    environment:
+      POSTGRES_USER: foodbridge
+      POSTGRES_DB: foodbridge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set database password}
+    volumes: [postgres:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'pg_isready -U foodbridge -d foodbridge'],
+        interval: 5s,
+        timeout: 3s,
+        retries: 20,
+      }
+  redis:
+    image: redis:7.4-alpine
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory-policy',
+        'noeviction',
+        '--requirepass',
+        '${REDIS_PASSWORD:?Set Redis password}',
+      ]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set Redis password}
+    volumes: [redis:/data]
+    restart: unless-stopped
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping'],
+        interval: 5s,
+        timeout: 3s,
+        retries: 20,
+      }
+  migrate:
+    image: ${FOODBRIDGE_BACKEND_IMAGE:?Set backend image}
+    env_file: ['${FOODBRIDGE_RUNTIME_ENV:-runtime/runtime.env}']
+    command: ['uv', 'run', '--no-sync', 'alembic', '-c', 'backend/alembic.ini', 'upgrade', 'head']
+    depends_on: { db: { condition: service_healthy } }
+  api:
+    <<: *backend
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'uvicorn',
+        'foodbridge.api.main:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8000',
+        '--no-access-log',
+      ]
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'uv',
+          'run',
+          '--no-sync',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready')",
+        ]
+      interval: 10s
+      timeout: 7s
+      retries: 12
+  intake:
+    <<: *backend
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'celery',
+        '-A',
+        'foodbridge.agents.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'intake',
+        '--loglevel=WARNING',
+        '--concurrency=1',
+      ]
+  matching:
+    <<: *backend
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'celery',
+        '-A',
+        'foodbridge.agents.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'matching',
+        '--loglevel=WARNING',
+        '--concurrency=1',
+      ]
+  orchestrator:
+    <<: *backend
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'celery',
+        '-A',
+        'foodbridge.agents.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'orchestrator',
+        '--loglevel=WARNING',
+        '--concurrency=1',
+      ]
+  reservation:
+    <<: *backend
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'celery',
+        '-A',
+        'foodbridge.agents.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'reservation',
+        '--loglevel=WARNING',
+        '--concurrency=1',
+      ]
+  intake-relay:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'python', '-m', 'foodbridge.agents.intake.relay']
+  workflow-runtime:
+    <<: *backend
+    command: ['uv', 'run', '--no-sync', 'python', '-m', 'foodbridge.agents.orchestrator.runtime']
+  web:
+    image: ${FOODBRIDGE_WEB_IMAGE:?Set a reviewed static frontend image}
+    environment:
+      FOODBRIDGE_DOMAIN: ${FOODBRIDGE_DOMAIN:?Set domain}
+      FOODBRIDGE_AUTH_DOMAIN: ${FOODBRIDGE_AUTH_DOMAIN:?Set auth domain}
+    ports: ['80:80', '443:443']
+    volumes: [caddy-data:/data, caddy-config:/config]
+    restart: unless-stopped
+    depends_on: { api: { condition: service_healthy }, keycloak: { condition: service_started } }
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_DB: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set identity database password}
+    volumes: [auth-postgres:/var/lib/postgresql/data]
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'pg_isready -U keycloak -d keycloak'],
+        interval: 5s,
+        timeout: 3s,
+        retries: 20,
+      }
+    restart: unless-stopped
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ['start', '--import-realm']
+    environment:
+      JAVA_OPTS_KC_HEAP: -Xms128m -Xmx512m
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://auth-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set identity database password}
+      KC_BOOTSTRAP_ADMIN_USERNAME: foodbridge-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set bootstrap password}
+      KC_HOSTNAME: https://${FOODBRIDGE_AUTH_DOMAIN:?Set auth domain}
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY_HEADERS: xforwarded
+    volumes: ['./runtime/realm.json:/opt/keycloak/data/import/realm.json:ro']
+    depends_on: { auth-db: { condition: service_healthy } }
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    volumes:
+      [
+        './monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro',
+        './monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro',
+        './runtime/metrics-token:/run/secrets/metrics-token:ro',
+        'prometheus:/prometheus',
+      ]
+    restart: unless-stopped
+    # No public monitoring port. Inspect via an authenticated host-side tunnel.
+volumes:
+  postgres:
+  redis:
+  auth-postgres:
+  caddy-data:
+  caddy-config:
+  prometheus:

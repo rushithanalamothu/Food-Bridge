@@ -14,7 +14,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
 
+from foodbridge.agents.intake.policy import evaluate
 from foodbridge.agents.intake.service import IntakeService
+from foodbridge.agents.matching.routing import FakeRouting
+from foodbridge.agents.matching.service import LiveMatching
 from foodbridge.agents.orchestrator.demo import DemoMatching
 from foodbridge.agents.orchestrator.relay import dispatch_pending
 from foodbridge.agents.orchestrator.service import WorkflowService
@@ -35,6 +38,7 @@ from foodbridge.db.models import (
     User,
 )
 from foodbridge.db.session import engine_for, session_factory
+from foodbridge.db.workflow import snapshot
 from foodbridge.db.workflow_models import (
     Assignment,
     Capacity,
@@ -283,8 +287,9 @@ def consume_all(env):
         env.workflow.consume(identifier)
 
 
-def offer(env, identifier=None):
+def offer(env, identifier=None, gateway=None):
     identifier = identifier or submit(env)
+    gateway = gateway or env.gateway
     consume_all(env)
     with env.sessions() as session:
         step = session.scalar(
@@ -294,7 +299,7 @@ def offer(env, identifier=None):
                 WorkflowStep.status == "pending",
             )
         )
-    env.workflow.run_step(step.id, env.gateway)
+    env.workflow.run_step(step.id, gateway)
     with env.sessions() as session:
         evaluation = session.scalar(
             select(IntakeEvaluation)
@@ -315,7 +320,7 @@ def offer(env, identifier=None):
                 WorkflowStep.status == "pending",
             )
         )
-    env.workflow.run_step(step.id, env.gateway)
+    env.workflow.run_step(step.id, gateway)
     with env.sessions() as session:
         row = session.scalar(
             select(MatchOffer).where(
@@ -330,6 +335,98 @@ def recipient_for(env, match):
         a
         for a in env.actors.values()
         if a.role == "recipient" and a.organization_id == match.recipient_organization_id
+    )
+
+
+def test_driver_origin_is_scoped_versioned_and_idempotent(env):
+    env.current.actor = env.actors["driver"]
+    before = env.client.get("/api/v1/driver-origin")
+    assert before.status_code == 200
+    assert before.json()["origin"] is None
+    body = {"expected_version": 1, "origin": env.donor.pickup_location.model_dump(mode="json")}
+    key = str(uuid4())
+    response = env.client.post("/api/v1/driver-origin", json=body, headers={"Idempotency-Key": key})
+    assert response.status_code == 200
+    assert response.json()["version"] == 2
+    assert (
+        env.client.post("/api/v1/driver-origin", json=body, headers={"Idempotency-Key": key}).json()
+        == response.json()
+    )
+    assert env.client.get("/api/v1/driver-origin").json()["observed_at"]
+    assert (
+        env.client.post(
+            "/api/v1/driver-origin",
+            json=body,
+            headers={"Idempotency-Key": str(uuid4())},
+        ).status_code
+        == 409
+    )
+    env.current.actor = env.actors["recipient"]
+    assert env.client.get("/api/v1/driver-origin").status_code == 403
+    assert (
+        env.client.post(
+            "/api/v1/driver-origin",
+            json=body,
+            headers={"Idempotency-Key": str(uuid4())},
+        ).status_code
+        == 403
+    )
+
+
+def test_live_postgis_candidates_and_offer_use_real_capacity_and_driver_origin(env):
+    identifier = submit(env)
+    with env.sessions.begin() as session:
+        row = session.get(Driver, env.drivers[0])
+        row.facts = {
+            **row.facts,
+            "routing_origin": env.donor.pickup_location.model_dump(mode="json"),
+            "routing_origin_observed_at": NOW.isoformat(),
+        }
+        distant = env.actors["recipient2"].organization_id
+        session.get(Organization, distant).location = "SRID=4326;POINT(-122.6 38.0)"
+        capacity = session.get(Capacity, (env.actors["recipient"].organization_id, "chilled"))
+        capacity.reported_free_kg = 10
+    point = env.donor.pickup_location
+    key = (point.latitude, point.longitude, point.latitude, point.longitude)
+    gateway = LiveMatching(
+        Settings(database_url=env.url, ai_provider="rules", matching_algorithm="distance_only"),
+        FakeRouting({key: (1200, 250)}),
+        clock=lambda: env.clock.now,
+    )
+    with env.sessions() as session:
+        donation = snapshot(session.get(Donation, identifier), env.clock.now)
+    batch = gateway.candidates(donation, set(), set())
+    assert len(batch.candidates) == 1  # PostGIS excludes the distant organization.
+    assert batch.candidates[0].recipient.available_capacity_kg_by_storage["chilled"] == 10
+    assert batch.candidates[0].driver.id == env.drivers[0]
+    assert batch.candidates[0].route.distance_m == 1200
+    assert (
+        gateway.candidates(donation, {env.actors["recipient"].organization_id}, set()).candidates
+        == []
+    )
+    assert gateway.candidates(donation, set(), {env.drivers[0]}).candidates[0].driver is None
+    matched = offer(env, identifier, gateway)
+    assert matched is not None
+    assert matched.recommendation["ranking_evidence"]["features"]["distance_m"] == 1200
+    assert matched.recipient_organization_id == env.actors["recipient"].organization_id
+
+
+def test_missing_driver_location_never_invents_pickup_eta(env):
+    identifier = submit(env)
+    with env.sessions() as session:
+        donation = snapshot(session.get(Donation, identifier), NOW)
+    point = donation.pickup_location
+    key = (point.latitude, point.longitude, point.latitude, point.longitude)
+    gateway = LiveMatching(
+        Settings(database_url=env.url, ai_provider="rules"),
+        FakeRouting({key: (1000, 200)}),
+        clock=lambda: NOW,
+    )
+    batch = gateway.candidates(donation, set(), set())
+    assert batch.candidates
+    assert all(candidate.driver is None for candidate in batch.candidates)
+    assert not any(
+        decision.eligible for decision in evaluate(donation, batch, NOW, gateway.policy).decisions
     )
 
 
@@ -849,7 +946,7 @@ def test_client_role_selector_cannot_grant_another_membership(env, monkeypatch):
     env.app.dependency_overrides.pop(current_actor)
     with env.sessions() as session:
         subject = session.get(User, env.actors["donor"].user_id).oidc_subject
-    monkeypatch.setattr("foodbridge.auth.workflow.verified_subject", lambda *_: subject)
+    monkeypatch.setattr("foodbridge.auth.identity.verified_subject", lambda *_: subject)
     headers = {"Authorization": "Bearer test", "X-FoodBridge-Role": "recipient"}
     assert env.client.get("/api/v1/matches", headers=headers).status_code == 403
     headers["X-FoodBridge-Role"] = "donor"
@@ -1235,6 +1332,123 @@ def test_ai_decision_that_finishes_after_deadline_cannot_dispatch(env):
         assert session.get(Donation, step.donation_id).status == "expired"
 
 
+def test_operations_snapshots_history_scope_and_pagination(env):
+    first, second = submit(env), submit(env)
+    env.current.actor = env.actors["operator"]
+    page = env.client.get("/api/v1/operations/donations?limit=1")
+    assert page.status_code == 200
+    result = page.json()
+    assert len(result["items"]) == 1 and result["next_cursor"]
+    following = env.client.get(
+        "/api/v1/operations/donations", params={"limit": 1, "cursor": result["next_cursor"]}
+    ).json()
+    assert {result["items"][0]["id"], following["items"][0]["id"]} == {str(first), str(second)}
+    detail = env.client.get(f"/api/v1/operations/donations/{first}").json()
+    history = env.client.get(f"/api/v1/operations/donations/{first}/history").json()
+    assert detail["version"] == history["items"][-1]["version"]
+    env.current.actor = Actor(user_id=uuid4(), organization_id=uuid4(), role="operator")
+    assert env.client.get("/api/v1/operations/donations").json()["items"] == []
+    assert env.client.get(f"/api/v1/operations/donations/{first}").status_code == 404
+    assert env.client.get(f"/api/v1/operations/donations/{first}/history").status_code == 404
+
+
+def test_driver_reads_include_delivery_destination_and_route(env):
+    match = offer(env)
+    assignment = assign(env, match)
+    env.current.actor = driver_for(env, assignment)
+    response = env.client.get("/api/v1/pickups")
+    assert response.status_code == 200
+    pickup = response.json()["items"][0]
+    assert pickup["recipient_organization_id"] == str(match.recipient_organization_id)
+    assert pickup["delivery_location"]["address"]
+    assert pickup["route"]["source"] == "synthetic"
+
+
+def test_smtp_destination_requires_contact_consent_and_current_audience(env):
+    from foodbridge.db.workflow_models import Notification, NotificationContact
+    from foodbridge.integrations.email import SMTPNotifications
+
+    offer(env)
+    consume_all(env)
+    with env.sessions() as session:
+        notification = session.scalar(select(Notification))
+        identifier, user_id = notification.id, notification.user_id
+    adapter = SMTPNotifications(env.settings)
+    with pytest.raises(ValueError, match="unavailable"):
+        adapter.destination(str(identifier), str(user_id))
+    with env.sessions.begin() as session:
+        session.add(
+            NotificationContact(
+                user_id=user_id,
+                email="verified@example.test",
+                enabled=True,
+                updated_at=env.clock.now,
+            )
+        )
+    assert adapter.destination(str(identifier), str(user_id)) == "verified@example.test"
+    with env.sessions.begin() as session:
+        session.get(User, user_id).active = False
+    with pytest.raises(ValueError, match="unavailable"):
+        adapter.destination(str(identifier), str(user_id))
+
+
+def test_operator_release_is_scoped_to_donor_organization(env):
+    match = offer(env)
+    result = reserve(env, match)
+    identifier = UUID(result["id"])
+    outsider = Actor(user_id=uuid4(), organization_id=uuid4(), role="operator")
+    with pytest.raises(AppError) as error:
+        env.reservation.release(
+            outsider, identifier, VersionCommand(expected_version=1), uuid4(), uuid4()
+        )
+    assert error.value.status == 404
+    released = env.reservation.release(
+        env.actors["operator"], identifier, VersionCommand(expected_version=1), uuid4(), uuid4()
+    )
+    assert released["status"] == "released"
+
+
+def test_protected_metrics_expose_counts_without_actor_data(env):
+    from pydantic import SecretStr
+
+    env.app.state.settings = env.settings.model_copy(
+        update={"metrics_token": SecretStr("test-monitoring")}
+    )
+    submit(env)
+    assert env.client.get("/internal/metrics").status_code == 404
+    result = env.client.get(
+        "/internal/metrics", headers={"Authorization": "Bearer test-monitoring"}
+    )
+    assert result.status_code == 200
+    assert "foodbridge_dependencies_available 1.0" in result.text
+    assert str(env.actors["donor"].user_id) not in result.text
+    assert "foodbridge_steps" in result.text
+
+
+def test_donor_organization_selection_narrows_verified_memberships(env, monkeypatch):
+    from foodbridge.auth.identity import current_donor
+
+    actor = env.actors["donor"]
+    other_org = env.actors["recipient2"].organization_id
+    with env.sessions.begin() as session:
+        subject = session.get(User, actor.user_id).oidc_subject
+        session.add(Membership(user_id=actor.user_id, organization_id=other_org, role="donor"))
+    monkeypatch.setattr("foodbridge.auth.identity.verified_subject", lambda *args: subject)
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(settings=env.settings)),
+        headers={"authorization": "Bearer verified-token"},
+    )
+    with pytest.raises(AppError) as error:
+        current_donor(request, None)
+    assert error.value.status == 409
+    request.headers["x-organization-id"] = str(other_org)
+    assert current_donor(request, None).organization_id == other_org
+    request.headers["x-organization-id"] = str(uuid4())
+    with pytest.raises(AppError) as error:
+        current_donor(request, None)
+    assert error.value.status == 403
+
+
 def test_application_profile_update_is_versioned_idempotent_and_audited(env):
     env.current.actor = env.actors["recipient"]
     current = env.client.get("/api/v1/receiving-profile").json()
@@ -1350,11 +1564,10 @@ def test_application_newest_pagination_has_stable_nonoverlapping_pages(env):
 
 
 def test_membership_choices_and_donor_selection_never_grant_unauthorized_org(env, monkeypatch):
-    from foodbridge.auth import identity, workflow
+    from foodbridge.auth import identity
 
     subject = f"workflow-test:{env.actors['donor'].user_id}"
     monkeypatch.setattr(identity, "verified_subject", lambda *_: subject)
-    monkeypatch.setattr(workflow, "verified_subject", lambda *_: subject)
     second = env.actors["recipient"].organization_id
     with env.sessions.begin() as session:
         session.add(

@@ -24,6 +24,10 @@ class DisabledNotifications:
 
 
 def notification_provider(settings):
+    if settings.notification_mode == "smtp":
+        from foodbridge.integrations.email import SMTPNotifications
+
+        return SMTPNotifications(settings)
     return (
         SandboxNotifications()
         if settings.notification_mode == "sandbox"
@@ -54,7 +58,10 @@ def deliver_pending(database_url, provider, clock=utcnow, limit=20):
                 row.status, row.lease_until = "failed", None
                 continue
             row.status, row.lease_token = "sending", token
-            row.lease_until, row.attempts = now + timedelta(seconds=30), row.attempts + 1
+            row.lease_until, row.attempts = (
+                now + timedelta(seconds=getattr(provider, "lease_seconds", 30)),
+                row.attempts + 1,
+            )
             identifier, destination, template = row.id, row.user_id, row.template
         failed = False
         try:

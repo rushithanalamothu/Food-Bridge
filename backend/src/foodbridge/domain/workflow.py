@@ -15,6 +15,7 @@ from foodbridge.domain.contracts import (
     RecipientProfile,
     Storage,
 )
+from foodbridge.domain.intake import RouteFacts
 from foodbridge.domain.orchestration import OrchestrationAudit
 
 Role = Literal["donor", "recipient", "driver", "operator"]
@@ -24,6 +25,31 @@ class Actor(Contract):
     user_id: UUID
     organization_id: UUID
     role: Role
+
+
+class SessionMembership(Contract):
+    organization_id: UUID
+    organization_name: str
+    role: Role
+
+
+class BrowserSessionRead(Contract):
+    authenticated: bool
+    login_enabled: bool
+    mode: Literal["oidc", "local_demo"] | None = None
+    memberships: list[SessionMembership]
+
+
+class DriverOriginUpdate(Contract):
+    expected_version: int = Field(ge=1)
+    origin: Location
+
+
+class DriverOriginRead(Contract):
+    driver_id: UUID
+    version: int
+    origin: Location | None = None
+    observed_at: AwareDatetime | None = None
 
 
 class VersionCommand(Contract):
@@ -70,6 +96,9 @@ class PickupRead(Contract):
     start: AwareDatetime
     end: AwareDatetime
     donation: DonationRead
+    recipient_organization_id: UUID | None = None
+    delivery_location: Location | None = None
+    route: RouteFacts | None = None
     destination: Location | None = None
     recipient_name: str | None = None
 
@@ -176,9 +205,30 @@ class ReservationPage(Contract):
     next_cursor: str | None = None
 
 
+class HistoryEntry(Contract):
+    version: int
+    previous_status: str | None
+    status: str
+    reason: str
+    occurred_at: AwareDatetime
+
+
+class HistoryPage(Contract):
+    items: list[HistoryEntry]
+    next_version: int | None = None
+
+
+OperationsDonationPage = DonationBoard
+
+
 class WorkflowContracts(Contract):
     orchestrator_audit: OrchestrationAudit
+    browser_session: BrowserSessionRead
+    operations_donations: DonationBoard
+    history: HistoryPage
     actor: Actor
+    driver_origin_update: DriverOriginUpdate
+    driver_origin: DriverOriginRead
     version_command: VersionCommand
     donation_command: DonationCommand
     pickup_confirmation: PickupConfirmation

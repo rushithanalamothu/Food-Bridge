@@ -225,3 +225,15 @@ class StreamState(Base):
     __tablename__ = "stream_state"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     expired_through: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class NotificationContact(Base):
+    """Consent-attested contact provisioned by a trusted server administrator."""
+
+    __tablename__ = "notification_contacts"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    email: Mapped[str] = mapped_column(String(254))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (CheckConstraint("version >= 1", name="version_positive"),)

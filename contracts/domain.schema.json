@@ -484,6 +484,17 @@
           "title": "Ranking Config Version",
           "type": "string"
         },
+        "ranking_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RankingEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "recipient_organization_id": {
           "format": "uuid",
           "title": "Recipient Organization Id",
@@ -531,6 +542,79 @@
         "end"
       ],
       "title": "PickupWindow",
+      "type": "object"
+    },
+    "RankingEvidence": {
+      "additionalProperties": false,
+      "description": "Auditable normalized components and the model path actually used.",
+      "properties": {
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback Reason"
+        },
+        "features": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Features",
+          "type": "object"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "score",
+        "features"
+      ],
+      "title": "RankingEvidence",
       "type": "object"
     },
     "RecipientProfile": {

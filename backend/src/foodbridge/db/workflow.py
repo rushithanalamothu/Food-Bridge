@@ -21,6 +21,7 @@ from foodbridge.db.workflow_models import (
 )
 from foodbridge.domain.contracts import RecipientProfile
 from foodbridge.domain.errors import AppError
+from foodbridge.domain.intake import DriverFacts
 from foodbridge.domain.states import DonationStatus, assert_transition
 
 
@@ -77,6 +78,13 @@ def current_profile(session, org_id, *, lock=False):
         }
     )
     return row, profile, {c.storage: c for c in rows}
+
+
+def current_driver_facts(driver):
+    """Driver route metadata lives beside, not inside, the strict policy facts."""
+    return DriverFacts.model_validate(
+        {key: value for key, value in driver.facts.items() if key in DriverFacts.model_fields}
+    )
 
 
 def audience(session, donation):

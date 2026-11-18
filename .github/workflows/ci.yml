@@ -100,3 +100,51 @@ jobs:
           name: intake-browser-failure
           path: apps/web/test-results/
           if-no-files-found: ignore
+
+  release-integration:
+    name: OIDC browser and SMTP release integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: make setup
+      - run: npm exec --workspace @foodbridge/web -- playwright install --with-deps chromium
+      - name: Start isolated identity and SMTP stack
+        run: |
+          FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml up --build -d
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://localhost:58080/realms/foodbridge/.well-known/openid-configuration > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:58080/realms/foodbridge/.well-known/openid-configuration > /dev/null
+          FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
+      - name: Real login, driver/operations and SMTP acceptance
+        run: FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
+      - name: Production frontend and runtime configuration validation
+        run: |
+          docker build -t foodbridge-web:release-static -f deploy/Dockerfile.web .
+          docker run --rm --network foodbridge-release_default -e FOODBRIDGE_DOMAIN=http://localhost -e FOODBRIDGE_AUTH_DOMAIN=http://login.localhost foodbridge-web:release-static caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run -d --name foodbridge-ci-gateway --network foodbridge-release_default -e FOODBRIDGE_DOMAIN=http://localhost -e FOODBRIDGE_AUTH_DOMAIN=http://login.localhost -p 127.0.0.1:58500:80 foodbridge-web:release-static
+          uv run python scripts/smoke_gateway.py --base-url http://localhost:58500 --allow-local-http
+          uv run python scripts/init_deployment.py --domain foodbridge.example.test --auth-domain login.example.test --backend-image foodbridge-backend:release-local --web-image foodbridge-web:release-static
+          docker compose --env-file deploy/runtime/runtime.env -f deploy/compose.production.yml config --quiet
+      - name: Backup and isolated restore verification
+        run: |
+          uv run python scripts/database_backup.py --project foodbridge-release --compose compose.yaml --compose compose.release-local.yml backup --archive /tmp/foodbridge-release.dump
+          uv run python scripts/database_backup.py --project foodbridge-release --compose compose.yaml --compose compose.release-local.yml verify-restore --archive /tmp/foodbridge-release.dump
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: release-browser-failure
+          path: apps/web/test-results
+      - name: Stop local verification stack
+        if: always()
+        run: |
+          docker rm -f foodbridge-ci-gateway 2>/dev/null || true
+          FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml down
