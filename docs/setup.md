@@ -36,7 +36,7 @@ A worker example:
 make worker QUEUE=intake
 ```
 
-Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration, reservation, pickup and workflow SSE are implemented. Matching tasks call the configured gateway; live candidate/routing/ranking remains pending, with an explicit local synthetic adapter available. Probes alone only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
+Use `orchestrator`, `intake`, `matching` or `reservation`; one process consumes its named queue. The intake eligibility worker and scoped intake outbox relay are implemented. Orchestration, reservation, pickup and workflow SSE are implemented. Matching tasks call the configured gateway; live candidate/routing/ranking requires a configured routing provider. The [local OSRM runbook](features/live-matching.md) describes the optional road router and full-stack smoke. Probes alone only verify registration. On macOS, prefer containerized workers when testing process termination/limits.
 
 ## Entire stack in containers
 
@@ -71,7 +71,7 @@ Use `openai` for OpenAI/GPT or `anthropic` for Claude instead of `gemini`. `FOOD
 
 These settings apply to the API and every worker; donors and other roles do not configure separate model providers. After edits, restart native backend processes or run `docker compose up --build -d`. Keep `.env` private; never add keys to frontend `VITE_*` variables. Existing `FOODBRIDGE_EXTRACTION_*` variables are compatibility aliases for the global settings; replace them with `FOODBRIDGE_AI_*` in new setups. See [provider options and fallback behavior](features/intake.md#extraction-modes) for defaults and OpenAI-compatible endpoints.
 
-When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client today; model-backed matching/ranking is still planned. Eligibility, urgency and lifecycle decisions remain deterministic.
+When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client for extraction and matching can optionally choose among already eligible candidates; eligibility, urgency and lifecycle decisions remain deterministic.
 
 ## Checks
 

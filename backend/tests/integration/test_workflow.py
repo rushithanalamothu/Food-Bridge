@@ -373,6 +373,44 @@ def test_driver_origin_is_scoped_versioned_and_idempotent(env):
     )
 
 
+def test_local_live_matching_seed_is_idempotent_and_requires_recipient_selection(env):
+    from scripts.seed_matching_demo import recipient_id, seed
+
+    settings = Settings(
+        _env_file=None,
+        database_url=env.url,
+        enable_local_intake_demo=True,
+        enable_local_matching_demo=True,
+        routing_base_url="http://routing:5000",
+        ai_provider="rules",
+    )
+    seed(settings)
+    with env.sessions.begin() as session:
+        capacity = session.get(Capacity, (recipient_id(0), "chilled"))
+        capacity.reported_free_kg = 12
+    seed(settings)
+    with env.sessions() as session:
+        assert session.get(Capacity, (recipient_id(0), "chilled")).reported_free_kg == 12
+        assert session.scalar(select(func.count()).select_from(RecipientState)) == 4
+    client = TestClient(create_app(settings))
+    assert (
+        client.get("/api/v1/session", headers={"X-FoodBridge-Role": "recipient"}).status_code == 409
+    )
+    chosen = client.get(
+        "/api/v1/session",
+        headers={"X-FoodBridge-Role": "recipient", "X-Organization-ID": str(recipient_id(0))},
+    )
+    assert chosen.status_code == 200
+    assert chosen.json()["organization_id"] == str(recipient_id(0))
+    assert (
+        client.get(
+            "/api/v1/session",
+            headers={"X-FoodBridge-Role": "recipient", "Authorization": "Basic invalid"},
+        ).status_code
+        == 401
+    )
+
+
 def test_live_postgis_candidates_and_offer_use_real_capacity_and_driver_origin(env):
     identifier = submit(env)
     with env.sessions.begin() as session:

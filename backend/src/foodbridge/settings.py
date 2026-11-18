@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     enable_local_intake_demo: bool = False
     enable_local_workflow_demo: bool = False
+    enable_local_matching_demo: bool = False
     notification_mode: Literal["disabled", "sandbox", "smtp"] = "disabled"
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65535)
@@ -104,6 +105,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def safe_modes(self) -> Self:
+        if self.enable_local_matching_demo:
+            if self.environment != "local" or not self.enable_local_intake_demo:
+                raise ValueError("Local matching demo requires local intake demo")
+            if self.enable_local_workflow_demo or not self.routing_base_url:
+                raise ValueError("Local matching demo requires live routing and no workflow demo")
+            if self.browser_auth_enabled:
+                raise ValueError("Local matching demo cannot run with browser authentication")
         if self.routing_base_url:
             if self.enable_local_workflow_demo:
                 raise ValueError("Disable the synthetic workflow demo when using live routing")

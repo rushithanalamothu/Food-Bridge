@@ -4,7 +4,7 @@ This is a dependency-ordered backlog, not a claim that the product is complete. 
 
 ## Matching and routing implementation
 
-M01/M02/M03 backend implementation is in [matching](../../backend/src/foodbridge/agents/matching/README.md); the distance baseline and multi-criteria ranking share Mokshith's policy and Tej's offer commit. An authenticated driver origin API supplies recent self-reported starting coordinates. [Offline comparison](../../evaluation/README.md) is synthetic and does not measure pickup success or real road routing. F05's general dev fixture loader, operational driver provisioning and an independent live benchmark are still outstanding. This status is implementation scope, not shared-cloud acceptance.
+M01/M02/M03 backend implementation is in [matching](../../backend/src/foodbridge/agents/matching/README.md); the distance baseline and multi-criteria ranking share Mokshith's policy and Tej's offer commit. An authenticated driver origin API supplies recent self-reported starting coordinates. The [local OSRM runbook](../features/live-matching.md) adds a two-recipient/one-driver fixture, full-stack smoke and separate-database serial benchmark harness; these need execution against a prepared local OSRM map. [Offline comparison](../../evaluation/README.md) remains synthetic even when using road-route facts. F05's general dev fixture loader, operational driver provisioning and independent live outcome/load evaluation are still outstanding. This status is implementation scope, not shared-cloud acceptance.
 
 ## Mithil frontend integration
 
@@ -13,7 +13,7 @@ Mithil's role applications implement donor intake/tracking/cancellation/history,
 
 ## Tej release integration
 
-[Release integration](../features/release-integration.md) adds a gateway OIDC BFF (Code + PKCE, opaque cookie sessions, refresh/logout and CSRF), trusted membership/contact provisioning, consent-aware SMTP delivery, operator read/history endpoints, private metrics, a production static/TLS/self-hosted identity profile, and backup/restore/promotion tooling. It integrates with Mithil’s merged PR #9 screens and retains his SDK login option for installations without gateway sessions. The real local acceptance path uses all role screens and an isolated Keycloak/Mailpit stack. Matching remains explicitly synthetic; no live model call, public sender delivery or public hosting is implied. See [current verification evidence](tej-release-verification.txt). Affected-owner review is still required for shared contracts, auth, migration and client integration.
+[Release integration](../features/release-integration.md) adds a gateway OIDC BFF (Code + PKCE, opaque cookie sessions, refresh/logout and CSRF), trusted membership/contact provisioning, consent-aware SMTP delivery, operator read/history endpoints, private metrics, a production static/TLS/self-hosted identity profile, and backup/restore/promotion tooling. It integrates with Mithil’s merged PR #9 screens and retains his SDK login option for installations without gateway sessions. The release acceptance path uses all role screens and an isolated Keycloak/Mailpit stack; its matching verification is synthetic. The separate [local OSRM smoke](../features/live-matching.md) has not yet been run against a prepared road map, and no live model call, public sender delivery or public hosting is implied. See [current verification evidence](tej-release-verification.txt). Affected-owner review is still required for shared contracts, auth, migration and client integration.
 
 ## Implemented Tej workflow
 
@@ -21,15 +21,15 @@ Mithil's role applications implement donor intake/tracking/cancellation/history,
 
 ## Implemented intake slice
 
-Mokshith's I01/I02 logic, draft/submission contracts, donor review UI and intake worker/relay are implemented. Tej adds recipient/capacity/offer/reservation/assignment support without replacing those tables or the intake policy. F01's live data/profile repositories and V01's live matching integration remain pending. See [feature details](../features/intake.md) before extending shared tables.
+Mokshith's I01/I02 logic, draft/submission contracts, donor review UI and intake worker/relay are implemented. Tej adds recipient/capacity/offer/reservation/assignment support without replacing those tables or the intake policy. Recipient capacity/profile editing and matching adapters are implemented; genuine organization/driver provisioning and a routed live V01 run remain unverified. See [feature details](../features/intake.md) before extending shared tables.
 
 ## Intake v0.3 alignment
 
-Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej now consumes submission/result events and wires the backend workflow; Rushitha must provide live candidate/route facts and matching. FT-07/full V01 has synthetic integration coverage; live integration remains pending. Private deployment metrics and Prometheus rules are implemented in the release profile; hosted collection and external alert delivery remain deployment work.
+Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej consumes submission/result events and wires the backend workflow; Rushitha's live candidate/route gateway requires a configured routing provider and fresh driver origin. FT-07/full V01 has synthetic integration coverage; a real routed stack run remains a release gate. Private deployment metrics and Prometheus rules are implemented in the release profile; hosted collection and external alert delivery remain deployment work.
 
 ## Shared AI integration rule
 
-The app-wide provider client is implemented for intake. Future M03 ranking and any other model-backed feature must reuse `integrations.ai.generate_structured` and `Settings.ai_*`; they must not add their own provider/key/model settings. Configure the key once using [shared AI setup](../setup.md#shared-ai-configuration). Prompts/output types remain feature-specific, and model output must still pass domain constraints. This does not mark matching/ranking or the full donation pipeline implemented.
+The app-wide provider client is used by intake and optional M03 model choice. Any other model-backed feature must reuse `integrations.ai.generate_structured` and `Settings.ai_*`; it must not add its own provider/key/model settings. Configure the key once using [shared AI setup](../setup.md#shared-ai-configuration). Prompts/output types remain feature-specific, and model output must still pass domain constraints. A configured road provider and real-stack verification are separate gates.
 
 ## Phase 0 — Shared foundation (initial scaffold)
 

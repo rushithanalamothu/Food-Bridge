@@ -1,8 +1,11 @@
 """Routing failure boundaries and ranking over the intake-approved cohort."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -100,6 +103,32 @@ def test_routing_uses_lon_lat_metres_seconds_and_bounded_timeout():
     )
     assert route.estimate(origin, origin).distance_m == 1250
     assert route.estimate(origin, origin).travel_time_s == 345
+
+
+def test_local_osrm_is_reachable_even_with_an_ambient_socks_proxy(monkeypatch):
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            data = json.dumps(
+                {"code": "Ok", "routes": [{"distance": 1500, "duration": 240}]}
+            ).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *_):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    Thread(target=server.serve_forever, daemon=True).start()
+    monkeypatch.setenv("ALL_PROXY", "socks5://127.0.0.1:1")
+    try:
+        origin = handoff().donation.pickup_location
+        route = OSRMRouting(f"http://127.0.0.1:{server.server_port}", timeout_s=2)
+        assert route.estimate(origin, origin).distance_m == 1500
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_routing_timeout_is_retryable_and_sanitized():

@@ -24,16 +24,15 @@ def current_actor(
     selected_role = request.headers.get("x-foodbridge-role")
     selected_org = request.headers.get("x-organization-id")
     subject = request_subject(request)
-    if subject is not None:
-        pass
-    elif (
+    if subject is None and (
         settings.environment == "local"
-        and settings.enable_local_workflow_demo
+        and (settings.enable_local_workflow_demo or settings.enable_local_matching_demo)
         and not settings.browser_auth_enabled
     ):
         role = selected_role or "donor"
-        subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:workflow-demo:{role}"
-    else:
+        prefix = "matching-demo" if settings.enable_local_matching_demo else "workflow-demo"
+        subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:{prefix}:{role}"
+    if subject is None:
         raise AppError("authentication_required", "Sign in through the gateway.", 401)
     if selected_role and selected_role not in {"donor", "recipient", "driver", "operator"}:
         raise AppError("invalid_role", "Unknown role.", 400)
@@ -72,13 +71,14 @@ def membership_choices(request: Request):
     if subject is None:
         if (
             settings.environment == "local"
-            and settings.enable_local_workflow_demo
+            and (settings.enable_local_workflow_demo or settings.enable_local_matching_demo)
             and not settings.browser_auth_enabled
         ):
             role = request.headers.get("x-foodbridge-role", "donor")
             if role not in {"donor", "recipient", "driver", "operator"}:
                 raise AppError("invalid_role", "Unknown role.", 400)
-            subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:workflow-demo:{role}"
+            prefix = "matching-demo" if settings.enable_local_matching_demo else "workflow-demo"
+            subject = DEMO_SUBJECT if role == "donor" else f"foodbridge:{prefix}:{role}"
         else:
             raise AppError("authentication_required", "Sign in through the gateway.", 401)
     with session_factory(settings.database_url)() as session:

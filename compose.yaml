@@ -23,6 +23,7 @@ x-backend: &backend
     FOODBRIDGE_ENABLE_INTAKE_METRICS: ${FOODBRIDGE_ENABLE_INTAKE_METRICS:-false}
     FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: ${FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO:-false}
     FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO: ${FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO:-false}
+    FOODBRIDGE_ENABLE_LOCAL_MATCHING_DEMO: ${FOODBRIDGE_ENABLE_LOCAL_MATCHING_DEMO:-false}
     FOODBRIDGE_NOTIFICATION_MODE: ${FOODBRIDGE_NOTIFICATION_MODE:-disabled}
     FOODBRIDGE_ROUTING_BASE_URL: ${FOODBRIDGE_ROUTING_BASE_URL:-}
     FOODBRIDGE_MATCHING_ALGORITHM: ${FOODBRIDGE_MATCHING_ALGORITHM:-multi_criteria}
@@ -78,6 +79,12 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  routing:
+    profiles: [routing]
+    image: ${FOODBRIDGE_ROUTING_IMAGE:-ghcr.io/project-osrm/osrm-backend:latest}
+    command: ['osrm-routed', '--algorithm', 'mld', '/data/region.osrm']
+    volumes: ['./data/osrm:/data:ro']
+    ports: ['127.0.0.1:${FOODBRIDGE_ROUTING_PORT:-5000}:5000']
   migrate:
     image: ${FOODBRIDGE_BACKEND_IMAGE:-foodbridge-backend:local}
     build:

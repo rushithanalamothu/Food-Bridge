@@ -1,6 +1,7 @@
 """Bounded OSRM-compatible road routes. Unavailable routes never become road ETAs."""
 
 import math
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -18,13 +19,16 @@ class OSRMRouting:
         self.base_url = base_url.rstrip("/")
         self.timeout_s = timeout_s
         self.transport = transport
+        self.local = urlsplit(base_url).hostname in {"localhost", "127.0.0.1", "routing"}
 
     def estimate(self, origin: Location, destination: Location) -> RouteEstimate:
         coordinates = (
             f"{origin.longitude},{origin.latitude};{destination.longitude},{destination.latitude}"
         )
         try:
-            with httpx.Client(timeout=self.timeout_s, transport=self.transport) as client:
+            with httpx.Client(
+                timeout=self.timeout_s, transport=self.transport, trust_env=not self.local
+            ) as client:
                 response = client.get(
                     f"{self.base_url}/route/v1/driving/{coordinates}",
                     params={"overview": "false", "steps": "false"},

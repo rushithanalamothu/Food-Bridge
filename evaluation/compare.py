@@ -9,6 +9,7 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import perf_counter_ns
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from scripts.generate_synthetic import generate
@@ -17,6 +18,7 @@ from foodbridge.agents.intake.config import load_policy
 from foodbridge.agents.intake.policy import evaluate
 from foodbridge.agents.matching.config import load_matching_config
 from foodbridge.agents.matching.ranking import distance_only, multi_criteria
+from foodbridge.agents.matching.routing import NoRoute, OSRMRouting
 from foodbridge.domain.contracts import DonationRead, PickupWindow, RecipientProfile
 from foodbridge.domain.intake import (
     DriverFacts,
@@ -27,6 +29,11 @@ from foodbridge.domain.intake import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+DRIVER_ORIGIN = {
+    "address": "Synthetic San Jose driver origin",
+    "latitude": 37.333,
+    "longitude": -121.9,
+}
 
 
 def synthetic_route(donor, recipient, at):
@@ -45,7 +52,41 @@ def jain(values):
     return (total * total / (len(values) * sum(v * v for v in values))) if total else None
 
 
-def replay(scenario: dict, strategy: str):
+def road_routes(scenario: dict, routing):
+    """Fetch one immutable route set before either strategy changes capacity."""
+    routes, cache = {}, {}
+    driver_origin = RecipientProfile.model_validate(scenario["recipients"][0]).location.model_copy(
+        update=DRIVER_ORIGIN
+    )
+    start = perf_counter_ns()
+
+    def estimate(origin, destination):
+        key = (origin.latitude, origin.longitude, destination.latitude, destination.longitude)
+        if key not in cache:
+            try:
+                route = routing.estimate(origin, destination)
+                cache[key] = {"distance_m": route.distance_m, "travel_time_s": route.travel_time_s}
+            except NoRoute:
+                cache[key] = None
+        return cache[key]
+
+    for raw in scenario["donations"]:
+        donation = DonationRead.model_validate(raw)
+        routes[str(donation.id)] = {
+            "driver": estimate(driver_origin, donation.pickup_location),
+            "recipients": {
+                str(recipient.organization_id): estimate(
+                    donation.pickup_location, recipient.location
+                )
+                for recipient in (
+                    RecipientProfile.model_validate(row) for row in scenario["recipients"]
+                )
+            },
+        }
+    return routes, (perf_counter_ns() - start) / 1_000_000
+
+
+def replay(scenario: dict, strategy: str, routes=None):
     """Rebuild capacity and allocation ledgers per strategy, from the same input."""
     policy, config = load_policy(), load_matching_config()
     base = datetime.fromisoformat(scenario["metadata"]["base_time"])
@@ -71,14 +112,31 @@ def replay(scenario: dict, strategy: str):
                 window=PickupWindow(start=base, end=base + timedelta(hours=8)),
                 capacity_kg=40,
                 storage_types=["ambient", "chilled"],
-                to_pickup_time_s=300,
+                to_pickup_time_s=(
+                    routes[str(donation.id)]["driver"]["travel_time_s"]
+                    if routes is not None and routes[str(donation.id)]["driver"]
+                    else 300
+                ),
+            )
+            route = (
+                synthetic_route(donation.pickup_location, current.location, now)
+                if routes is None
+                else routes[str(donation.id)]["recipients"][str(current.organization_id)]
             )
             candidates.append(
                 EligibilityCandidate(
                     recipient=current,
                     active_and_verified=True,
-                    driver=driver,
-                    route=synthetic_route(donation.pickup_location, current.location, now),
+                    driver=driver if routes is None or routes[str(donation.id)]["driver"] else None,
+                    route=(
+                        RouteFacts(
+                            **route,
+                            calculated_at=now,
+                            source="routing_provider",
+                        )
+                        if routes is not None and route is not None
+                        else route
+                    ),
                 )
             )
         batch = EligibilityBatch(
@@ -133,9 +191,11 @@ def replay(scenario: dict, strategy: str):
     }
 
 
-def compare(seed: int, base: datetime):
+def compare(seed: int, base: datetime, routing=None):
     scenario = generate(seed, base)
     content = json.dumps(scenario, sort_keys=True).encode()
+    routes, routing_elapsed_ms = road_routes(scenario, routing) if routing else (None, None)
+    map_manifest = ROOT / "data/osrm/manifest.json"
     try:
         sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
@@ -154,7 +214,7 @@ def compare(seed: int, base: datetime):
 
     return {
         "manifest": {
-            "fixture": "synthetic_file_generator; synthetic routes, no live provider",
+            "fixture": "synthetic_file_generator; no real donor, recipient or driver data",
             "seed": seed,
             "base_time": base.isoformat(),
             "dataset_sha256": hashlib.sha256(content).hexdigest(),
@@ -167,11 +227,27 @@ def compare(seed: int, base: datetime):
             "ranking_config": load_matching_config().version,
             "model": None,
             "provider": "rules",
-            "routing": "synthetic_fixed_formula",
+            "routing": (
+                "osrm_local_road_routes" if routes is not None else "synthetic_fixed_formula"
+            ),
+            "route_facts_sha256": (
+                hashlib.sha256(json.dumps(routes, sort_keys=True).encode()).hexdigest()
+                if routes is not None
+                else None
+            ),
+            "routing_precompute_ms": routing_elapsed_ms,
+            "local_map_manifest": (
+                json.loads(map_manifest.read_text())
+                if routes is not None and map_manifest.exists()
+                else None
+            ),
+            "driver_origin": DRIVER_ORIGIN if routes is not None else "synthetic_300_seconds",
             "capacity": "independent per-strategy simulated commitment, no concurrent bookings",
             "completion": "not simulated; pickup/delivery rates cannot be inferred",
         },
-        "strategies": [replay(scenario, name) for name in ("distance_only", "multi_criteria")],
+        "strategies": [
+            replay(scenario, name, routes) for name in ("distance_only", "multi_criteria")
+        ],
     }
 
 
@@ -182,14 +258,20 @@ def main():
     parser.add_argument(
         "--output", type=Path, default=ROOT / "evaluation/results/synthetic-2026.json"
     )
+    parser.add_argument("--routing-url", help="Local OSRM HTTP URL; otherwise synthetic routes")
     args = parser.parse_args()
     base = datetime.fromisoformat(args.base_time)
     if base.tzinfo is None:
         parser.error("base-time must have a timezone")
-    result = compare(args.seed, base)
+    if args.routing_url:
+        url = urlsplit(args.routing_url)
+        if url.scheme != "http" or url.hostname not in {"localhost", "127.0.0.1"}:
+            parser.error("routing-url must be a local HTTP OSRM endpoint")
+    routing = OSRMRouting(args.routing_url, timeout_s=2) if args.routing_url else None
+    result = compare(args.seed, base, routing)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
-    print(f"Wrote synthetic offline comparison: {args.output}")
+    print(f"Wrote offline comparison: {args.output}")
 
 
 if __name__ == "__main__":

@@ -96,6 +96,35 @@ def test_synthetic_runtime_is_rejected_outside_local(mode):
         Settings(environment="production", ai_provider="rules", **mode)
 
 
+def test_local_matching_demo_requires_live_routing_and_never_runs_in_shared_environment():
+    active = Settings(
+        _env_file=None,
+        ai_provider="rules",
+        enable_local_intake_demo=True,
+        enable_local_matching_demo=True,
+        routing_base_url="http://routing:5000",
+    )
+    assert active.enable_local_matching_demo and not active.enable_local_workflow_demo
+    for overrides in (
+        {"routing_base_url": None},
+        {"enable_local_intake_demo": False},
+        {"enable_local_workflow_demo": True},
+        {"browser_auth_enabled": True},
+        {"environment": "production"},
+    ):
+        with pytest.raises(ValidationError):
+            Settings(
+                _env_file=None,
+                **{
+                    "ai_provider": "rules",
+                    "enable_local_intake_demo": True,
+                    "enable_local_matching_demo": True,
+                    "routing_base_url": "http://routing:5000",
+                    **overrides,
+                },
+            )
+
+
 def test_unconfigured_matching_cannot_report_success():
     gateway = matching_gateway(Settings(ai_provider="rules"))
     assert isinstance(gateway, UnconfiguredMatching)
