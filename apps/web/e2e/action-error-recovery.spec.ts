@@ -44,7 +44,8 @@ for (const role of ['driver', 'recipient', 'operations']) {
           ? '**/api/v1/reservations'
           : '**/api/v1/operations/failures/*/replay';
     await page.route(path, (route) => {
-      if (route.request().method() !== 'POST' || !fail) return route.fallback();
+      if (route.request().method() !== 'POST') return route.fallback();
+      if (!fail) return role === 'operations' ? route.fulfill({ json: {} }) : route.fallback();
       return route.fulfill({
         status: 409,
         json: {
