@@ -358,7 +358,7 @@ export function RecipientPage() {
         <DonationTimeline
           role="recipient"
           id={history}
-          version={view.events.length}
+          version={view.snapshotVersion}
           onClose={() => setHistory(undefined)}
         />
       )}

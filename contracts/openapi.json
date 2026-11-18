@@ -701,6 +701,67 @@
         "title": "DraftRead",
         "type": "object"
       },
+      "DriverOriginRead": {
+        "additionalProperties": false,
+        "properties": {
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "driver_id",
+          "version"
+        ],
+        "title": "DriverOriginRead",
+        "type": "object"
+      },
+      "DriverOriginUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "required": [
+          "expected_version",
+          "origin"
+        ],
+        "title": "DriverOriginUpdate",
+        "type": "object"
+      },
       "EligibilityDecision": {
         "additionalProperties": false,
         "properties": {
@@ -1337,6 +1398,16 @@
             "minLength": 1,
             "title": "Ranking Config Version",
             "type": "string"
+          },
+          "ranking_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RankingEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recipient_organization_id": {
             "format": "uuid",
@@ -2201,6 +2272,75 @@
           }
         },
         "title": "ProposedFields",
+        "type": "object"
+      },
+      "RankingEvidence": {
+        "additionalProperties": false,
+        "description": "Auditable normalized components and the model path actually used.",
+        "properties": {
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Features",
+            "type": "object"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "features"
+        ],
+        "title": "RankingEvidence",
         "type": "object"
       },
       "ReadyStatus": {
@@ -3279,6 +3419,88 @@
         "summary": "Demo Eligibility",
         "tags": [
           "intake"
+        ]
+      }
+    },
+    "/api/v1/driver-origin": {
+      "get": {
+        "operationId": "driver_origin_api_v1_driver_origin_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverOriginRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Driver Origin",
+        "tags": [
+          "applications"
+        ]
+      },
+      "post": {
+        "operationId": "update_driver_origin_api_v1_driver_origin_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverOriginUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverOriginRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Driver Origin",
+        "tags": [
+          "applications"
         ]
       }
     },

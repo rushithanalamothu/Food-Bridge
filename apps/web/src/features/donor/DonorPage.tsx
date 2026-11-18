@@ -50,6 +50,12 @@ export function DonorPage() {
   const [notice, setNotice] = useState('');
   const [history, setHistory] = useState<string>();
   const [identity, setIdentity] = useState<DonorIdentity>();
+  const [setupAttempt, setSetupAttempt] = useState(0);
+  const [setupLoading, setSetupLoading] = useState(true);
+  const [setupError, setSetupError] = useState('');
+  const [recoveryAttempt, setRecoveryAttempt] = useState(0);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
   const [draft, setDraft] = useState<DraftRead>();
   const [posted, setPosted] = useState<IntakeDonationRead>();
   const [recent, setRecent] = useState<IntakeDonationRead[]>([]);
@@ -68,8 +74,17 @@ export function DonorPage() {
   const mounted = useRef(true);
   const selection = useRef({ id: undefined as string | undefined });
   const detailRequest = useRef(0);
+  const recoveryRequest = useRef(0);
+
+  function stopDraftRecovery() {
+    recoveryRequest.current++;
+    setRecovering(false);
+    setRecoveryError('');
+  }
 
   function selectDonation(value: IntakeDonationRead) {
+    stopDraftRecovery();
+    setNotice('');
     selection.current = { id: value.donation.id };
     detailRequest.current++;
     setHistory(undefined);
@@ -92,27 +107,37 @@ export function DonorPage() {
 
   useEffect(() => {
     mounted.current = true;
-    void getDonorIdentity()
-      .then((value) => {
-        if (!mounted.current) return;
-        void getIntakePolicy()
-          .then((configured) => {
-            if (mounted.current) {
-              setPolicy(configured);
-              setIdentity(value);
-            }
-          })
-          .catch((err) => {
-            if (mounted.current) setError(errorText(err));
-          });
-      })
-      .catch((err) => {
-        if (mounted.current) setError(errorText(err));
-      });
     return () => {
       mounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setSetupLoading(true);
+    setSetupError('');
+    void Promise.all([getDonorIdentity(), getIntakePolicy()])
+      .then(([donor, configured]) => {
+        if (active) {
+          setPolicy(configured);
+          setIdentity(donor);
+        }
+      })
+      .catch((err) => {
+        if (active) setSetupError(errorText(err));
+      })
+      .finally(() => {
+        if (active) setSetupLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [setupAttempt]);
+
+  async function refreshWorkspace() {
+    if (!identity || !policy) setSetupAttempt((attempt) => attempt + 1);
+    await dashboard.refresh();
+  }
 
   useEffect(() => {
     if (!dashboard.data) return;
@@ -138,20 +163,46 @@ export function DonorPage() {
 
   useEffect(() => {
     if (!identity) return;
-    const id = sessionStorage.getItem('foodbridge:draft:' + identity.organization_id);
-    if (id)
-      void getDraft(id)
-        .then((value) => {
-          if (mounted.current && value.status === 'review_required') {
-            setDraft(value);
-            setDescription(value.description);
-            setNotice('Your saved draft is ready to review.');
-          }
-        })
-        .catch(() => {
-          sessionStorage.removeItem('foodbridge:draft:' + identity.organization_id);
-        });
-  }, [identity]);
+    const key = 'foodbridge:draft:' + identity.organization_id;
+    const id = sessionStorage.getItem(key);
+    if (!id) return;
+    let active = true;
+    const request = ++recoveryRequest.current;
+    const isCurrent = () =>
+      active && request === recoveryRequest.current && sessionStorage.getItem(key) === id;
+    setRecovering(true);
+    setRecoveryError('');
+    void getDraft(id)
+      .then((value) => {
+        if (!isCurrent()) return;
+        if (value.status === 'review_required') {
+          setDraft(value);
+          setDescription(value.description);
+          setReviewed(false);
+          setNotice('Your saved draft is ready to review.');
+        } else {
+          // Only a confirmed server result can retire this exact recovery pointer.
+          sessionStorage.removeItem(key);
+        }
+      })
+      .catch((err) => {
+        if (!isCurrent()) return;
+        if (err instanceof IntakeApiError && err.status === 404) {
+          sessionStorage.removeItem(key);
+          setNotice('Your saved draft is no longer available. You can start a new donation.');
+        } else {
+          setRecoveryError(
+            'Could not load your saved draft. It is still saved. Retry recovery or start a new donation.',
+          );
+        }
+      })
+      .finally(() => {
+        if (active && request === recoveryRequest.current) setRecovering(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [identity, recoveryAttempt]);
 
   useEffect(() => {
     if (!evaluation || evaluation.status !== 'pending') return;
@@ -186,6 +237,7 @@ export function DonorPage() {
   async function describe(event: FormEvent) {
     event.preventDefault();
     if (!identity) return;
+    stopDraftRecovery();
     setError('');
     setBusy(true);
     try {
@@ -206,6 +258,7 @@ export function DonorPage() {
   async function post(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!identity || !draft || !reviewed) return;
+    stopDraftRecovery();
     setError('');
     try {
       const values = new FormData(event.currentTarget);
@@ -284,6 +337,7 @@ export function DonorPage() {
   }
 
   function startAgain() {
+    stopDraftRecovery();
     selection.current = { id: undefined };
     detailRequest.current++;
     setHistory(undefined);
@@ -306,6 +360,8 @@ export function DonorPage() {
         eyebrow={identity?.organization_name ?? 'Donor workspace'}
         title={posted ? 'Donation posted' : 'Post today’s surplus'}
         {...dashboard}
+        refresh={refreshWorkspace}
+        loading={dashboard.loading || setupLoading}
       />
       <Stats
         items={[
@@ -355,11 +411,32 @@ export function DonorPage() {
           {error}
         </p>
       )}
-      {!identity && (
-        <p className="implementation-note">
-          Local setup: enable the intake demo and run <code>make seed-intake-demo</code>. Shared
-          environments require a gateway access token.
-        </p>
+      {setupLoading && !identity && <p role="status">Loading donor details…</p>}
+      {setupError && (
+        <div role="alert" className="notice error">
+          {setupError}
+          <button
+            className="quiet-button"
+            disabled={setupLoading}
+            onClick={() => setSetupAttempt((attempt) => attempt + 1)}
+          >
+            Retry donor setup
+          </button>
+        </div>
+      )}
+      {recovering && (
+        <p role="status">Loading your saved draft… You can start a new donation while it loads.</p>
+      )}
+      {recoveryError && (
+        <div role="alert" className="notice error">
+          {recoveryError}
+          <button
+            className="quiet-button"
+            onClick={() => setRecoveryAttempt((attempt) => attempt + 1)}
+          >
+            Retry saved draft
+          </button>
+        </div>
       )}
       {identity && !posted && (
         <div className="donor-columns">
@@ -375,6 +452,7 @@ export function DonorPage() {
                   rows={7}
                   value={description}
                   onChange={(event) => {
+                    stopDraftRecovery();
                     setDescription(event.target.value);
                     draftKey.current = crypto.randomUUID();
                   }}
@@ -395,6 +473,7 @@ export function DonorPage() {
                 ref={formRef}
                 onSubmit={(event) => void post(event)}
                 onChange={() => {
+                  stopDraftRecovery();
                   setReviewed(false);
                   submitKey.current = crypto.randomUUID();
                 }}
@@ -406,6 +485,7 @@ export function DonorPage() {
                     type="button"
                     disabled={busy}
                     onClick={() => {
+                      stopDraftRecovery();
                       setDraft(undefined);
                       draftKey.current = crypto.randomUUID();
                     }}

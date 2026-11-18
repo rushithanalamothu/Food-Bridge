@@ -395,6 +395,69 @@
       "title": "DonationStatus",
       "type": "string"
     },
+    "DriverOriginRead": {
+      "additionalProperties": false,
+      "properties": {
+        "driver_id": {
+          "format": "uuid",
+          "title": "Driver Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed At"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Location"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "driver_id",
+        "version"
+      ],
+      "title": "DriverOriginRead",
+      "type": "object"
+    },
+    "DriverOriginUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "origin": {
+          "$ref": "#/$defs/Location"
+        }
+      },
+      "required": [
+        "expected_version",
+        "origin"
+      ],
+      "title": "DriverOriginUpdate",
+      "type": "object"
+    },
     "EventEnvelope": {
       "additionalProperties": false,
       "description": "Queue metadata; payloads are IDs, never raw donor text or unrestricted PII.",
@@ -708,6 +771,17 @@
           "minLength": 1,
           "title": "Ranking Config Version",
           "type": "string"
+        },
+        "ranking_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RankingEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "recipient_organization_id": {
           "format": "uuid",
@@ -1433,6 +1507,79 @@
       "title": "PlanFeedback",
       "type": "object"
     },
+    "RankingEvidence": {
+      "additionalProperties": false,
+      "description": "Auditable normalized components and the model path actually used.",
+      "properties": {
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback Reason"
+        },
+        "features": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Features",
+          "type": "object"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "score",
+        "features"
+      ],
+      "title": "RankingEvidence",
+      "type": "object"
+    },
     "ReceivingProfileRead": {
       "additionalProperties": false,
       "properties": {
@@ -1928,6 +2075,12 @@
     "donation_detail": {
       "$ref": "#/$defs/DonationDetail"
     },
+    "driver_origin": {
+      "$ref": "#/$defs/DriverOriginRead"
+    },
+    "driver_origin_update": {
+      "$ref": "#/$defs/DriverOriginUpdate"
+    },
     "failure": {
       "$ref": "#/$defs/FailureRead"
     },
@@ -1999,6 +2152,8 @@
     "operations_donations",
     "history",
     "actor",
+    "driver_origin_update",
+    "driver_origin",
     "version_command",
     "donation_command",
     "pickup_confirmation",

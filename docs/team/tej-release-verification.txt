@@ -1,7 +1,7 @@
 TEJ KIRAN — RELEASE INTEGRATION AND VERIFICATION
 Verified November 17, 2026 (America/Los_Angeles)
 Initial implementation: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
-Integrated upstream main: 48db749 (Mithil PR #10)
+Integrated upstream main: b1c6ffd (Mithil PRs #10, #12, #13; Rushitha PR #14)
 Review: https://github.com/rushithanalamothu/Food-Bridge/pull/11 (draft)
 Branch: feat/tej-release-integration
 
@@ -33,9 +33,9 @@ WHAT TEJ ADDED TO THE EXISTING WORKFLOW
    driver/operations, production gateway checks and restore verification.
 
 FINAL VERIFICATION RESULTS
-- make check: PASS, including 210 Python unit tests, 14 frontend tests,
+- make check: PASS, including 225 Python unit tests, 14 frontend tests,
   formatting, types, frontend build, generated contract drift, docs and Compose.
-- Real PostgreSQL/PostGIS/Redis integration suite: 59 PASS.
+- Real PostgreSQL/PostGIS/Redis integration suite: 62 PASS.
 - Release browser acceptance: 1 PASS in a Linux Playwright container.
   This exercised real Keycloak login/cookies, donor description/review/confirmation
   and posting UI, receiver offer acceptance UI, driver pickup/delivery UI, operations
@@ -96,8 +96,9 @@ WHAT IS STILL EXTERNAL OR TEAM-DEPENDENT
   environment has not been provisioned or certified.
 - Public email needs a chosen SMTP account/host, verified sender and test address.
   Local SMTP delivery is verified; public inbox delivery and SMS are not claimed.
-- Rushitha's production matching/routing/data services and matching evaluation
-  remain separate deliverables. The local acceptance uses synthetic matching.
+- Rushitha’s PostGIS matching/routing adapter and offline evaluation are merged.
+  A live routing provider and production verification remain team work. The
+  earlier local acceptance used synthetic matching.
 - Mithil’s role/profile screens are merged and preserved. Any additional UI
   enhancements remain coordinated with him; they are not claimed as Tej’s work.
 - Cross-owner review is needed for the contact migration, shared contracts,
@@ -129,3 +130,8 @@ LATEST MITHIL INTEGRATION
   preferences change, as documented in apps/web/README.md. This is a separate
   Tej/Rushitha/Mokshith contract follow-up; existing reservation checks reject
   stale offers, so the browser does not promise a new match automatically.
+
+LATEST MAIN INTEGRATION
+- Mithil’s history/draft recovery and posted-draft notice fixes are preserved.
+- Rushitha’s PostGIS matching, road-routing adapter and evaluation are merged.
+  This report distinguishes code integration from a verified external router.

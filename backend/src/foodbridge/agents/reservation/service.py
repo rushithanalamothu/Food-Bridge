@@ -14,6 +14,7 @@ from foodbridge.db.workflow import (
     audience,
     command,
     conflict,
+    current_driver_facts,
     current_profile,
     deadline,
     locked_donation,
@@ -25,7 +26,7 @@ from foodbridge.db.workflow import (
 )
 from foodbridge.db.workflow_models import Assignment, Driver, Impact, MatchOffer, Reservation
 from foodbridge.domain.errors import AppError
-from foodbridge.domain.intake import DriverFacts, EligibilityBatch, EligibilityCandidate
+from foodbridge.domain.intake import EligibilityBatch, EligibilityCandidate
 from foodbridge.domain.workflow import PickupRead, ReservationRead
 
 
@@ -79,7 +80,7 @@ class ReservationService:
         if driver_facts is None:
             if driver is None or driver.version != offer.driver_version:
                 conflict("driver_changed")
-            facts = DriverFacts.model_validate(driver.facts)
+            facts = current_driver_facts(driver)
             # Travel to this donor is specific to the route snapshot, not generic driver settings.
             driver_facts = facts.model_copy(
                 update={"to_pickup_time_s": saved.driver.to_pickup_time_s}
@@ -305,7 +306,7 @@ class ReservationService:
         driver = session.get(Driver, candidate.driver.id, with_for_update=True)
         if driver is None:
             conflict("driver_unavailable")
-        facts = DriverFacts.model_validate(driver.facts)
+        facts = current_driver_facts(driver)
         candidate.driver = facts.model_copy(
             update={"to_pickup_time_s": candidate.driver.to_pickup_time_s}
         )
@@ -422,7 +423,7 @@ class ReservationService:
                     update={"available_capacity_kg_by_storage": capacities}
                 )
                 candidate = EligibilityCandidate.model_validate(row.candidate)
-                facts = DriverFacts.model_validate(driver.facts)
+                facts = current_driver_facts(driver)
                 candidate.recipient = profile
                 candidate.driver = facts.model_copy(update={"to_pickup_time_s": 0})
                 state, _, _ = current_profile(session, offer.recipient_organization_id)

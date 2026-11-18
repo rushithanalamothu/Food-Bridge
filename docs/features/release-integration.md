@@ -1,6 +1,6 @@
 # Tej's release integration
 
-This extends the merged AI orchestrator and reservation/pickup workflow. It implements browser authentication, SMTP delivery, operator snapshots/history, driver delivery detail, integration with Mithil’s merged role screens, and self-hosted deployment/verification tooling. Mithil’s PR #9 owns the donor, receiver/profile, driver and operations UI, SSE client and optional browser SDK login. This change adds the server-managed login path and release acceptance without replacing his screens. Rushitha’s production matching/routing remains separate.
+This extends the merged AI orchestrator and reservation/pickup workflow. It implements browser authentication, SMTP delivery, operator snapshots/history, driver delivery detail, integration with Mithil’s merged role screens, and self-hosted deployment/verification tooling. Mithil’s PR #9 owns the donor, receiver/profile, driver and operations UI, SSE client and optional browser SDK login. This change adds the server-managed login path and release acceptance without replacing his screens. Rushitha’s matching adapter, PostGIS search and offline evaluation were merged in PR #14; live routing provider configuration and production verification remain separate.
 
 ## Browser authentication
 

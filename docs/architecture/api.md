@@ -32,8 +32,10 @@ See the [implemented workflow runbook](../features/workflow.md) for exact reques
 | POST `/donations/{id}/cancel` | Owner donor/operator | Versioned pre-pickup cancellation; 200 snapshot | Implemented backend; see workflow runbook |
 | GET `/recipient-profile` | Recipient | Own location, categories, capacity and hours | Planned, Rushitha |
 | PUT `/recipient-profile` | Recipient | Versioned profile update; 200 profile | Planned, Rushitha |
-| GET `/matches` | Recipient | Own active and past offers, scoped cursor list | Implemented scoped read model; live matching pending |
-| GET `/matches/{id}` | Resource member | `MatchRecommendation` plus offer status | Implemented scoped read model; live matching pending |
+| GET `/matches` | Recipient | Own active and past offers, scoped cursor list | Implemented; live offers require configured routing and drivers |
+| GET `/matches/{id}` | Resource member | `MatchRecommendation` plus offer status | Implemented; live offers require configured routing and drivers |
+| GET `/driver-origin` | Driver | Own route origin, server timestamp and version | Implemented |
+| POST `/driver-origin` | Driver | Idempotent, versioned self-reported origin update | Implemented |
 | POST `/reservations` | Recipient | `ReservationRequest`; 201 reservation + donation version | Implemented backend; see workflow runbook |
 | POST `/matches/{id}/decline` | Offered recipient | Version, optional reason; 200 decision, re-match asynchronous | Implemented backend; see workflow runbook |
 | POST `/reservations/{id}/release` | Reserving recipient/operator | Versioned pre-pickup release; 200 snapshot | Implemented backend; see workflow runbook |

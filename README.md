@@ -27,7 +27,7 @@ FoodBridge connects surplus-food donors with eligible recipient organizations an
 - Canonical Python domain contracts, generated JSON Schema/TypeScript, state-transition guards, fixtures and a deterministic data generator.
 - Unit tests, infrastructure integration tests, formatting checks and CI.
 
-**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Live matching/routing, public sender delivery and shared hosting remain team integration work. The release profile adds real self-hosted Keycloak login, server-side cookie sessions and an SMTP adapter verified against a local test inbox; public deployment still requires a host/domain and sender account. Role application read models, receiver preference editing and membership selection are implemented in PR #9. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
+**The full product remains under development.** The backend workflow is implemented with an opt-in synthetic integration adapter. Rushitha’s matching adapter, PostGIS search and offline evaluation are merged; a live routing provider, public sender delivery and shared hosting remain team integration work. The release profile adds real self-hosted Keycloak login, server-side cookie sessions and an SMTP adapter verified against a local test inbox; public deployment still requires a host/domain and sender account. Role application read models, receiver preference editing and membership selection are implemented in PR #9. [The implementation plan](docs/team/implementation-plan.md) tracks these boundaries.
 
 ## Local start
 
