@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getPickups, pickupCommand } from '../../api/workflow';
 import type { PickupRead } from '../../api/generated/workflow';
 import { DonationTimeline } from '../../components/DonationTimeline';
+import { DriverOrigin } from './DriverOrigin';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
@@ -77,6 +78,7 @@ export function DriverPage() {
           },
         ]}
       />
+      <DriverOrigin />
       <h2>Your assignments</h2>
       {view.loading && <p role="status">Loading assignments…</p>}
       {view.data && !pickups.length && (

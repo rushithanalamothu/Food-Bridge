@@ -55,6 +55,15 @@ export const getOffers = (cursor?: string | null) =>
   workflowRequest<OfferPage>('recipient', page('/matches', cursor));
 export const getPickups = (cursor?: string | null) =>
   workflowRequest<PickupPage>('driver', page('/pickups', cursor));
+export const getDriverOrigin = (signal?: AbortSignal) =>
+  workflowRequest<import('./generated/workflow').DriverOriginRead>('driver', '/driver-origin', {
+    signal,
+  });
+export const saveDriverOrigin = (
+  body: import('./generated/workflow').DriverOriginUpdate,
+  key: string,
+) =>
+  command<import('./generated/workflow').DriverOriginRead>('driver', '/driver-origin', body, key);
 export const getSummary = () =>
   workflowRequest<OperationsSummary>('operator', '/operations/summary');
 export const getFailures = (cursor?: string | null) =>
