@@ -1,6 +1,10 @@
 # Implementation plan and acceptance gates
 
-This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake, backend workflow and Mithil's role applications are implemented. Live matching/routing, deployment/provider configuration and affected-owner review remain team integration gates. Dates should be assigned by the team; do not invent delivery commitments.
+This is a dependency-ordered backlog, not a claim that the product is complete. The foundation, intake, backend workflow and Mithil's role applications are implemented. Rushitha's matching adapter, PostGIS search and offline evaluation are implemented behind a configured routing URL; a live routing provider, identity/profile provisioning, real-stack verification, deployment and affected-owner review remain gates. Dates should be assigned by the team; do not invent delivery commitments.
+
+## Matching and routing implementation
+
+M01/M02/M03 backend implementation is in [matching](../../backend/src/foodbridge/agents/matching/README.md); the distance baseline and multi-criteria ranking share Mokshith's policy and Tej's offer commit. An authenticated driver origin API supplies recent self-reported starting coordinates. [Offline comparison](../../evaluation/README.md) is synthetic and does not measure pickup success or real road routing. F05's general dev fixture loader, operational driver provisioning and an independent live benchmark are still outstanding. This status is implementation scope, not shared-cloud acceptance.
 
 ## Mithil frontend integration
 

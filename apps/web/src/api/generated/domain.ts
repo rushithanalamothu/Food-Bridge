@@ -90,6 +90,11 @@ export type Id1 = string;
 export type MatchingRound = number;
 export type OfferExpiresAt = string;
 export type RankingConfigVersion = string;
+export type FallbackReason = string | null;
+export type Model = string | null;
+export type PromptVersion = string | null;
+export type Provider = string | null;
+export type Score = number;
 export type RecipientOrganizationId = string;
 export type TravelTimeS = number;
 export type ExpectedDonationVersion = number;
@@ -205,8 +210,23 @@ export interface MatchRecommendation {
   matching_round: MatchingRound;
   offer_expires_at: OfferExpiresAt;
   ranking_config_version: RankingConfigVersion;
+  ranking_evidence?: RankingEvidence | null;
   recipient_organization_id: RecipientOrganizationId;
   travel_time_s: TravelTimeS;
+}
+/**
+ * Auditable normalized components and the model path actually used.
+ */
+export interface RankingEvidence {
+  fallback_reason?: FallbackReason;
+  features: Features;
+  model?: Model;
+  prompt_version?: PromptVersion;
+  provider?: Provider;
+  score: Score;
+}
+export interface Features {
+  [k: string]: number;
 }
 export interface ReservationRequest {
   expected_donation_version: ExpectedDonationVersion;

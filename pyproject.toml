@@ -31,6 +31,7 @@ packages = ["backend/src/foodbridge"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
+pythonpath = ["."]
 addopts = "-ra --strict-markers"
 markers = ["integration: requires migrated PostgreSQL/PostGIS and Redis"]
 

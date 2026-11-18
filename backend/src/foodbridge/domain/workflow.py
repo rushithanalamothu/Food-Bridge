@@ -26,6 +26,18 @@ class Actor(Contract):
     role: Role
 
 
+class DriverOriginUpdate(Contract):
+    expected_version: int = Field(ge=1)
+    origin: Location
+
+
+class DriverOriginRead(Contract):
+    driver_id: UUID
+    version: int
+    origin: Location | None = None
+    observed_at: AwareDatetime | None = None
+
+
 class VersionCommand(Contract):
     expected_version: int = Field(ge=1)
     reason: str | None = Field(default=None, max_length=200)
@@ -179,6 +191,8 @@ class ReservationPage(Contract):
 class WorkflowContracts(Contract):
     orchestrator_audit: OrchestrationAudit
     actor: Actor
+    driver_origin_update: DriverOriginUpdate
+    driver_origin: DriverOriginRead
     version_command: VersionCommand
     donation_command: DonationCommand
     pickup_confirmation: PickupConfirmation

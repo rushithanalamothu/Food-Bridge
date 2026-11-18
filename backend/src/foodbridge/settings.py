@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     enable_local_workflow_demo: bool = False
     notification_mode: Literal["disabled", "sandbox"] = "disabled"
     enable_intake_metrics: bool = False
+    routing_base_url: str | None = None
+    matching_algorithm: Literal["distance_only", "multi_criteria"] = "multi_criteria"
     ai_provider: Literal["auto", "rules", "openai", "gemini", "anthropic", "openai_compatible"] = (
         Field(
             default="auto",
@@ -86,6 +88,23 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def safe_modes(self) -> Self:
+        if self.routing_base_url:
+            if self.enable_local_workflow_demo:
+                raise ValueError("Disable the synthetic workflow demo when using live routing")
+            url = urlsplit(self.routing_base_url)
+            local = url.hostname in {"localhost", "127.0.0.1", "routing"}
+            if (
+                url.scheme not in ({"http", "https"} if local else {"https"})
+                or not url.hostname
+                or url.username
+                or url.password
+                or url.query
+                or url.fragment
+                or not (url.port is None or 1 <= url.port <= 65535)
+            ):
+                raise ValueError(
+                    "Routing URL requires HTTPS (or local HTTP), without credentials/query"
+                )
         if (
             self.enable_local_workflow_demo or self.notification_mode == "sandbox"
         ) and self.environment != "local":

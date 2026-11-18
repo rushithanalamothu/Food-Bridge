@@ -54,7 +54,7 @@ make intake-relay
 make workflow-runtime
 ```
 
-The matching worker remains Rushitha's implementation workspace. The coordinator dispatches candidate preparation and ranking to its queue through thin integration tasks; it never waits synchronously for a child Celery result. Production candidate/ranking calls go through `MatchingGateway` in [integrations/workflow.py](../../backend/src/foodbridge/integrations/workflow.py). The default adapter raises an explicit dependency-unavailable outcome. Only the opt-in local demo selects `DemoMatching`; it labels its fixed routes/nearest eligible fixture result synthetic. This is not production matching, a maps integration, or AI evaluation evidence.
+The coordinator dispatches candidate preparation and ranking to the matching queue; it never waits synchronously for a child Celery result. Calls go through `MatchingGateway` in [integrations/workflow.py](../../backend/src/foodbridge/integrations/workflow.py). With a configured OSRM-compatible URL and a recent authenticated driver origin, `LiveMatching` searches PostGIS and supplies road routes and eligible recommendations. Without a URL the gateway raises dependency-unavailable. The opt-in local `DemoMatching` remains explicitly synthetic. See [matching integration](../../backend/src/foodbridge/agents/matching/README.md) for limits and setup.
 
 ## Authorization and client handoff
 
@@ -119,4 +119,4 @@ Additional tests cover driver commitment races, driver redispatch, cancel/pickup
 
 Before team merge, Rushitha should review the additive recipient/capacity/match storage and migration; Mokshith should review the intake event audience addition; Mithil should review the new generated command/read contracts. The new migration is based on `36120ccc9d0d`; do not create a parallel migration history.
 
-Still required for the full product: Rushitha's live candidate/routing/ranking implementation and data/profile update repositories, configured OIDC provider/provisioning and Mithil's browser login/screens, a real notification adapter, and a chosen shared cloud host with secrets/TLS/backups. The local workflow and test adapters do not certify those integrations. Shared-cloud deployment and a complete recipient/driver browser demo remain team release gates.
+Still required for the full product: a deployed road-routing provider and verified real recipient/driver provisioning, configured OIDC provider, a real notification adapter, and a chosen shared cloud host with secrets/TLS/backups. The matching adapter and local synthetic tests alone do not certify those integrations. Shared-cloud deployment and a complete live recipient/driver browser demo remain team release gates.
