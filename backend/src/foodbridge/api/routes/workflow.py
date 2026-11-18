@@ -17,9 +17,9 @@ from foodbridge.agents.reservation.service import ReservationService
 from foodbridge.api.stream import StreamService
 from foodbridge.applications.service import ApplicationService
 from foodbridge.auth.workflow import current_actor
-from foodbridge.db.models import Donation, IntakeEvaluation
+from foodbridge.db.models import Donation, IntakeEvaluation, StatusHistory
 from foodbridge.db.session import session_factory
-from foodbridge.db.workflow import require_role
+from foodbridge.db.workflow import require_role, snapshot
 from foodbridge.db.workflow_models import (
     Assignment,
     Driver,
@@ -38,8 +38,11 @@ from foodbridge.domain.workflow import (
     DonationCommand,
     FailurePage,
     FailureRead,
+    HistoryEntry,
+    HistoryPage,
     OfferPage,
     OfferRead,
+    OperationsDonationPage,
     OperationsSummary,
     PickupConfirmation,
     PickupPage,
@@ -232,6 +235,74 @@ def pickups(
         )
 
 
+@router.get("/operations/donations", response_model=OperationsDonationPage)
+def operations_donations(
+    request: Request, actor: Identity, limit: Limit = 25, cursor: str | None = None
+):
+    require_role(actor, "operator")
+    with session_factory(request.app.state.settings.database_url)() as session:
+        rows, next_cursor = page_query(
+            select(Donation).where(Donation.donor_organization_id == actor.organization_id),
+            Donation,
+            limit,
+            cursor,
+            session,
+        )
+        return OperationsDonationPage(
+            items=[snapshot(row, request.app.state.clock()) for row in rows],
+            next_cursor=next_cursor,
+        )
+
+
+@router.get("/operations/donations/{identifier}", response_model=DonationRead)
+def operations_donation(identifier: UUID, request: Request, actor: Identity):
+    require_role(actor, "operator")
+    with session_factory(request.app.state.settings.database_url)() as session:
+        row = session.get(Donation, identifier)
+        if row is None or row.donor_organization_id != actor.organization_id:
+            raise AppError("not_found", "Not found.", 404)
+        return snapshot(row, request.app.state.clock())
+
+
+@router.get("/operations/donations/{identifier}/history", response_model=HistoryPage)
+def operations_history(
+    identifier: UUID,
+    request: Request,
+    actor: Identity,
+    after_version: Annotated[int, Query(ge=0)] = 0,
+    limit: Limit = 100,
+):
+    require_role(actor, "operator")
+    with session_factory(request.app.state.settings.database_url)() as session:
+        donation = session.get(Donation, identifier)
+        if donation is None or donation.donor_organization_id != actor.organization_id:
+            raise AppError("not_found", "Not found.", 404)
+        rows = list(
+            session.scalars(
+                select(StatusHistory)
+                .where(
+                    StatusHistory.donation_id == identifier,
+                    StatusHistory.aggregate_version > after_version,
+                )
+                .order_by(StatusHistory.aggregate_version)
+                .limit(limit + 1)
+            )
+        )
+        return HistoryPage(
+            items=[
+                HistoryEntry(
+                    version=row.aggregate_version,
+                    previous_status=row.previous_status,
+                    status=row.next_status,
+                    reason=row.reason,
+                    occurred_at=row.occurred_at,
+                )
+                for row in rows[:limit]
+            ],
+            next_version=rows[limit - 1].aggregate_version if len(rows) > limit else None,
+        )
+
+
 @router.get("/operations/orchestrator/decisions/{identifier}", response_model=OrchestrationAudit)
 def orchestrator_decisions(identifier: UUID, request: Request, actor: Identity):
     require_role(actor, "operator")
@@ -375,6 +446,8 @@ async def events(
 
     async def stream():
         nonlocal cursor
+        # Flush proxy/browser headers even when there are no new events yet.
+        yield ": connected\n\n"
         heartbeat = time.monotonic()
         while not await request.is_disconnected():
             try:

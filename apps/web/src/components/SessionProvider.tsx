@@ -36,7 +36,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const role = routeRole(location.pathname);
   const [revision, setRevision] = useState(0);
-  const [ready, setReady] = useState(!manager);
+  const [ready, setReady] = useState(false);
+  const [serverLogin, setServerLogin] = useState<boolean>();
   const [actor, setActor] = useState<Actor>();
   const [error, setError] = useState('');
   const [org, setOrg] = useState('');
@@ -45,7 +46,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [signedIn, setSignedIn] = useState(false);
   const [resolvedScope, setResolvedScope] = useState('');
   useEffect(() => {
-    if (!manager) return;
+    const controller = new AbortController();
+    void fetch('/api/v1/auth/session', { signal: controller.signal })
+      .then(async (response) => {
+        // Older gateways and standalone SDK installations retain their existing login flow.
+        if (response.status === 404) return { login_enabled: false, authenticated: false };
+        if (!response.ok) throw new Error('Session service unavailable');
+        return response.json();
+      })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        setServerLogin(session.login_enabled === true);
+        if (session.login_enabled) {
+          setAccessToken();
+          setSignedIn(session.authenticated === true);
+          setReady(true);
+        } else if (!manager) setReady(true);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setError('Could not check your session. Reload to reconnect.');
+        // Fail closed: a session-service outage must not select a demo identity.
+      });
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (serverLogin !== false || !manager) return;
     const loaded = (user: { access_token: string }) => {
       setAccessToken(user.access_token);
       setSignedIn(true);
@@ -84,9 +110,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       manager.events.removeUserLoaded(loaded);
       manager.events.removeAccessTokenExpired(expired);
     };
-  }, []);
+  }, [serverLogin]);
   useEffect(() => {
-    if (!ready || !role) {
+    if (!ready || !role || (serverLogin && !signedIn)) {
       setActor(undefined);
       return;
     }
@@ -119,6 +145,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .catch((e) => {
         if (!controller.signal.aborted) {
           setError(e.message);
+          if (serverLogin && e.status === 401) setSignedIn(false);
           setSelect(e.code === 'membership_selection_required');
         }
       })
@@ -126,10 +153,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!controller.signal.aborted) setResolvedScope(`${role}:${revision}`);
       });
     return () => controller.abort();
-  }, [ready, role, revision]);
+  }, [ready, role, revision, serverLogin, signedIn]);
   async function signIn() {
     setError('');
     try {
+      if (serverLogin) {
+        window.location.assign(
+          '/api/v1/auth/login?return_to=' + encodeURIComponent(location.pathname),
+        );
+        return;
+      }
       await manager?.signinRedirect({
         state: { returnTo: location.pathname === '/auth/callback' ? '/' : location.pathname },
       });
@@ -146,7 +179,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             : 'Your community food workspace'}
         </span>
         <div className="actions">
-          {manager && !signedIn && (
+          {(serverLogin || manager) && !signedIn && (
             <button className="quiet-button" onClick={() => void signIn()}>
               Sign in
             </button>
@@ -155,12 +188,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             <button
               className="quiet-button"
               onClick={() => {
-                void manager?.removeUser();
-                setAccessToken();
-                setOrganization();
-                setSignedIn(false);
-                setActor(undefined);
-                setRevision((v) => v + 1);
+                void (async () => {
+                  try {
+                    if (serverLogin) {
+                      const response = await fetch('/api/v1/auth/logout', { method: 'POST' });
+                      if (!response.ok) throw new Error('logout_failed');
+                    } else await manager?.removeUser();
+                    setAccessToken();
+                    setOrganization();
+                    setSignedIn(false);
+                    setActor(undefined);
+                    setChoices([]);
+                    setRevision((v) => v + 1);
+                  } catch {
+                    setError('Sign-out could not be completed. Please retry.');
+                  }
+                })();
               }}
             >
               Sign out of FoodBridge
@@ -202,11 +245,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {error && (
         <Notice error>
           {error}
-          {!manager && ' Organization sign-in has not been configured for this installation.'}
+          {!manager &&
+            !serverLogin &&
+            ' Organization sign-in has not been configured for this installation.'}
         </Notice>
       )}
-      {!ready || (role && resolvedScope !== `${role}:${revision}`) ? (
+      {!ready || (role && (!serverLogin || signedIn) && resolvedScope !== `${role}:${revision}`) ? (
         <p role="status">Loading your workspace…</p>
+      ) : serverLogin && !signedIn && role ? (
+        <Notice>Sign in to access your organization’s workspace.</Notice>
       ) : (
         <div key={`${role}:${revision}`}>{children}</div>
       )}

@@ -5,7 +5,7 @@ setup:
 	npm ci
 
 api:
-	uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000
+	uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000 --no-access-log
 
 web:
 	npm run dev

@@ -1,0 +1,18 @@
+groups:
+  - name: foodbridge
+    rules:
+      - alert: FoodBridgeUnavailable
+        expr: up{job="foodbridge"} == 0 or foodbridge_dependencies_available == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: 'FoodBridge API, database or Redis unavailable' }
+      - alert: FoodBridgeWorkflowStalled
+        expr: foodbridge_workflow_overdue_seconds > 180
+        for: 2m
+        labels: { severity: warning }
+        annotations: { summary: 'Persisted workflow steps are overdue' }
+      - alert: FoodBridgeNotificationFailures
+        expr: foodbridge_notifications{status="failed"} > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: 'Notification failures need operator investigation' }

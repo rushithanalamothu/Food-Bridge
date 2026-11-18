@@ -21,7 +21,7 @@ uv run alembic -c backend/alembic.ini upgrade head
 Then separate terminals:
 
 ```sh
-uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn foodbridge.api.main:app --reload --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 ```sh
@@ -49,6 +49,14 @@ Compose starts DB and Redis health checks, runs migrations once, then starts the
 This profile copies application source into images; rebuild after code changes (`docker compose up --build -d`). Use native API/web commands for hot reload. Avoid starting native and containerized API/web instances on the same ports.
 
 The official `postgis/postgis` image is amd64-only. Compose sets `platform: linux/amd64` for DB so Apple Silicon can use Docker emulation. Enable emulation in Docker Desktop. See the upstream [image support notes](https://github.com/postgis/docker-postgis). Postgres 16 uses `/var/lib/postgresql/data`; do not change to the Postgres 18 volume layout without a migration/backup plan.
+
+## Browser login and release verification
+
+The [isolated release stack](features/release-integration.md#isolated-local-acceptance-stack) runs the merged role applications with real Keycloak login, gateway-managed cookie sessions and Mailpit SMTP capture on separate local ports. It preserves the root private `.env`. Use that stack for authentication and notification acceptance; the ordinary demo profile remains available for individual development.
+
+When gateway browser authentication is enabled, the UI discovers `/api/v1/auth/session` and redirects sign-in through the gateway. Tokens remain in Redis. Mithil’s optional browser SDK flow remains supported when gateway login is disabled or the older session endpoint is absent. Set the public URL to the exact frontend origin and provision verified subjects against existing organizations. Do not enable both login approaches for a shared installation.
+
+For a public host, use the separate static/TLS profile and private configuration generator in the [deployment runbook](features/release-integration.md#self-hosted-deployment-and-operations). Root Compose runs a development server and must remain local.
 
 ## Shared AI configuration
 

@@ -11,6 +11,10 @@ M01/M02/M03 backend implementation is in [matching](../../backend/src/foodbridge
 Mithil's role applications implement donor intake/tracking/cancellation/history, receiver offer details and persisted reservations, versioned receiving-preference editing, driver destination/pickup/delivery, operations board/history/failures/replay and authenticated SSE reconciliation. Additive API/read models reuse existing storage; no migration or lifecycle change is needed. Newest-first queries preserve old consumer defaults. Browser tests cover Code+PKCE protocol processing with a test provider, receiver edits/reload, pagination, reconnect/replay, keyboard navigation and axe WCAG checks. Live identity-provider provisioning, live matching/routing, production hosting and affected-owner sign-off remain team integration/deployment gates. See [web integration handoff](../../apps/web/README.md) and PR #9. Fixture coverage is distinguished from real-stack verification; consult the latest CI result before claiming acceptance.
 
 
+## Tej release integration
+
+[Release integration](../features/release-integration.md) adds a gateway OIDC BFF (Code + PKCE, opaque cookie sessions, refresh/logout and CSRF), trusted membership/contact provisioning, consent-aware SMTP delivery, operator read/history endpoints, private metrics, a production static/TLS/self-hosted identity profile, and backup/restore/promotion tooling. It integrates with Mithil’s merged PR #9 screens and retains his SDK login option for installations without gateway sessions. The real local acceptance path uses all role screens and an isolated Keycloak/Mailpit stack. Matching remains explicitly synthetic; no live model call, public sender delivery or public hosting is implied. See [current verification evidence](tej-release-verification.txt). Affected-owner review is still required for shared contracts, auth, migration and client integration.
+
 ## Implemented Tej workflow
 
 [Workflow implementation and verification](../features/workflow.md) covers O01/O02, R01–R03, sandbox N01, backend O03 and supporting F02/F04 storage/contracts. Tests exercise Workbook AT-1–7 with explicit synthetic/failure adapters on real PostgreSQL/PostGIS, plus a real HTTP/broker/worker delivery smoke. These backend tests do not certify Rushitha's live M01–M03 implementation or shared-cloud promotion. Mithil's frontend coverage is tracked separately in PR #9. F03 now resolves all active role memberships; identity-provider selection/provisioning and vendor-specific login verification remain deployment work; the configurable browser OIDC client is implemented. Shared storage, contracts and the additive lifecycle edge need affected-owner review before merge. The phase tables below retain the dependency/acceptance checklist.
@@ -21,7 +25,7 @@ Mokshith's I01/I02 logic, draft/submission contracts, donor review UI and intake
 
 ## Intake v0.3 alignment
 
-Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej now consumes submission/result events and wires the backend workflow; Rushitha must provide live candidate/route facts and matching. FT-07/full V01 has synthetic integration coverage; live integration remains pending. Protected deployment-wide metrics collection remains pending.
+Mokshith's intake-owned alignment adds spec urgency defaults, optional packaging, configurable review policy, source-backed quantity normalization, one transient model retry, diagnostics and a typed internal handoff. See [requirements and acceptance evidence](../specs/intake-v0.3-alignment.md). Tej now consumes submission/result events and wires the backend workflow; Rushitha must provide live candidate/route facts and matching. FT-07/full V01 has synthetic integration coverage; live integration remains pending. Private deployment metrics and Prometheus rules are implemented in the release profile; hosted collection and external alert delivery remain deployment work.
 
 ## Shared AI integration rule
 
@@ -68,7 +72,7 @@ Not delivered: the business tables or authenticated donation workflow. Foundatio
 | R03 | Tej | Pickup/delivery commands | Authorized assigned driver only; deadlines/versions checked; impact exactly once | R02 |
 | W02 | Mithil | Recipient profile and offer screens | Correct conflict/expiry/decline handling and fresh snapshot after 409 | F04, R01 |
 | W03 | Mithil | Driver screens | Clear handling/pickup notes and explicit server-confirmed states | R02, R03 |
-| N01 | Tej | Notification adapter/outbox | Sandbox only; stable effect key; retries and potential duplicates documented | O01 |
+| N01 | Tej | Notification adapter/outbox | Sandbox and SMTP adapters; consent/destination checks; stable effect key; retries and potential duplicates documented | O01 |
 
 **Gate:** full donor → recipient acceptance → driver pickup → delivery scenario passes, with two-reservation concurrency test and correct capacity release accounting.
 

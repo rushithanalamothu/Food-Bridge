@@ -1,0 +1,70 @@
+# Isolated local verification stack. Always use -p foodbridge-release and .env.release-local.
+x-release-env: &release-env
+  FOODBRIDGE_BROWSER_AUTH_ENABLED: 'true'
+  FOODBRIDGE_BROWSER_COOKIE_NAME: foodbridge_release_session
+  FOODBRIDGE_PUBLIC_URL: http://localhost:55173
+  FOODBRIDGE_OIDC_ISSUER: http://localhost:58080/realms/foodbridge
+  FOODBRIDGE_OIDC_AUDIENCE: foodbridge-api
+  FOODBRIDGE_OIDC_CLIENT_ID: foodbridge-web
+  FOODBRIDGE_OIDC_JWKS_URL: http://keycloak:8080/realms/foodbridge/protocol/openid-connect/certs
+  FOODBRIDGE_OIDC_BACKCHANNEL_BASE_URL: http://keycloak:8080
+  FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: 'true'
+  FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO: 'true'
+  FOODBRIDGE_NOTIFICATION_MODE: smtp
+  FOODBRIDGE_SMTP_HOST: mailpit
+  FOODBRIDGE_SMTP_PORT: '1025'
+  FOODBRIDGE_SMTP_SECURITY: none
+  FOODBRIDGE_SMTP_SENDER: notifications@example.test
+  FOODBRIDGE_SMTP_ALLOWED_DOMAINS: '["example.test"]'
+  FOODBRIDGE_AI_PROVIDER: rules
+services:
+  db:
+    ports: !override ['127.0.0.1:55432:5432']
+  redis:
+    ports: !override ['127.0.0.1:56379:6379']
+  api:
+    environment: *release-env
+    ports: !override ['127.0.0.1:58000:8000']
+    command:
+      [
+        'uv',
+        'run',
+        '--no-sync',
+        'uvicorn',
+        'foodbridge.api.main:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8000',
+        '--no-access-log',
+      ]
+  migrate:
+    environment: *release-env
+  intake:
+    environment: *release-env
+  orchestrator:
+    environment: *release-env
+  matching:
+    environment: *release-env
+  reservation:
+    environment: *release-env
+  intake-relay:
+    environment: *release-env
+  workflow-runtime:
+    environment: *release-env
+  web:
+    image: foodbridge-release-web:local
+    ports: !override ['127.0.0.1:55173:5173']
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports: ['127.0.0.1:58025:8025']
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ['start-dev', '--import-realm']
+    environment:
+      JAVA_OPTS_KC_HEAP: -Xms64m -Xmx384m
+      KC_HOSTNAME: http://localhost:58080
+      KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: foodbridge-local-only
+    volumes: ['./deploy/keycloak/local-realm.json:/opt/keycloak/data/import/realm.json:ro']
+    ports: ['127.0.0.1:58080:8080']

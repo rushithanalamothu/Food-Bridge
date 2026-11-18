@@ -1,0 +1,26 @@
+{$FOODBRIDGE_DOMAIN} {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Strict-Transport-Security "max-age=31536000"
+		Content-Security-Policy "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
+	handle /internal/* {
+		respond 404
+	}
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+{$FOODBRIDGE_AUTH_DOMAIN} {
+	reverse_proxy keycloak:8080
+}

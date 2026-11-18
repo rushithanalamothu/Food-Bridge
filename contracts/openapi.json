@@ -33,6 +33,48 @@
         "title": "Actor",
         "type": "object"
       },
+      "BrowserSessionRead": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "login_enabled": {
+            "title": "Login Enabled",
+            "type": "boolean"
+          },
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/SessionMembership"
+            },
+            "title": "Memberships",
+            "type": "array"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "oidc",
+                  "local_demo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          }
+        },
+        "required": [
+          "authenticated",
+          "login_enabled",
+          "memberships"
+        ],
+        "title": "BrowserSessionRead",
+        "type": "object"
+      },
       "DeliveryConfirmation": {
         "additionalProperties": false,
         "properties": {
@@ -1067,6 +1109,76 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "previous_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Status"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "previous_status",
+          "status",
+          "reason",
+          "occurred_at"
+        ],
+        "title": "HistoryEntry",
+        "type": "object"
+      },
+      "HistoryPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Version"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "HistoryPage",
+        "type": "object"
+      },
       "IntakeDonationRead": {
         "additionalProperties": false,
         "properties": {
@@ -1826,6 +1938,16 @@
       "PickupRead": {
         "additionalProperties": false,
         "properties": {
+          "delivery_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "destination": {
             "anyOf": [
               {
@@ -1870,10 +1992,32 @@
             ],
             "title": "Recipient Name"
           },
+          "recipient_organization_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Organization Id"
+          },
           "reservation_id": {
             "format": "uuid",
             "title": "Reservation Id",
             "type": "string"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "start": {
             "format": "date-time",
@@ -2598,6 +2742,78 @@
         "title": "ReviewIssue",
         "type": "object"
       },
+      "RouteFacts": {
+        "additionalProperties": false,
+        "properties": {
+          "calculated_at": {
+            "format": "date-time",
+            "title": "Calculated At",
+            "type": "string"
+          },
+          "distance_m": {
+            "minimum": 0.0,
+            "title": "Distance M",
+            "type": "number"
+          },
+          "estimated": {
+            "default": false,
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "routing_provider",
+              "synthetic"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "travel_time_s": {
+            "minimum": 0.0,
+            "title": "Travel Time S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "distance_m",
+          "travel_time_s",
+          "calculated_at",
+          "source"
+        ],
+        "title": "RouteFacts",
+        "type": "object"
+      },
+      "SessionMembership": {
+        "additionalProperties": false,
+        "properties": {
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "donor",
+              "recipient",
+              "driver",
+              "operator"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name",
+          "role"
+        ],
+        "title": "SessionMembership",
+        "type": "object"
+      },
       "StepOutcome": {
         "additionalProperties": false,
         "properties": {
@@ -2764,6 +2980,46 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "browser authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "operationId": "session_info_api_v1_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Session Info",
+        "tags": [
+          "browser authentication"
+        ]
+      }
+    },
     "/api/v1/donation-drafts": {
       "post": {
         "operationId": "create_draft_api_v1_donation_drafts_post",
@@ -3665,6 +3921,191 @@
         "summary": "Memberships",
         "tags": [
           "applications"
+        ]
+      }
+    },
+    "/api/v1/operations/donations": {
+      "get": {
+        "operationId": "operations_donations_api_v1_operations_donations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationBoard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operations Donations",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/donations/{identifier}": {
+      "get": {
+        "operationId": "operations_donation_api_v1_operations_donations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operations Donation",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/operations/donations/{identifier}/history": {
+      "get": {
+        "operationId": "operations_history_api_v1_operations_donations__identifier__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_version",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operations History",
+        "tags": [
+          "workflow"
         ]
       }
     },

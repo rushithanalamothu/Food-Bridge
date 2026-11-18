@@ -1,3 +1,13 @@
+CURRENT STATUS UPDATE — NOVEMBER 17, 2026
+This file below is the historical November 4 implementation snapshot.
+The subsequent release integration adds OIDC browser sessions, SMTP delivery,
+operator snapshots/history, driver delivery details, connected driver/operations
+screens, protected monitoring, and deployment/backup/restore/rollback tooling.
+See docs/features/release-integration.md for current scope and test commands.
+See docs/team/tej-release-verification.txt for the final verification results.
+Public hosting and public sender acceptance still need real environment details;
+production matching/routing and recipient/profile work remain other-owner dependencies.
+
 TEJ PART IMPLEMENTATION NOTES
 FOODBRIDGE — FEATURES AND TESTING
 Prepared: November 4, 2026
