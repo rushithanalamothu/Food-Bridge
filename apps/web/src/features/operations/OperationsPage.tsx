@@ -12,6 +12,7 @@ import type { OrchestrationAudit, FailureRead, DonationRead } from '../../api/ge
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
+  ActionError,
   Notice,
   Stats,
   EmptyState,
@@ -98,7 +99,7 @@ export function OperationsPage() {
       >
         <p>Monitor your organization’s donations and recover work that needs attention.</p>
       </WorkspaceHeader>
-      {view.error && <Notice error>{view.error}</Notice>}
+      {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
       {message && <Notice>{message}</Notice>}
       {summary?.synthetic && (
         <Notice>
@@ -168,6 +169,7 @@ export function OperationsPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getDonationBoard(
@@ -177,7 +179,7 @@ export function OperationsPage() {
               setBoardExtra((old) => [...old, ...page.items]);
               setBoardCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
@@ -222,6 +224,7 @@ export function OperationsPage() {
                   disabled={action.busy}
                   onConfirm={() => {
                     setMessage('');
+                    view.setError('');
                     void (async () => {
                       try {
                         await action.run(`${failure.id}:${version}:replay`, (key) =>
@@ -253,6 +256,7 @@ export function OperationsPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getFailures(
@@ -262,7 +266,7 @@ export function OperationsPage() {
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }

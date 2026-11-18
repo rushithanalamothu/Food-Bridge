@@ -894,6 +894,11 @@
         "recommendation": {
           "$ref": "#/$defs/MatchRecommendation"
         },
+        "requires_revalidation": {
+          "default": false,
+          "title": "Requires Revalidation",
+          "type": "boolean"
+        },
         "status": {
           "enum": [
             "offered",

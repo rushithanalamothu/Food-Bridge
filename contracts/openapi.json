@@ -1518,6 +1518,11 @@
           "recommendation": {
             "$ref": "#/components/schemas/MatchRecommendation"
           },
+          "requires_revalidation": {
+            "default": false,
+            "title": "Requires Revalidation",
+            "type": "boolean"
+          },
           "status": {
             "enum": [
               "offered",

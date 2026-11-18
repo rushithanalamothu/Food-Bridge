@@ -1525,6 +1525,204 @@ def test_application_profile_update_is_versioned_idempotent_and_audited(env):
     assert env.client.get("/api/v1/receiving-profile").status_code == 403
 
 
+def edit_receiving_preferences(env, *, rejected=None):
+    current = env.client.get("/api/v1/receiving-profile").json()
+    profile = current["profile"]
+    if rejected is not None:
+        profile = {**profile, "rejected_allergens": rejected}
+    response = env.client.post(
+        "/api/v1/receiving-profile",
+        json={
+            "expected_version": current["profile"]["version"],
+            "expected_capacity_versions": current["capacity_versions"],
+            "profile": profile,
+            "reported_free_kg_by_storage": current["reported_free_kg_by_storage"],
+        },
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def single_recipient_offer(env):
+    with env.sessions.begin() as session:
+        session.get(RecipientState, env.actors["recipient2"].organization_id).verified = False
+    match = offer(env)
+    env.current.actor = recipient_for(env, match)
+    return match
+
+
+def test_profile_edit_rematches_same_recipient_with_new_version_and_no_duplicate_steps(env):
+    original = single_recipient_offer(env)
+    edit_receiving_preferences(env, rejected=["peanut", "shellfish"])
+    stale = env.client.get("/api/v1/matches").json()["items"][0]
+    assert stale["requires_revalidation"] is True
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(lambda _: env.workflow.sweep(), range(2)))
+    env.workflow.sweep()
+    with env.sessions() as session:
+        donation = session.get(Donation, original.donation_id)
+        assert donation.status == "matching" and donation.matching_round == 2
+        assert session.get(MatchOffer, original.id).status == "superseded"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowStep)
+                .where(
+                    WorkflowStep.donation_id == donation.id,
+                    WorkflowStep.matching_round == 2,
+                    WorkflowStep.kind == "eligibility",
+                )
+            )
+            == 1
+        )
+    replacement = offer(env, original.donation_id)
+    assert replacement.id != original.id
+    assert replacement.recipient_organization_id == original.recipient_organization_id
+    assert replacement.candidate["recipient"]["version"] == 2
+    views = env.client.get("/api/v1/matches").json()["items"]
+    assert (
+        next(v for v in views if v["recommendation"]["id"] == str(replacement.id))[
+            "requires_revalidation"
+        ]
+        is False
+    )
+    body = ReservationRequest(
+        match_id=replacement.id,
+        expected_donation_version=replacement.recommendation["donation_version"],
+    )
+    key = uuid4()
+    result = env.reservation.reserve(env.current.actor, body, key, uuid4())
+    assert env.reservation.reserve(env.current.actor, body, key, uuid4()) == result
+    with env.sessions() as session:
+        assert (
+            session.get(
+                Capacity, (env.current.actor.organization_id, "chilled")
+            ).committed_inbound_kg
+            == 10
+        )
+
+
+def test_profile_edit_rechecks_hard_policy_instead_of_reissuing_ineligible_food(env):
+    original = single_recipient_offer(env)
+    edit_receiving_preferences(env, rejected=["soy"])
+    env.workflow.sweep()
+    assert offer(env, original.donation_id) is None
+    with env.sessions() as session:
+        assert session.get(Donation, original.donation_id).status == "no_match"
+        assert session.get(MatchOffer, original.id).status == "superseded"
+        assert session.scalar(select(func.count()).select_from(Reservation)) == 0
+
+
+def test_profile_recovery_rolls_back_retirement_and_outbox_when_scheduling_fails(env, monkeypatch):
+    original = single_recipient_offer(env)
+    edit_receiving_preferences(env)
+    schedule = env.workflow.schedule
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("Interrupted before committing recovery")
+
+    monkeypatch.setattr(env.workflow, "schedule", fail)
+    with pytest.raises(RuntimeError):
+        env.workflow.sweep()
+    with env.sessions() as session:
+        assert session.get(MatchOffer, original.id).status == "offered"
+        assert session.get(Donation, original.donation_id).matching_round == 1
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(StatusHistory)
+                .where(
+                    StatusHistory.donation_id == original.donation_id,
+                    StatusHistory.reason == "recipient_profile_changed",
+                )
+            )
+            == 0
+        )
+    monkeypatch.setattr(env.workflow, "schedule", schedule)
+    env.workflow.sweep()
+    assert offer(env, original.donation_id).candidate["recipient"]["version"] == 2
+
+
+def test_profile_recovery_does_not_release_accepted_reservations(env):
+    original = single_recipient_offer(env)
+    held = env.reservation.reserve(
+        env.current.actor,
+        ReservationRequest(
+            match_id=original.id,
+            expected_donation_version=original.recommendation["donation_version"],
+        ),
+        uuid4(),
+        uuid4(),
+    )
+    edit_receiving_preferences(env)
+    env.workflow.sweep()
+    with env.sessions() as session:
+        assert session.get(Reservation, UUID(held["id"])).status == "active"
+        assert session.get(Donation, original.donation_id).status == "reserved"
+        assert (
+            session.get(
+                Capacity, (env.current.actor.organization_id, "chilled")
+            ).committed_inbound_kg
+            == 10
+        )
+
+
+def test_profile_recovery_is_bounded_per_sweep(env):
+    first = single_recipient_offer(env)
+    offer(env)
+    offer(env)
+    edit_receiving_preferences(env)
+    env.workflow.sweep(limit=1)
+    with env.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(Donation).where(Donation.status == "matching")
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count()).select_from(MatchOffer).where(MatchOffer.status == "offered")
+            )
+            == 2
+        )
+    env.workflow.sweep(limit=1)
+    env.workflow.sweep(limit=1)
+    with env.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(MatchOffer).where(MatchOffer.status == "offered")
+            )
+            == 0
+        )
+        assert session.get(Donation, first.donation_id).matching_round == 2
+
+
+def test_profile_recovery_stops_at_revalidation_budget(env):
+    original = single_recipient_offer(env)
+    with env.sessions.begin() as session:
+        session.get(Donation, original.donation_id).matching_round = 10
+    edit_receiving_preferences(env)
+    env.workflow.sweep()
+    env.workflow.sweep()
+    with env.sessions() as session:
+        donation = session.get(Donation, original.donation_id)
+        assert donation.status == "failed" and donation.matching_round == 10
+        assert session.get(MatchOffer, original.id).status == "superseded"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowStep)
+                .where(
+                    WorkflowStep.donation_id == donation.id,
+                    WorkflowStep.matching_round > 1,
+                )
+            )
+            == 0
+        )
+
+
 def test_profile_edit_cannot_overwrite_concurrent_reservation_capacity(env):
     match = offer(env)
     env.current.actor = recipient_for(env, match)

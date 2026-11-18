@@ -12,6 +12,7 @@ import type { OfferRead, ReservationDetail } from '../../api/generated/workflow'
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
+  ActionError,
   Notice,
   EmptyState,
   Stats,
@@ -60,8 +61,9 @@ export function RecipientPage() {
         ),
     ),
   ];
-  // Match IDs are immutable. Only offers already seen before a profile change are
-  // invalidated; newly generated offers must remain usable.
+  // Older gateways lack server-side validity. Keep the legacy observation guard
+  // only for those offers; independently loaded profile/offer snapshots may differ
+  // briefly, so an explicit server flag must not poison a fresh replacement ID.
   useEffect(() => {
     if (!view.data) return;
     const version = view.data.profile.profile.version;
@@ -72,7 +74,7 @@ export function RecipientPage() {
     previousProfile.current = {
       version,
       offerIds: offers
-        .filter((offer) => offer.status === 'offered')
+        .filter((offer) => offer.status === 'offered' && offer.requires_revalidation === undefined)
         .map((offer) => offer.recommendation.id),
     };
   }, [view.data, extra]);
@@ -139,7 +141,7 @@ export function RecipientPage() {
       <WorkspaceHeader eyebrow="Receiver workspace" title="Good food. Ready to receive." {...view}>
         <p>Review eligible offers, manage receiving preferences, and follow each delivery.</p>
       </WorkspaceHeader>
-      {view.error && <Notice error>{view.error}</Notice>}
+      {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
       {message && <Notice>{message}</Notice>}
       <Stats
         items={[
@@ -148,6 +150,7 @@ export function RecipientPage() {
             value: offers.filter(
               (o) =>
                 o.status === 'offered' &&
+                !o.requires_revalidation &&
                 !invalidOffers.has(o.recommendation.id) &&
                 Date.parse(o.recommendation.offer_expires_at) > now,
             ).length,
@@ -189,7 +192,7 @@ export function RecipientPage() {
           const match = offer.recommendation;
           const food = offer.donation;
           const expired = Date.parse(match.offer_expires_at) <= now;
-          const needsRevalidation = invalidOffers.has(match.id);
+          const needsRevalidation = offer.requires_revalidation || invalidOffers.has(match.id);
           const zone = view.data?.profile.profile.location.timezone;
           return (
             <article className="card" key={match.id}>
@@ -280,6 +283,7 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getOffers(
@@ -289,7 +293,7 @@ export function RecipientPage() {
               setExtra((old) => [...old, ...page.items]);
               setCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
@@ -336,6 +340,7 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getReservations(
@@ -345,7 +350,7 @@ export function RecipientPage() {
               setHolds((old) => [...old, ...page.items]);
               setHoldCursor(page.next_cursor ?? null);
             } catch (e) {
-              view.setError((e as Error).message);
+              if (latestSnapshot.current === requestedSnapshot) view.setError((e as Error).message);
             } finally {
               setPaging(false);
             }
