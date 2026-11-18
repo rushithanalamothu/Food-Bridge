@@ -27,11 +27,11 @@ test('driver starting point validates input and saves a versioned, idempotent lo
   const headers = (await request).headers();
   expect(headers['x-foodbridge-role']).toBe('driver');
   expect(headers['idempotency-key']).toBeTruthy();
+  await expect(page.getByRole('status').filter({ hasText: 'Starting point saved.' })).toBeVisible();
   expect(state.commands[0].body).toMatchObject({
     expected_version: 1,
     origin: { latitude: 37.332, longitude: -121.89 },
   });
-  await expect(page.getByRole('status').filter({ hasText: 'Starting point saved.' })).toBeVisible();
   await page.reload();
   await expect(page.getByText('Synthetic driver depot', { exact: false })).toBeVisible();
   await expect(page.getByText('No starting point saved.', { exact: false })).toHaveCount(0);
