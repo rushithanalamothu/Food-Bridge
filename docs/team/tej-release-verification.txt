@@ -1,7 +1,7 @@
 TEJ KIRAN — RELEASE INTEGRATION AND VERIFICATION
 Verified November 17, 2026 (America/Los_Angeles)
 Initial implementation: 45cfc965b413b4ed96055b7ade0fd4e840f7adf8
-Integrated upstream main: 298030fb089bb905acf42b935e6288f4a413d804
+Integrated upstream main: 48db749 (Mithil PR #10)
 Review: https://github.com/rushithanalamothu/Food-Bridge/pull/11 (draft)
 Branch: feat/tej-release-integration
 
@@ -41,10 +41,11 @@ FINAL VERIFICATION RESULTS
   and posting UI, receiver offer acceptance UI, driver pickup/delivery UI, operations
   history UI and orchestrator audit API, cross-org denial, CSRF rejection, fresh SMTP
   inbox messages, SSE disconnect/reconnect, mobile width and actual logout.
-- Frontend browser regressions: 17 PASS (SDK login/callback, role workspaces,
+- Frontend browser regressions: 24 PASS after PR #10 (SDK login/callback, role workspaces,
   receiver preferences, SSE recovery, pagination, accessibility, server sessions,
   failed logout and session-service failure behavior). These use explicit fixtures.
-- Total completed browser checks: 18 (17 fixture regressions + 1 real release flow).
+- Browser evidence: 24 fixture regressions after PR #10, plus the prior real
+  release flow. The real release flow is rerun by GitHub CI on this merge.
 - Clean backend image build: PASS.
 - Production static frontend image build: PASS.
 - Production Compose configuration validation: PASS.
@@ -119,3 +120,12 @@ INTEGRATION AND CREDIT
   data/routing/ranking is a separate workstream. No AI improvement is inferred.
 - Earlier reports are historical snapshots. This note supersedes their claims that
   recipient UI/browser login/external notification implementation was still absent.
+
+LATEST MITHIL INTEGRATION
+- PR #10 fixes stale donor/history responses, replay authorization state and
+  acceptance of offers invalidated by changed receiving preferences. Its
+  browser race tests passed with Tej gateway/session integration (24 total).
+- The frontend still needs backend revalidation/rematching when recipient
+  preferences change, as documented in apps/web/README.md. This is a separate
+  Tej/Rushitha/Mokshith contract follow-up; existing reservation checks reject
+  stale offers, so the browser does not promise a new match automatically.

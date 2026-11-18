@@ -18,6 +18,8 @@ For the explicitly synthetic local workflow enable the backend's local intake/wo
 
 SSE subscribes before a reconciliation snapshot, reuses its in-memory cursor on reconnect, drops repeated cursor IDs, resets expired cursors and refreshes authoritative snapshots. Streams stop on authorization failure. Workspace changes close streams, clear role-local data and reconnect under the selected membership. Older list pages reset after a fresh live snapshot so stale actions are not retained. Activity lists contain only events received during the mounted session; they are not a complete historical timeline.
 
+Donation detail refreshes are tied to the current donor selection. Starting another donation invalidates outstanding detail requests. History clears the previous resource immediately when selecting a different donation, including when the new request fails. Operations replay is available only after both the selected donation snapshot and its audit load successfully; a failed or pending review cannot reuse a previous donation's version.
+
 ## Organization sign-in
 
 Copy this directory's `.env.example` to `.env.local`. Configure a public OIDC Authorization Code + PKCE client through `VITE_OIDC_AUTHORITY`, `VITE_OIDC_CLIENT_ID`, `VITE_OIDC_SCOPE` and optional `VITE_OIDC_AUDIENCE`. Register the exact `<web-origin>/auth/callback` redirect URI and allow this origin at the provider's discovery/token endpoints. Use HTTPS for shared deployments. Do not set a client secret in the SPA. Coordinate issuer, audience, JWKS, memberships and provider provisioning with Tej.
@@ -30,9 +32,13 @@ Role applications now use additive `/receiving-profile`, `/reservations`, `/work
 
 Receiver saves require the current profile version and every capacity version, with a stable idempotency key. The transaction locks existing profile/capacity rows, preserves committed inbound weight, rejects capacity below commitments or unsupported precision, increments versions and saves an audience-scoped outbox event with the receipt. Location changes remain coordinator-verified because routing must use verified coordinates. Users can edit categories, storage, free capacity, rejected allergens, required diet and receiving windows. New receiving locations and account provisioning remain onboarding work.
 
+Existing offers shown before a successful receiving-preference save or an observed profile-version change are marked as needing revalidation and cannot be accepted. A `recipient_profile_changed` acceptance conflict produces the same guidance after refreshing the authoritative snapshot. Decline remains available. Replacement match IDs remain actionable; the UI never reports that rematching has been queued.
+
+**Backend follow-up (Tej with Rushitha/Mokshith):** profile updates currently invalidate the profile version captured in existing match candidates, but do not automatically schedule donation revalidation/rematching. The offer read model does not expose that candidate profile version, so a newly loaded browser cannot identify every stale offer before its first acceptance conflict. The UI safeguards apply to profile changes observed during the mounted workspace and explicit conflicts; they do not implement backend rematching. Coordinate that workflow/contract change separately, preserving deterministic eligibility and transactional reservation checks.
+
 Membership menus list only memberships returned for the verified subject. Donor identity now honors a selected authorized organization. Cross-organization reads return 404; unauthorized roles return 403. Read models share existing tables; no migration or lifecycle change was introduced. Canonical `domain/workflow.py` changes generate JSON Schema/OpenAPI/TypeScript through `make contracts`.
 
-Affected-owner review is requested in draft PR #9: Tej for API/auth/SSE and shared dependency wiring; Rushitha for capacity/profile locking and data projections; Mokshith for eligibility/profile inputs. No approval is inferred from a review request. Live matching, routing-provider availability, external notifications, live identity-provider provisioning and production hosting remain team/deployment responsibilities.
+The original frontend integration was merged in PR #9. Affected-owner review covers Tej for API/auth/SSE and shared dependency wiring; Rushitha for capacity/profile locking and data projections; Mokshith for eligibility/profile inputs. No approval is inferred from a review request. Live matching, routing-provider availability, external notifications, live identity-provider provisioning and production hosting remain team/deployment responsibilities.
 
 ## Verification
 
@@ -41,6 +47,7 @@ From the root: `make check`. Run `make integration` and the existing worker smok
 `npm test` covers API error behavior, command headers/retries, explicit allergens, timezone/DST conversion and SSE framing/deduplication/reconnect/auth boundaries. Install Chromium with `npm exec --workspace @foodbridge/web -- playwright install chromium`.
 
 - `npm run test:e2e --workspace @foodbridge/web -- workspaces.spec.ts` exercises contract-shaped mocked HTTP receiver/driver/operations interactions, conflicts and mobile layout. These are browser integration tests with synthetic fixtures, not proof of database transactions or live model behavior.
+- `npm run test:e2e --workspace @foodbridge/web -- state-recovery.spec.ts` covers delayed donor refresh success/failure after starting a new donation, cross-donation history loading/failure, replay review/version isolation, preference-save invalidation, acceptance conflicts and replacement offers. Requests are explicitly gated to reproduce races deterministically.
 - `npm run test:e2e --workspace @foodbridge/web -- intake.spec.ts` requires the real local intake stack. The CI integration job runs both browser specs and real worker smoke scripts.
 
 Tests and builds use committed generated types. Never hand-edit `src/api/generated/`.

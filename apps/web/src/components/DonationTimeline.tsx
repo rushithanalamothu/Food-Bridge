@@ -3,22 +3,25 @@ import type { DonationDetail, Role } from '../api/generated/workflow';
 import { getDonationDetail } from '../api/workflow';
 import { formatTime, humanize, Notice, StatusBadge } from './Workspace';
 
-export function DonationTimeline({
-  role,
-  id,
-  version,
-  onClose,
-}: {
+type TimelineProps = {
   role: Role;
   id: string;
   version?: number;
   onClose: () => void;
-}) {
+};
+
+export function DonationTimeline(props: TimelineProps) {
+  // A different resource must never inherit the previous resource's data or error.
+  return <TimelineContent key={`${props.role}:${props.id}`} {...props} />;
+}
+
+function TimelineContent({ role, id, version, onClose }: TimelineProps) {
   const [detail, setDetail] = useState<DonationDetail>();
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
     setError('');
+    setDetail(undefined);
     void getDonationDetail(role, id)
       .then((next) => {
         if (active) setDetail(next);

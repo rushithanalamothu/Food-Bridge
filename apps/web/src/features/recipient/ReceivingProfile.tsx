@@ -15,9 +15,11 @@ const storageTypes: Storage[] = ['ambient', 'chilled', 'frozen'];
 export function ReceivingProfile({
   value,
   refresh,
+  onSaved,
 }: {
   value: ReceivingProfileRead;
   refresh: () => Promise<void>;
+  onSaved: () => void;
 }) {
   const action = useCommand();
   const [editing, setEditing] = useState(false);
@@ -71,6 +73,7 @@ export function ReceivingProfile({
       if (!accepted.length || !body.profile.accepted_categories.length)
         throw new Error('Choose at least one category and storage type.');
       await action.run(JSON.stringify(body), (key) => saveReceivingProfile(body, key));
+      onSaved();
       setEditing(false);
       setMessage('Receiving preferences saved.');
       await refresh();

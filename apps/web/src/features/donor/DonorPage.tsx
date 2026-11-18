@@ -66,6 +66,29 @@ export function DonorPage() {
   const evaluationKey = useRef(crypto.randomUUID());
   const formRef = useRef<HTMLFormElement>(null);
   const mounted = useRef(true);
+  const selection = useRef({ id: undefined as string | undefined });
+  const detailRequest = useRef(0);
+
+  function selectDonation(value: IntakeDonationRead) {
+    selection.current = { id: value.donation.id };
+    detailRequest.current++;
+    setHistory(undefined);
+    setPosted(value);
+  }
+
+  async function refreshSelectedDonation() {
+    const selected = selection.current;
+    if (!selected.id) return;
+    const request = ++detailRequest.current;
+    try {
+      const value = await getDonation(selected.id);
+      if (mounted.current && selected === selection.current && request === detailRequest.current)
+        setPosted(value);
+    } catch (err) {
+      if (mounted.current && selected === selection.current && request === detailRequest.current)
+        setError(errorText(err));
+    }
+  }
 
   useEffect(() => {
     mounted.current = true;
@@ -96,13 +119,17 @@ export function DonorPage() {
     setRecent(dashboard.data.items);
     setNextCursor(dashboard.data.next_cursor);
     let active = true;
+    const selected = selection.current;
+    const request = ++detailRequest.current;
     if (posted)
       void getDonation(posted.donation.id)
         .then((value) => {
-          if (active) setPosted(value);
+          if (active && selected === selection.current && request === detailRequest.current)
+            setPosted(value);
         })
         .catch((e) => {
-          if (active) setError(errorText(e));
+          if (active && selected === selection.current && request === detailRequest.current)
+            setError(errorText(e));
         });
     return () => {
       active = false;
@@ -222,7 +249,7 @@ export function DonorPage() {
           { draft_id: draft.id, expected_draft_version: draft.version, confirmed: true, donation },
           submitKey.current,
         );
-        setPosted(value);
+        selectDonation(value);
         sessionStorage.removeItem('foodbridge:draft:' + identity.organization_id);
         setRecent((items) => [value, ...items]);
       } catch (err) {
@@ -230,7 +257,7 @@ export function DonorPage() {
           const fresh = await getDraft(draft.id);
           setDraft(fresh);
           setReviewed(false);
-          if (fresh.donation_id) setPosted(await getDonation(fresh.donation_id));
+          if (fresh.donation_id) selectDonation(await getDonation(fresh.donation_id));
         }
         setError(errorText(err));
       } finally {
@@ -257,6 +284,9 @@ export function DonorPage() {
   }
 
   function startAgain() {
+    selection.current = { id: undefined };
+    detailRequest.current++;
+    setHistory(undefined);
     setDraft(undefined);
     setPosted(undefined);
     setEvaluation(undefined);
@@ -612,7 +642,7 @@ export function DonorPage() {
                     type="button"
                     className="text-button"
                     onClick={() => {
-                      setPosted(item);
+                      selectDonation(item);
                       setError('');
                     }}
                   >
@@ -736,18 +766,22 @@ export function DonorPage() {
                 danger
                 disabled={cancellation.busy}
                 onConfirm={() => {
+                  const selected = selection.current;
                   void (async () => {
                     try {
                       await cancellation.run(
                         `${posted.donation.id}:${posted.donation.version}:cancel`,
                         (key) => cancelDonation(posted.donation.id, posted.donation.version, key),
                       );
-                      setPosted(await getDonation(posted.donation.id));
-                      setNotice('Donation cancelled. Any active hold has been released.');
+                      if (selected === selection.current) {
+                        await refreshSelectedDonation();
+                        if (selected === selection.current)
+                          setNotice('Donation cancelled. Any active hold has been released.');
+                      }
                       await dashboard.refresh();
                     } catch (e) {
                       await dashboard.refresh();
-                      setError(errorText(e));
+                      if (selected === selection.current) setError(errorText(e));
                     }
                   })();
                 }}
@@ -758,11 +792,7 @@ export function DonorPage() {
             <button
               className="quiet-button"
               type="button"
-              onClick={() =>
-                void getDonation(posted.donation.id)
-                  .then(setPosted)
-                  .catch((err) => setError(errorText(err)))
-              }
+              onClick={() => void refreshSelectedDonation()}
             >
               Refresh status
             </button>
