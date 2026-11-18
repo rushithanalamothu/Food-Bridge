@@ -112,3 +112,33 @@ drift, code/config drift and incomplete runs. The timings describe this serial l
 scripted acceptance; human acceptance rates, burst throughput and concurrent capacity races
 require the wider [evaluation protocol](../testing.md). Keep the two raw JSON files and map
 manifest before reporting a comparison.
+
+## Local verification results
+
+The Northern California OSRM dataset prepared locally had SHA-256
+`262f72718951d74dd6d26e287a081614c0be0a2e250063e3fcb80c9f57b7603b`.
+An OSRM route request returned `Ok`; the full-stack smoke completed twice with
+persisted road distances of 725.6 m and 746.9 m and SSE replay checks passing.
+The separate offline 20-donation comparison used shared road-route facts with SHA-256
+`64fb63b0e9860d9f5e3bceb6e61b06455a54c87ffb2cb9ac24aee37673a85ba9`.
+Both strategies selected 11 donations, had 9 no-matches and 0 policy violations;
+that offline replay does not measure submission-to-offer latency.
+
+The serial full-stack comparison ran from build `f4d4d8f` using two fresh Compose
+databases. `evaluation.compare_live` confirmed the same build, configuration and map,
+with 20 complete scripted deliveries for each strategy:
+
+| Local fixture measure | Distance only | Multi-criteria |
+| --- | ---: | ---: |
+| Allocation to two fixture recipients (kg) | 20 / 0 | 10 / 10 |
+| Jain fairness index, two fixture recipients | 0.50 | 1.00 |
+| Server submission-to-offer p50 | 12.204 s | 12.146 s |
+| Server submission-to-offer p95 | 14.478 s | 15.345 s |
+| Client-observed submission-to-offer p95 | 14.584 s | 15.589 s |
+
+Multi-criteria split this fixture's allocation evenly; its server p95 was about
+0.87 s higher in this single serial run. The sample contains only synthetic actors
+and forced acceptance and delivery. No production pickup-rate, concurrent-load or
+general fairness improvement follows from it. The raw per-donation results are local,
+ignored files (`evaluation/results/distance-run1.json` and
+`evaluation/results/multi-run1.json`); rerun the commands above to inspect them.
