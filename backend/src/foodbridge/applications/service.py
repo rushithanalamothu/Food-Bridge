@@ -11,7 +11,14 @@ from foodbridge.db.models import Donation, Organization, StatusHistory
 from foodbridge.db.session import session_factory
 from foodbridge.db.transactions import enqueue_event
 from foodbridge.db.workflow import command, current_profile, require_role, require_version, snapshot
-from foodbridge.db.workflow_models import Assignment, Capacity, Driver, MatchOffer, Reservation
+from foodbridge.db.workflow_models import (
+    Assignment,
+    Capacity,
+    Driver,
+    MatchOffer,
+    RecipientState,
+    Reservation,
+)
 from foodbridge.domain.errors import AppError
 from foodbridge.domain.workflow import (
     DonationDetail,
@@ -241,11 +248,16 @@ class ApplicationService:
         )
 
     def offer_view(self, session, row):
+        profile = session.get(RecipientState, row.recipient_organization_id)
         return OfferRead(
             recommendation=row.recommendation,
             status=row.status,
             version=row.version,
             donation=snapshot(session.get(Donation, row.donation_id), self.clock()),
+            requires_revalidation=(
+                row.status == "offered"
+                and (profile is None or row.candidate["recipient"]["version"] != profile.version)
+            ),
         )
 
     def pickup_view(self, session, row):

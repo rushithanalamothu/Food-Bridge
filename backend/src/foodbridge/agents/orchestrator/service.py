@@ -28,6 +28,7 @@ from foodbridge.db.workflow_models import (
     Driver,
     MatchOffer,
     Notification,
+    RecipientState,
     Reservation,
     TaskFailure,
     WorkflowStep,
@@ -272,7 +273,8 @@ class WorkflowService:
                 session.scalars(
                     select(MatchOffer.recipient_organization_id).where(
                         MatchOffer.donation_id == donation.id,
-                        MatchOffer.status.in_(["declined", "expired", "accepted", "superseded"]),
+                        # A superseded profile revision may be reconsidered with fresh facts.
+                        MatchOffer.status.in_(["declined", "expired", "accepted"]),
                     )
                 )
             )
@@ -624,6 +626,14 @@ class WorkflowService:
             Assignment.status.in_(["assigned", "accepted"]),
             Assignment.end <= now,
         )
+        profile_changed = exists().where(
+            MatchOffer.donation_id == Donation.id,
+            MatchOffer.status == "offered",
+            RecipientState.organization_id == MatchOffer.recipient_organization_id,
+            MatchOffer.candidate["recipient"]["version"]
+            .as_integer()
+            .is_distinct_from(RecipientState.version),
+        )
         with self.sessions() as session:
             ids = list(
                 session.scalars(
@@ -631,6 +641,7 @@ class WorkflowService:
                     .where(
                         Donation.status.not_in(TERMINAL | {"draft"}),
                         or_(
+                            (Donation.status == "offered") & profile_changed,
                             (Donation.status == "picked_up") & (Donation.safe_use_by <= now),
                             (Donation.status != "picked_up")
                             & or_(
@@ -680,6 +691,35 @@ class WorkflowService:
                         offer.status, offer.version = "expired", offer.version + 1
                         donation.matching_round += 1
                         transition(session, donation, "matching", "offer_expired", now, uuid4())
+                    elif offer:
+                        profile = session.get(RecipientState, offer.recipient_organization_id)
+                        if (
+                            profile is None
+                            or offer.candidate["recipient"]["version"] != profile.version
+                        ):
+                            # The donation lock serializes this with acceptance/cancellation.
+                            # Commit retirement, status/outbox and the next step together.
+                            offer.status, offer.version = "superseded", offer.version + 1
+                            if donation.matching_round >= 10:
+                                transition(
+                                    session,
+                                    donation,
+                                    "failed",
+                                    "revalidation_exhausted",
+                                    now,
+                                    uuid4(),
+                                )
+                            else:
+                                donation.matching_round += 1
+                                transition(
+                                    session,
+                                    donation,
+                                    "matching",
+                                    "recipient_profile_changed",
+                                    now,
+                                    uuid4(),
+                                )
+                                self.schedule(session, donation, "eligibility", now)
                 if donation.status == "pickup_assigned":
                     assignment = session.scalar(
                         select(Assignment).where(

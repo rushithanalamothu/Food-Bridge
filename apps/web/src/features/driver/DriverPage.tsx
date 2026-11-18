@@ -6,6 +6,7 @@ import { DriverOrigin } from './DriverOrigin';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
+  ActionError,
   Notice,
   EmptyState,
   Stats,
@@ -60,7 +61,7 @@ export function DriverPage() {
       >
         <p>Accept a task, check handling details, and confirm each handoff.</p>
       </WorkspaceHeader>
-      {view.error && <Notice error>{view.error}</Notice>}
+      {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
       {message && <Notice>{message}</Notice>}
       <Stats
         items={[
@@ -262,6 +263,7 @@ export function DriverPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getPickups(cursor === undefined ? view.data?.next_cursor : cursor);

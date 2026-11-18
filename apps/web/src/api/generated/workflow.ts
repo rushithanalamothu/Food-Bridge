@@ -103,6 +103,7 @@ export type Provider = string | null;
 export type Score = number;
 export type RecipientOrganizationId = string;
 export type TravelTimeS = number;
+export type RequiresRevalidation = boolean;
 export type Status1 = 'offered' | 'accepted' | 'declined' | 'expired' | 'superseded';
 export type Version3 = number;
 export type Items3 = OfferRead[];
@@ -381,6 +382,7 @@ export interface MembershipRead {
 export interface OfferRead {
   donation?: DonationRead | null;
   recommendation: MatchRecommendation;
+  requires_revalidation?: RequiresRevalidation;
   status: Status1;
   version: Version3;
 }

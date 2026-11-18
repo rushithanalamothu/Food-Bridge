@@ -12,6 +12,7 @@ import type { OfferRead, ReservationDetail } from '../../api/generated/workflow'
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
+  ActionError,
   Notice,
   EmptyState,
   Stats,
@@ -139,7 +140,7 @@ export function RecipientPage() {
       <WorkspaceHeader eyebrow="Receiver workspace" title="Good food. Ready to receive." {...view}>
         <p>Review eligible offers, manage receiving preferences, and follow each delivery.</p>
       </WorkspaceHeader>
-      {view.error && <Notice error>{view.error}</Notice>}
+      {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
       {message && <Notice>{message}</Notice>}
       <Stats
         items={[
@@ -148,6 +149,7 @@ export function RecipientPage() {
             value: offers.filter(
               (o) =>
                 o.status === 'offered' &&
+                !o.requires_revalidation &&
                 !invalidOffers.has(o.recommendation.id) &&
                 Date.parse(o.recommendation.offer_expires_at) > now,
             ).length,
@@ -189,7 +191,7 @@ export function RecipientPage() {
           const match = offer.recommendation;
           const food = offer.donation;
           const expired = Date.parse(match.offer_expires_at) <= now;
-          const needsRevalidation = invalidOffers.has(match.id);
+          const needsRevalidation = offer.requires_revalidation || invalidOffers.has(match.id);
           const zone = view.data?.profile.profile.location.timezone;
           return (
             <article className="card" key={match.id}>
@@ -280,6 +282,7 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getOffers(
@@ -336,6 +339,7 @@ export function RecipientPage() {
           disabled={paging}
           onClick={async () => {
             setPaging(true);
+            view.setError('');
             const requestedSnapshot = view.data;
             try {
               const page = await getReservations(

@@ -21,6 +21,7 @@ export function WorkspaceHeader({
   refresh,
   loading,
   updated,
+  loadError,
 }: {
   eyebrow: string;
   title: string;
@@ -29,6 +30,7 @@ export function WorkspaceHeader({
   refresh: () => unknown;
   loading?: boolean;
   updated?: Date;
+  loadError?: string;
 }) {
   return (
     <>
@@ -51,6 +53,7 @@ export function WorkspaceHeader({
             : humanize(connection) + ' · showing last received data'}
         {updated && <span className="muted">Updated {updated.toLocaleTimeString()}</span>}
       </div>
+      {loadError && <Notice error>{loadError}</Notice>}
     </>
   );
 }
@@ -59,6 +62,16 @@ export function Notice({ children, error = false }: { children: ReactNode; error
     <div className={error ? 'notice error' : 'notice'} role={error ? 'alert' : 'status'}>
       {children}
     </div>
+  );
+}
+export function ActionError({ message, dismiss }: { message: string; dismiss: () => void }) {
+  return (
+    <Notice error>
+      {message}{' '}
+      <button className="text-button" onClick={dismiss}>
+        Dismiss action error
+      </button>
+    </Notice>
   );
 }
 export function EmptyState({ title, children }: { title: string; children: ReactNode }) {

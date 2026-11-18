@@ -5,6 +5,7 @@ import { connectStream, type Connection } from '../api/stream';
 export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
   const [data, setData] = useState<T>();
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState<Connection>('connecting');
   const [events, setEvents] = useState<EventEnvelope[]>([]);
@@ -20,11 +21,11 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
         setData(next);
         setSnapshotVersion((version) => version + 1);
         setUpdated(new Date());
-        setError('');
+        setLoadError('');
       }
     } catch (e) {
       if (mounted.current && run === generation.current)
-        setError(e instanceof Error ? e.message : 'Could not load this workspace.');
+        setLoadError(e instanceof Error ? e.message : 'Could not load this workspace.');
     } finally {
       if (mounted.current && run === generation.current) setLoading(false);
     }
@@ -58,7 +59,18 @@ export function useWorkspace<T>(role: Role, load: () => Promise<T>) {
       window.removeEventListener('focus', onFocus);
     };
   }, [role, refresh]);
-  return { events, data, error, setError, loading, connection, updated, snapshotVersion, refresh };
+  return {
+    events,
+    data,
+    error,
+    loadError,
+    setError,
+    loading,
+    connection,
+    updated,
+    snapshotVersion,
+    refresh,
+  };
 }
 export function useCommand() {
   const [busy, setBusy] = useState(false);

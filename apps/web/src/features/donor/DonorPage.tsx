@@ -390,11 +390,6 @@ export function DonorPage() {
           {notice}
         </p>
       )}
-      {dashboard.error && (
-        <p role="alert" className="notice error">
-          {dashboard.error}
-        </p>
-      )}
       <p>
         {posted
           ? 'Your confirmed details and latest workflow status are shown below.'

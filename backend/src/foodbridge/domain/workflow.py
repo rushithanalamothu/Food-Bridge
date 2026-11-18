@@ -113,6 +113,7 @@ class OfferRead(Contract):
     status: Literal["offered", "accepted", "declined", "expired", "superseded"]
     version: int
     donation: DonationRead | None = None
+    requires_revalidation: bool = False
 
 
 class OfferPage(Contract):
