@@ -1,6 +1,6 @@
 # Events, worker boundaries and failure recovery
 
-Status: intake implements evaluation/result events and its scoped relay. Tej's [workflow feature](../features/workflow.md) adds the general relay, durable receipts/steps, recovery scheduler, assignment/notification tasks and ordered SSE publication. Production matching remains an explicit unavailable adapter until Rushitha connects her candidate/ranking service. The policies below are the integration target; the runbook distinguishes actual local/sandbox behavior from pending live integrations.
+Status: intake implements evaluation/result events and its scoped relay. Tej's [workflow feature](../features/workflow.md) adds the general relay, durable receipts/steps, recovery scheduler, assignment/notification tasks and ordered SSE publication. Matching uses Rushitha's PostGIS/road-routing candidate and ranking gateway when a routing URL is configured; otherwise it remains explicitly unavailable. The policies below are the integration target; the runbook distinguishes local/sandbox behavior from pending live deployment verification.
 
 ## Queue ownership
 

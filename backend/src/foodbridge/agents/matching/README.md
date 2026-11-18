@@ -1,5 +1,8 @@
 # Matching agent — Rushitha
 
+The [local road-routing runbook](../../../../../docs/features/live-matching.md) covers an OSRM
+service, local-only seeded actors, an end-to-end worker smoke and a shared-route comparison.
+
 `LiveMatching` is the opt-in backend gateway used by Tej's existing matching queue. Set `FOODBRIDGE_ROUTING_BASE_URL` to an OSRM-compatible driving-route endpoint, then keep `FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO=false`. Without a routing URL the gateway reports `matching_service_unavailable`. The local demo still uses `DemoMatching` and must not be presented as live routing.
 
 Candidate search uses PostGIS geography (`ST_DWithin` in metres, `ST_Distance` order) against active, verified recipients. It reads current storage-specific free capacity from `recipient_capacity`, skips excluded recipients and busy/excluded drivers, and requires a fresh authenticated self-reported driver origin. The driver client calls `GET /api/v1/driver-origin` for the version, then `POST /api/v1/driver-origin` with `Idempotency-Key`, `expected_version` and `origin`. A recipient cannot update a driver. The server timestamps the location; after five minutes it is stale. Coordinates are self-reported, not independently GPS verified. Drivers must already have a provisioned `Driver` row with availability, capacity, storage and working window. Coordinators must provision genuine driver identities/profiles before enabling the live worker.

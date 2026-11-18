@@ -62,3 +62,13 @@ workflow-runtime:
 
 smoke-workflow:
 	uv run python scripts/smoke_workflow.py
+
+.PHONY: routing-up seed-matching-demo smoke-matching
+routing-up:
+	docker compose --profile routing up -d routing
+
+seed-matching-demo:
+	uv run python -m scripts.seed_matching_demo
+
+smoke-matching:
+	uv run python -m scripts.smoke_matching

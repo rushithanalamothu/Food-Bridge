@@ -225,6 +225,7 @@ apps/web/dist/
 *.tsbuildinfo
 data/generated/*
 !data/generated/README.md
+data/osrm/
 evaluation/results/
 output/
 .DS_Store
