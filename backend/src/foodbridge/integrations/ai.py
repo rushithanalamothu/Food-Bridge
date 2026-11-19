@@ -100,12 +100,20 @@ def _request_json(
         )
     elif provider == "openai_compatible":
         response_format = {"type": settings.ai_response_format}
+        system = instructions
         if settings.ai_response_format == "json_schema":
             response_format["json_schema"] = {
                 "name": "foodbridge_result",
                 "strict": True,
                 "schema": schema,
             }
+        else:
+            system += " Return JSON matching: " + json.dumps(schema)
+        options = (
+            {"reasoning_effort": settings.ai_reasoning_effort}
+            if settings.ai_reasoning_effort is not None
+            else {}
+        )
         response = client.post(
             settings.ai_base_url.rstrip("/") + "/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
@@ -113,10 +121,11 @@ def _request_json(
                 "model": model,
                 "max_tokens": 2000,
                 "response_format": response_format,
+                **options,
                 "messages": [
                     {
                         "role": "system",
-                        "content": instructions + " Return JSON matching: " + json.dumps(schema),
+                        "content": system,
                     },
                     {"role": "user", "content": user_input},
                 ],

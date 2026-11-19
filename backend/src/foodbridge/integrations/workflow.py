@@ -48,3 +48,13 @@ def matching_gateway(settings):
 
         return LiveMatching(settings, OSRMRouting(settings.routing_base_url, timeout_s=2))
     return UnconfiguredMatching()
+
+
+def pickup_routing(settings):
+    from foodbridge.agents.matching.routing import DemoRouting, OSRMRouting
+
+    if settings.enable_local_workflow_demo:
+        return DemoRouting()
+    if settings.routing_base_url:
+        return OSRMRouting(settings.routing_base_url, timeout_s=2)
+    return None

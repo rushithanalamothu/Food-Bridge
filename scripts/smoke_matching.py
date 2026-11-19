@@ -31,7 +31,7 @@ def run(
         or settings.notification_mode != "sandbox"
     ):
         raise SystemExit("Requires local matching demo, live routing and sandbox notifications.")
-    with httpx.Client(timeout=10, trust_env=False) as client:
+    with httpx.Client(timeout=45, trust_env=False) as client:
 
         def request(method, path, role="donor", body=None, org=None, key=None):
             headers = {"X-FoodBridge-Role": role}

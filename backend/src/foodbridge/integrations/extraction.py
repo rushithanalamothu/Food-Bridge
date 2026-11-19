@@ -3,6 +3,7 @@
 from datetime import datetime
 from time import perf_counter
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import Field, ValidationError
@@ -56,6 +57,7 @@ def extract(
         )
         return fallback
     outcome = "model_review_required"
+    local_reference = now.astimezone(ZoneInfo(timezone)).isoformat()
     try:
         proposal = generate_structured(
             settings,
@@ -67,7 +69,11 @@ def extract(
                 "Never infer a food weight from portions, meals or boxes. "
                 "Return exact source quotes for each populated field. [] allergens is only "
                 "allowed when explicitly declared none. Use timezone-aware timestamps. "
-                f"Reference time: {now.isoformat()}; pickup timezone: {timezone}."
+                "Evidence field names must be top-level ProposedFields names, including "
+                "category. For category, quote the source food phrase supporting the "
+                "classification, not the normalized enum name. "
+                f"Reference time in pickup timezone: {local_reference}; "
+                f"pickup timezone: {timezone}."
             ),
             user_input=description,
             output_type=ModelProposal,

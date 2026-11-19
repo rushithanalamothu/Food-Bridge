@@ -93,6 +93,8 @@ class Settings(BaseSettings):
             "FOODBRIDGE_AI_RESPONSE_FORMAT", "FOODBRIDGE_EXTRACTION_RESPONSE_FORMAT"
         ),
     )
+    # Optional because compatible endpoints differ in supported reasoning controls.
+    ai_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh"] | None = None
     ai_timeout_s: float = Field(
         default=8,
         gt=0,

@@ -4,6 +4,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from threading import Barrier
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -16,7 +17,7 @@ from sqlalchemy.engine import make_url
 
 from foodbridge.agents.intake.policy import evaluate
 from foodbridge.agents.intake.service import IntakeService
-from foodbridge.agents.matching.routing import FakeRouting
+from foodbridge.agents.matching.routing import FakeRouting, NoRoute
 from foodbridge.agents.matching.service import LiveMatching
 from foodbridge.agents.orchestrator.demo import DemoMatching
 from foodbridge.agents.orchestrator.relay import dispatch_pending
@@ -66,7 +67,8 @@ from foodbridge.domain.workflow import (
     PickupConfirmation,
     VersionCommand,
 )
-from foodbridge.integrations.workflow import UnconfiguredMatching
+from foodbridge.integrations.ports import RouteEstimate
+from foodbridge.integrations.workflow import DependencyUnavailable, UnconfiguredMatching
 from foodbridge.settings import Settings
 
 NOW = datetime(2026, 10, 30, 22, tzinfo=UTC)
@@ -724,6 +726,168 @@ def test_full_reservation_pickup_delivery_and_impact_exactly_once(env):
     consume_all(env)
     assert deliver_pending(env.url, SandboxNotifications(), clock=lambda: env.clock.now) > 0
     assert deliver_pending(env.url, SandboxNotifications(), clock=lambda: env.clock.now) == 0
+
+
+def accepted_pickup(env):
+    match = offer(env)
+    assignment = assign(env, match)
+    actor = driver_for(env, assignment)
+    accepted = env.reservation.pickup_command(
+        actor, assignment.id, "accept", VersionCommand(expected_version=1), uuid4(), uuid4()
+    )
+    return (
+        assignment,
+        actor,
+        PickupConfirmation(
+            expected_version=accepted["version"], handling_confirmed=True, observed_quantity_kg=10
+        ),
+    )
+
+
+def test_delayed_pickup_refreshes_route_without_transaction_and_replays_offline(env):
+    assignment, actor, body = accepted_pickup(env)
+    env.clock.now += timedelta(seconds=301)
+    calls = []
+
+    def estimate(origin, destination):
+        assert engine_for(env.url).pool.checkedout() == 0
+        calls.append((origin, destination))
+        return RouteEstimate(distance_m=1200, travel_time_s=240, provider="osrm")
+
+    env.reservation.routing = SimpleNamespace(estimate=estimate)
+    key = uuid4()
+    picked = env.reservation.pickup_command(
+        actor, assignment.id, "confirm-pickup", body, key, uuid4()
+    )
+    assert picked["donation"]["status"] == "picked_up"
+    assert picked["route"]["source"] == "routing_provider"
+    assert picked["route"]["travel_time_s"] == 240
+    with env.sessions() as session:
+        stored = session.get(Assignment, assignment.id)
+        assert stored.candidate["route"] == picked["route"]
+        assert stored.end > assignment.end
+    # The receipt must win even when routing is no longer configured.
+    env.reservation.routing = None
+    assert (
+        env.reservation.pickup_command(actor, assignment.id, "confirm-pickup", body, key, uuid4())
+        == picked
+    )
+    assert len(calls) == 1
+
+
+def test_refreshed_pickup_eta_cannot_overlap_the_drivers_next_assignment(env):
+    assignment, actor, body = accepted_pickup(env)
+    other = assign(env, offer(env))
+    with env.sessions.begin() as session:
+        # A future commitment that did not overlap the original saved ETA.
+        future = session.get(Assignment, other.id)
+        future.driver_id = assignment.driver_id
+        future.start = assignment.end + timedelta(seconds=1)
+        future.end = assignment.end + timedelta(minutes=30)
+    env.clock.now += timedelta(seconds=301)
+    env.reservation.routing = SimpleNamespace(
+        estimate=lambda *_: RouteEstimate(distance_m=1200, travel_time_s=240, provider="osrm")
+    )
+    with pytest.raises(AppError) as error:
+        env.reservation.pickup_command(
+            actor, assignment.id, "confirm-pickup", body, uuid4(), uuid4()
+        )
+    assert error.value.code == "driver_busy"
+    with env.sessions() as session:
+        stored = session.get(Assignment, assignment.id)
+        assert stored.status == "accepted"
+        assert stored.end == assignment.end
+
+
+def test_concurrent_delayed_pickup_retries_commit_one_collection(env):
+    assignment, actor, body = accepted_pickup(env)
+    env.clock.now += timedelta(seconds=301)
+    barrier = Barrier(2)
+
+    def estimate(origin, destination):
+        barrier.wait(timeout=10)
+        return RouteEstimate(distance_m=1200, travel_time_s=240, provider="osrm")
+
+    env.reservation.routing = SimpleNamespace(estimate=estimate)
+    key = uuid4()
+
+    def pickup(_):
+        return env.reservation.pickup_command(
+            actor, assignment.id, "confirm-pickup", body, key, uuid4()
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(pickup, range(2)))
+    assert results[0] == results[1]
+    assert results[0]["donation"]["status"] == "picked_up"
+    with env.sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(StatusHistory)
+                .where(
+                    StatusHistory.donation_id == assignment.donation_id,
+                    StatusHistory.next_status == "picked_up",
+                )
+            )
+            == 1
+        )
+
+
+@pytest.mark.parametrize(
+    "failure,code",
+    [
+        ("outage", "routing_service_unavailable"),
+        ("no_route", "pickup_infeasible"),
+        ("unsafe_duration", "pickup_infeasible"),
+        ("deadline", "donation_expired"),
+        ("profile_changed", "route_inputs_changed"),
+        ("synthetic", "synthetic_evaluation_disabled"),
+    ],
+)
+def test_pickup_route_refresh_fails_closed_and_fences_changed_inputs(env, failure, code):
+    assignment, actor, body = accepted_pickup(env)
+    env.clock.now += timedelta(seconds=301)
+    if failure == "synthetic":
+        # A real evaluation must never acquire synthetic routes during refresh.
+        with env.sessions.begin() as session:
+            match = session.get(
+                MatchOffer, session.get(Reservation, assignment.reservation_id).match_id
+            )
+            evaluation = session.get(IntakeEvaluation, match.evaluation_id)
+            evaluation.batch = {**evaluation.batch, "synthetic": False}
+
+    def estimate(origin, destination):
+        assert engine_for(env.url).pool.checkedout() == 0
+        if failure == "outage":
+            raise DependencyUnavailable("routing_service_unavailable")
+        if failure == "no_route":
+            raise NoRoute
+        if failure == "deadline":
+            env.clock.now += timedelta(hours=8)
+        if failure == "profile_changed":
+            with env.sessions.begin() as session:
+                profile = session.get(
+                    RecipientState, assignment.candidate["recipient"]["organization_id"]
+                )
+                profile.version += 1
+        return RouteEstimate(
+            distance_m=1200,
+            travel_time_s=86400 if failure == "unsafe_duration" else 240,
+            provider="synthetic" if failure == "synthetic" else "osrm",
+        )
+
+    env.reservation.routing = SimpleNamespace(estimate=estimate)
+    with pytest.raises(AppError) as error:
+        env.reservation.pickup_command(
+            actor, assignment.id, "confirm-pickup", body, uuid4(), uuid4()
+        )
+    assert error.value.code == code
+    assert error.value.status == (503 if failure == "outage" else 409)
+    with env.sessions() as session:
+        assert session.get(Assignment, assignment.id).status == "accepted"
+        assert session.get(Donation, assignment.donation_id).status == "pickup_assigned"
+        assert session.scalar(select(func.count()).select_from(Impact)) == 0
 
 
 def test_driver_decline_keeps_recipient_and_reassigns(env):

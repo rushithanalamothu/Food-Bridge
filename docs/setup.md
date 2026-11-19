@@ -46,6 +46,8 @@ make up
 
 Compose starts DB and Redis health checks, runs migrations once, then starts the API, four worker processes and a Vite development server. The frontend proxies to the API container internally. Container services use `db`/`redis` hostnames; native services use `localhost`. Compose deliberately uses local-only example credentials and loopback-bound ports, with no cloud secrets. It is **not** a production deployment manifest.
 
+Only the `api` service builds the shared backend image. Migrations and workers reuse that image, preventing concurrent exports to the same image tag. To build without starting services, use `docker compose build api web`.
+
 This profile copies application source into images; rebuild after code changes (`docker compose up --build -d`). Use native API/web commands for hot reload. Avoid starting native and containerized API/web instances on the same ports.
 
 The official `postgis/postgis` image is amd64-only. Compose sets `platform: linux/amd64` for DB so Apple Silicon can use Docker emulation. Enable emulation in Docker Desktop. See the upstream [image support notes](https://github.com/postgis/docker-postgis). Postgres 16 uses `/var/lib/postgresql/data`; do not change to the Postgres 18 volume layout without a migration/backup plan.
@@ -73,6 +75,20 @@ These settings apply to the API and every worker; donors and other roles do not 
 
 When building a model-backed feature, call `foodbridge.integrations.ai.generate_structured` with the shared `Settings`, feature instructions, input and a Pydantic output type. Do not introduce another provider client, feature-specific key/model settings or cross-vendor fallback. Validate feature-specific meaning and implement an explicit deterministic fallback or failure outcome; schema-valid output is not authorization to mutate business state. Tests should use `httpx.MockTransport` without real credentials. Intake uses this client for extraction and matching can optionally choose among already eligible candidates; eligibility, urgency and lifecycle decisions remain deterministic.
 
+For xAI/Grok, use the shared compatible adapter. This interactive configuration applies to extraction, ranking and orchestration together:
+
+```dotenv
+FOODBRIDGE_AI_PROVIDER=openai_compatible
+FOODBRIDGE_AI_BASE_URL=https://api.x.ai/v1
+FOODBRIDGE_AI_API_KEY=<private xAI API key>
+FOODBRIDGE_AI_MODEL=grok-4.3
+FOODBRIDGE_AI_REASONING_EFFORT=none
+FOODBRIDGE_AI_RESPONSE_FORMAT=json_schema
+FOODBRIDGE_AI_TIMEOUT_S=20
+```
+
+`FOODBRIDGE_AI_REASONING_EFFORT` is optional and sent only to compatible endpoints; omit it when the endpoint does not support that parameter. Values are `none`, `low`, `medium`, `high`, `xhigh`; the model must support the value. Grok 4.3 supports `none`; Grok 4.7 requires at least `low` and defaults to high effort ([provider guidance](https://docs.x.ai/developers/model-capabilities/text/reasoning)). High-effort models can exceed the app's bounded timeout. The client retains bounded retries and explicit fallback and never changes vendors. Schema mode sends the schema through `response_format`; JSON-object mode includes it in the prompt. Intake expresses its reference time in the pickup timezone. Donors still confirm every safety field.
+
 ## Checks
 
 ```sh
@@ -81,6 +97,8 @@ make integration
 ```
 
 `make check` runs pure/backend/frontend tests, format/type/build checks, contract drift, local documentation links and Compose configuration validation. It does not need a running DB/Redis. `make integration` requires migrated real services and checks PostGIS, Redis and migration head; more integration scenarios land with each business feature. CI provides those services automatically. A skipped infrastructure test is not proof a reservation transaction works.
+
+Pytest does not load local AI credentials or select a live provider. Its bootstrap retains only DB/Redis URLs from `.env` (explicit environment URLs take precedence); dotenv/provider tests supply isolated fixtures. Live AI smoke checks are separate. Browser extraction assertions allow the server's bounded model-call budget instead of assuming a response within five seconds.
 
 ## Contracts and fixtures
 

@@ -65,6 +65,8 @@ FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e
 
 The test uses real Keycloak login, API cookies, PostgreSQL/Redis/workers, donor posting, receiver acceptance, driver pickup/delivery, operations history and a Mailpit SMTP inbox. It also verifies cross-organization denial, CSRF rejection, disconnect/reconnect, mobile width and logout. SDK login and workspace behavior have separate browser regression tests. Matching/routing remains explicitly synthetic. This local test defaults to rules-mode AI so it consumes no Gemini quota; model behavior is covered separately by the orchestrator suite.
 
+Run the release and road-routing stacks sequentially on memory-constrained laptops; a 2 GB Docker VM can kill Keycloak when both worker sets run together. Stop the other project without deleting volumes. For a live-model acceptance run, add a private Compose override selecting the same app-wide provider/model as `.env` on every backend service; the checked-in release override deliberately selects rules. Restart all backend services together. Live extraction may take longer than fixture extraction, so the browser allows the shared client's bounded request budget. Do not add provider-specific behavior to the role screens or tests.
+
 ## Self-hosted deployment and operations
 
 See [deployment](../deployment.md). `deploy/compose.production.yml` is a separate public-host profile: production-built static frontend, Caddy TLS and immediate SSE forwarding, PostgreSQL/PostGIS, private Redis, all four workers/relays, self-hosted Keycloak with its own database, and protected Prometheus metrics. Only the web gateway publishes ports. The local test realm/passwords and Mailpit are absent from production.

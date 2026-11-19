@@ -1,8 +1,5 @@
 x-backend: &backend
   image: ${FOODBRIDGE_BACKEND_IMAGE:-foodbridge-backend:local}
-  build:
-    context: .
-    dockerfile: backend/Dockerfile
   environment: &backend-env
     FOODBRIDGE_ENVIRONMENT: local
     FOODBRIDGE_BROWSER_AUTH_ENABLED: ${FOODBRIDGE_BROWSER_AUTH_ENABLED:-false}
@@ -36,6 +33,7 @@ x-backend: &backend
     FOODBRIDGE_ANTHROPIC_API_KEY: ${FOODBRIDGE_ANTHROPIC_API_KEY:-}
     FOODBRIDGE_AI_BASE_URL: ${FOODBRIDGE_AI_BASE_URL:-${FOODBRIDGE_EXTRACTION_BASE_URL:-}}
     FOODBRIDGE_AI_RESPONSE_FORMAT: ${FOODBRIDGE_AI_RESPONSE_FORMAT:-${FOODBRIDGE_EXTRACTION_RESPONSE_FORMAT:-json_schema}}
+    FOODBRIDGE_AI_REASONING_EFFORT: ${FOODBRIDGE_AI_REASONING_EFFORT:-}
     FOODBRIDGE_AI_TIMEOUT_S: ${FOODBRIDGE_AI_TIMEOUT_S:-${FOODBRIDGE_EXTRACTION_TIMEOUT_S:-8}}
     FOODBRIDGE_AI_MODEL: ${FOODBRIDGE_AI_MODEL:-${FOODBRIDGE_EXTRACTION_MODEL:-}}
     FOODBRIDGE_AI_API_KEY: ${FOODBRIDGE_AI_API_KEY:-${FOODBRIDGE_EXTRACTION_API_KEY:-}}
@@ -87,9 +85,6 @@ services:
     ports: ['127.0.0.1:${FOODBRIDGE_ROUTING_PORT:-5000}:5000']
   migrate:
     image: ${FOODBRIDGE_BACKEND_IMAGE:-foodbridge-backend:local}
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
     environment: *backend-env
     command: ['uv', 'run', '--no-sync', 'alembic', '-c', 'backend/alembic.ini', 'upgrade', 'head']
     depends_on:
@@ -97,6 +92,10 @@ services:
         condition: service_healthy
   api:
     <<: *backend
+    # Build the shared image once; concurrent exports to one tag can collide.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports: ['127.0.0.1:8000:8000']
     healthcheck:
       test:

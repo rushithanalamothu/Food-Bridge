@@ -7,6 +7,10 @@ from pydantic import BaseModel, Field
 from foodbridge.domain.contracts import Location
 
 
+class NoRoute(Exception):
+    """The routing provider found no drivable path for this pair."""
+
+
 class RouteEstimate(BaseModel):
     distance_m: float = Field(ge=0)
     travel_time_s: float = Field(ge=0)

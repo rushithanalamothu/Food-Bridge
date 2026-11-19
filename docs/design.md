@@ -81,6 +81,7 @@ Invariants enforced in database transactions:
 1. At most one active offer per donation and at most one active reservation per donation.
 2. At most one active assignment per donation. A driver’s conflicting time/capacity commitments cannot overlap.
 3. Eligibility is checked before ranking and rechecked against current versions before reservation. A provider score cannot make an ineligible match valid.
+   Pickup refreshes stale routes outside the write transaction and revalidates the route inputs, current profile, driver and deadlines under transaction guards. Route/provider failure cannot approve collection; receipt replay remains independent of provider availability.
 4. Recipient capacity cannot become negative when two different donations are accepted concurrently.
 5. Every aggregate write checks `version`; stale HTTP commands and stale worker results cannot overwrite new state.
 6. Every successful state change appends history and outbox events in the **same** transaction. No committed change may rely solely on a Redis message for recovery.

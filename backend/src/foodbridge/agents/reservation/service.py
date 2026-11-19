@@ -7,8 +7,9 @@ from sqlalchemy import select
 from foodbridge.agents.intake.config import load_policy
 from foodbridge.agents.intake.policy import evaluate
 from foodbridge.agents.intake.service import utcnow
-from foodbridge.db.models import IntakeEvaluation, Organization
+from foodbridge.db.models import Donation, IntakeEvaluation, Organization
 from foodbridge.db.session import session_factory
+from foodbridge.db.transactions import idempotency
 from foodbridge.db.workflow import (
     amount,
     audience,
@@ -26,15 +27,18 @@ from foodbridge.db.workflow import (
 )
 from foodbridge.db.workflow_models import Assignment, Driver, Impact, MatchOffer, Reservation
 from foodbridge.domain.errors import AppError
-from foodbridge.domain.intake import EligibilityBatch, EligibilityCandidate
+from foodbridge.domain.intake import EligibilityBatch, EligibilityCandidate, RouteFacts
 from foodbridge.domain.workflow import PickupRead, ReservationRead
+from foodbridge.integrations.ports import NoRoute
+from foodbridge.integrations.workflow import DependencyUnavailable
 
 
 class ReservationService:
-    def __init__(self, database_url, clock=utcnow, *, allow_synthetic=False):
+    def __init__(self, database_url, clock=utcnow, *, allow_synthetic=False, routing=None):
         self.sessions = session_factory(database_url)
         self.clock, self.allow_synthetic = clock, allow_synthetic
         self.policy = load_policy()
+        self.routing = routing
 
     @staticmethod
     def reservation_view(row, donation):
@@ -362,14 +366,93 @@ class ReservationService:
         transition(session, donation, "pickup_assigned", "driver_assigned", now, correlation_id)
         return row
 
+    def refresh_pickup_route(self, actor, identifier, body, key):
+        """Read authorized inputs, then route outside any database transaction.
+
+        The command fences these inputs again while holding business locks. Receipts
+        bypass routing so a successful retry survives a later provider outage.
+        """
+        with self.sessions.begin() as session:
+            # Serialize receipt lookup and preflight against concurrent retries.
+            # Release this short transaction before contacting the router.
+            saved, _ = idempotency(
+                session,
+                actor.user_id,
+                f"POST /api/v1/pickups/{identifier}/confirm-pickup",
+                key,
+                body.model_dump(mode="json"),
+            )
+            if saved:
+                return None
+            row = session.get(Assignment, identifier)
+            driver = session.get(Driver, row.driver_id) if row else None
+            if (
+                row is None
+                or driver is None
+                or driver.user_id != actor.user_id
+                or driver.organization_id != actor.organization_id
+            ):
+                raise AppError("not_found", "Not found.", 404)
+            require_version(row, body.expected_version)
+            donation = session.get(Donation, row.donation_id)
+            now = self.clock()
+            deadline(donation, now)
+            if row.status != "accepted" or donation.status != "pickup_assigned":
+                conflict("pickup_not_allowed")
+            if row.end <= now:
+                conflict("assignment_expired")
+            if now < donation.pickup_start:
+                conflict("pickup_window_not_open")
+            if amount(body.observed_quantity_kg) != donation.quantity_kg:
+                conflict("quantity_adjustment_required")
+            candidate = EligibilityCandidate.model_validate(row.candidate)
+            _, profile, _ = current_profile(session, candidate.recipient.organization_id)
+            age = (now - candidate.route.calculated_at).total_seconds() if candidate.route else None
+            if (
+                age is not None
+                and -30 <= age <= self.policy.route_max_age_s
+                and candidate.recipient.location == profile.location
+            ):
+                return None
+            origin = snapshot(donation, now).pickup_location
+            destination = profile.location
+            version = donation.version
+            profile_version = profile.version
+        if self.routing is None:
+            raise AppError(
+                "routing_service_unavailable", "Route refresh is unavailable. Retry.", 503
+            )
+        try:
+            estimate = self.routing.estimate(origin, destination)
+        except NoRoute:
+            conflict("pickup_infeasible")
+        except DependencyUnavailable:
+            raise AppError(
+                "routing_service_unavailable", "Route refresh is unavailable. Retry.", 503
+            ) from None
+        route = RouteFacts(
+            distance_m=estimate.distance_m,
+            travel_time_s=estimate.travel_time_s,
+            calculated_at=now,
+            source="synthetic" if estimate.provider == "synthetic" else "routing_provider",
+            estimated=estimate.estimated,
+        )
+        return version, profile_version, origin, destination, route
+
     def pickup_command(self, actor, identifier, verb, body, key, correlation_id):
         require_role(actor, "driver")
+        refreshed = (
+            self.refresh_pickup_route(actor, identifier, body, key)
+            if verb == "confirm-pickup"
+            else None
+        )
 
         def apply(session, now):
             row = session.get(Assignment, identifier)
             driver = session.get(Driver, row.driver_id) if row else None
             if (
                 row is None
+                or driver is None
                 or driver.user_id != actor.user_id
                 or driver.organization_id != actor.organization_id
             ):
@@ -415,7 +498,7 @@ class ReservationService:
                     MatchOffer, session.get(Reservation, row.reservation_id).match_id
                 )
                 # Include this reservation's own inbound commitment during revalidation.
-                _, profile, _ = current_profile(session, offer.recipient_organization_id)
+                _, profile, _ = current_profile(session, offer.recipient_organization_id, lock=True)
                 receiving = session.get(Reservation, row.reservation_id)
                 capacities = dict(profile.available_capacity_kg_by_storage)
                 capacities[receiving.storage] += float(receiving.quantity_kg)
@@ -423,6 +506,18 @@ class ReservationService:
                     update={"available_capacity_kg_by_storage": capacities}
                 )
                 candidate = EligibilityCandidate.model_validate(row.candidate)
+                if refreshed:
+                    version, profile_version, origin, destination, route = refreshed
+                    if (
+                        donation.version != version
+                        or profile.version != profile_version
+                        or snapshot(donation, now).pickup_location != origin
+                        or profile.location != destination
+                    ):
+                        conflict("route_inputs_changed")
+                    candidate.route = route
+                elif candidate.recipient.location != profile.location:
+                    conflict("route_inputs_changed")
                 facts = current_driver_facts(driver)
                 candidate.recipient = profile
                 candidate.driver = facts.model_copy(update={"to_pickup_time_s": 0})
@@ -432,6 +527,8 @@ class ReservationService:
                 evaluation = session.get(IntakeEvaluation, offer.evaluation_id)
                 synthetic = bool(evaluation.batch.get("synthetic"))
                 if synthetic and not self.allow_synthetic:
+                    conflict("synthetic_evaluation_disabled")
+                if candidate.route and candidate.route.source == "synthetic" and not synthetic:
                     conflict("synthetic_evaluation_disabled")
                 decision = evaluate(
                     snapshot(donation, now),
@@ -446,6 +543,22 @@ class ReservationService:
                 ).decisions[0]
                 if not decision.eligible or decision.pickup_at > now:
                     conflict("pickup_infeasible")
+                # A refreshed ETA can extend the original driver commitment. The
+                # driver lock serializes assignment creation against this check.
+                extended_end = max(row.end, decision.arrival_at)
+                overlap = session.scalar(
+                    select(Assignment.id).where(
+                        Assignment.driver_id == driver.id,
+                        Assignment.id != row.id,
+                        Assignment.status.in_(["assigned", "accepted", "collected"]),
+                        Assignment.start < extended_end,
+                        Assignment.end > now,
+                    )
+                )
+                if overlap:
+                    conflict("driver_busy")
+                row.end = extended_end
+                row.candidate = candidate.model_dump(mode="json")
                 row.status = "collected"
                 transition(
                     session,

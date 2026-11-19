@@ -13,7 +13,7 @@ test('donor confirmation persists food and evaluates eligibility through the rea
         'Allergens: soy. Tomorrow pickup 10 AM to 12 PM. Use by 2 PM.',
     );
   await page.getByRole('button', { name: 'Review details', exact: true }).click();
-  await expect(page.locator('#quantity_kg')).toHaveValue('10');
+  await expect(page.locator('#quantity_kg')).toHaveValue('10', { timeout: 45000 });
   await expect(page.locator('#allergens')).toHaveValue('soy');
   await expect(page.locator('#packaging_type')).toHaveValue('boxed');
   const post = page.getByRole('button', { name: 'Confirm and post donation' });

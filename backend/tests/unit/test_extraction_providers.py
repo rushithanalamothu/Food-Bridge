@@ -211,6 +211,50 @@ def test_compatible_json_mode_still_validates_locally():
     assert result.fields.quantity_kg is None
 
 
+@pytest.mark.parametrize("effort", [None, "none", "low", "high"])
+def test_shared_compatible_reasoning_and_schema_prompt(effort):
+    def handler(request):
+        body = json.loads(request.content)
+        if effort is None:
+            assert "reasoning_effort" not in body
+        else:
+            assert body["reasoning_effort"] == effort
+        # Native schema enforcement does not need a second copy in the prompt.
+        assert "Return JSON matching:" not in body["messages"][0]["content"]
+        assert "quantity_kg" in str(body["response_format"]["json_schema"]["schema"])
+        return httpx.Response(
+            200, json=response_body("openai_compatible", '{"fields": {}, "evidence": []}')
+        )
+
+    result = extract(
+        TEXT,
+        "UTC",
+        NOW,
+        configured("openai_compatible", ai_reasoning_effort=effort),
+        httpx.MockTransport(handler),
+    )
+    assert result.provider == "openai_compatible"
+
+
+def test_extraction_reference_uses_the_pickup_calendar_day():
+    def handler(request):
+        # UTC has crossed midnight; the donor's local calendar has not.
+        instructions = json.loads(request.content)["messages"][0]["content"]
+        assert "Reference time in pickup timezone: 2026-11-18T17:00:00-08:00" in instructions
+        return httpx.Response(
+            200, json=response_body("openai_compatible", '{"fields": {}, "evidence": []}')
+        )
+
+    result = extract(
+        TEXT,
+        "America/Los_Angeles",
+        datetime(2026, 11, 19, 1, tzinfo=UTC),
+        configured("openai_compatible"),
+        httpx.MockTransport(handler),
+    )
+    assert result.provider == "openai_compatible"
+
+
 @pytest.mark.parametrize(
     "provider,body",
     [

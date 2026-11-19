@@ -51,6 +51,7 @@ from foodbridge.domain.workflow import (
     ReservationRead,
     VersionCommand,
 )
+from foodbridge.integrations.workflow import pickup_routing
 
 router = APIRouter(prefix="/api/v1", tags=["workflow"])
 Identity = Annotated[Actor, Depends(current_actor)]
@@ -63,6 +64,7 @@ def reservation(request):
         request.app.state.settings.database_url,
         request.app.state.clock,
         allow_synthetic=request.app.state.settings.enable_local_workflow_demo,
+        routing=pickup_routing(request.app.state.settings),
     )
 
 

@@ -6,12 +6,9 @@ from urllib.parse import urlsplit
 import httpx
 
 from foodbridge.domain.contracts import Location
+from foodbridge.integrations.ports import NoRoute as NoRoute
 from foodbridge.integrations.ports import RouteEstimate
 from foodbridge.integrations.workflow import DependencyUnavailable
-
-
-class NoRoute(Exception):
-    """The provider found no drivable path for this pair."""
 
 
 class OSRMRouting:
@@ -69,4 +66,13 @@ class FakeRouting:
         distance, duration = self.routes[key]
         return RouteEstimate(
             distance_m=distance, travel_time_s=duration, provider="synthetic", estimated=False
+        )
+
+
+class DemoRouting:
+    """Fixed local workflow demonstration only; never represents a road estimate."""
+
+    def estimate(self, origin: Location, destination: Location) -> RouteEstimate:
+        return RouteEstimate(
+            distance_m=1000, travel_time_s=180, provider="synthetic", estimated=False
         )

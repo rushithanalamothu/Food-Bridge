@@ -6,6 +6,15 @@ database or a disposable copy; the seed never clears or overwrites existing reco
 
 ## Prepare the map
 
+For the supplied San Jose actors, run `make routing-setup`. It downloads the smaller
+[BBBike San Jose extract](https://download.bbbike.org/osm/bbbike/SanJose/), prepares
+OSRM, starts the router and checks coverage. Existing prepared data is reused; partial
+data is never silently overwritten. The ignored manifest records the download URL,
+SHA-256, image and OpenStreetMap/ODbL attribution. This map covers the local example
+coordinates, not arbitrary donor locations. Docker must be running.
+
+For another region or a manually downloaded map:
+
 Download an OpenStreetMap extract that covers San Jose, California, such as
 [Geofabrik's Northern California extract](https://download.geofabrik.de/north-america/us/california/norcal.html).
 It is a large download and OSRM preprocessing needs additional disk and memory. From the repo
