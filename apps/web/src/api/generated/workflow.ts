@@ -10,6 +10,7 @@ export type OrganizationName = string;
 export type Role1 = 'donor' | 'recipient' | 'driver' | 'operator';
 export type Memberships = SessionMembership[];
 export type Mode = ('oidc' | 'local_demo') | null;
+export type RegistrationEnabled = boolean;
 export type DeliveryConfirmed = true;
 export type ExpectedVersion = number;
 export type Reason = string | null;
@@ -279,6 +280,7 @@ export interface BrowserSessionRead {
   login_enabled: LoginEnabled;
   memberships: Memberships;
   mode?: Mode;
+  registration_enabled?: RegistrationEnabled;
 }
 export interface SessionMembership {
   organization_id: OrganizationId1;

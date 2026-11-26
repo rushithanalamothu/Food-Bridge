@@ -40,6 +40,8 @@ def initialize(directory, domain, auth_domain, backend_image, web_image):
         "FOODBRIDGE_NOTIFICATION_MODE": "disabled",
         "FOODBRIDGE_AI_PROVIDER": "rules",
         "FOODBRIDGE_BROWSER_AUTH_ENABLED": "true",
+        "FOODBRIDGE_BROWSER_REGISTRATION_ENABLED": "false",
+        "FOODBRIDGE_BROWSER_LOGIN_TTL_S": "1800",
         "FOODBRIDGE_OIDC_CLIENT_ID": "foodbridge-web",
         "FOODBRIDGE_OIDC_AUDIENCE": "foodbridge-api",
         "FOODBRIDGE_OIDC_ISSUER": f"https://{auth_domain}/realms/foodbridge",
@@ -55,6 +57,11 @@ def initialize(directory, domain, auth_domain, backend_image, web_image):
     realm = json.loads(Path("deploy/keycloak/local-realm.json").read_text())
     realm["sslRequired"] = "external"
     realm["users"] = []
+    # Local Mailpit settings must never be copied into a public deployment.
+    realm["smtpServer"] = {}
+    realm["loginTheme"] = "foodbridge"
+    realm["registrationAllowed"] = False
+    realm["resetPasswordAllowed"] = False
     realm["clients"][0]["redirectUris"] = [f"https://{domain}/api/v1/auth/callback"]
     realm["clients"][0]["webOrigins"] = [f"https://{domain}"]
     (directory / "realm.json").write_text(json.dumps(realm, indent=2) + "\n")

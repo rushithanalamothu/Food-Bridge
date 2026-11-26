@@ -1,12 +1,13 @@
 # Isolated local verification stack. Always use -p foodbridge-release and .env.release-local.
 x-release-env: &release-env
   FOODBRIDGE_BROWSER_AUTH_ENABLED: 'true'
+  FOODBRIDGE_BROWSER_REGISTRATION_ENABLED: 'true'
   FOODBRIDGE_BROWSER_COOKIE_NAME: foodbridge_release_session
   FOODBRIDGE_PUBLIC_URL: http://localhost:55173
-  FOODBRIDGE_OIDC_ISSUER: http://localhost:58080/realms/foodbridge
+  FOODBRIDGE_OIDC_ISSUER: http://localhost:55173/identity/realms/foodbridge
   FOODBRIDGE_OIDC_AUDIENCE: foodbridge-api
   FOODBRIDGE_OIDC_CLIENT_ID: foodbridge-web
-  FOODBRIDGE_OIDC_JWKS_URL: http://keycloak:8080/realms/foodbridge/protocol/openid-connect/certs
+  FOODBRIDGE_OIDC_JWKS_URL: http://keycloak:8080/identity/realms/foodbridge/protocol/openid-connect/certs
   FOODBRIDGE_OIDC_BACKCHANNEL_BASE_URL: http://keycloak:8080
   FOODBRIDGE_ENABLE_LOCAL_INTAKE_DEMO: 'true'
   FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO: 'true'
@@ -17,14 +18,16 @@ x-release-env: &release-env
   FOODBRIDGE_SMTP_SENDER: notifications@example.test
   FOODBRIDGE_SMTP_ALLOWED_DOMAINS: '["example.test"]'
   FOODBRIDGE_AI_PROVIDER: rules
+  # Rules mode is deterministic; do not inherit a developer .env provider endpoint.
+  FOODBRIDGE_AI_BASE_URL: ''
 services:
   db:
-    ports: !override ['127.0.0.1:55432:5432']
+    ports: !reset []
   redis:
-    ports: !override ['127.0.0.1:56379:6379']
+    ports: !reset []
   api:
     environment: *release-env
-    ports: !override ['127.0.0.1:58000:8000']
+    ports: !reset []
     command:
       [
         'uv',
@@ -54,17 +57,31 @@ services:
     environment: *release-env
   web:
     image: foodbridge-release-web:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    volumes:
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
     ports: !override ['127.0.0.1:55173:5173']
   mailpit:
     image: axllent/mailpit:v1.34.0
-    ports: ['127.0.0.1:58025:8025']
+    environment:
+      MP_WEBROOT: /test-inbox/
+    ports: !reset []
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.2
     command: ['start-dev', '--import-realm']
     environment:
       JAVA_OPTS_KC_HEAP: -Xms64m -Xmx384m
-      KC_HOSTNAME: http://localhost:58080
+      KC_HOSTNAME: http://localhost:55173/identity
+      KC_HTTP_RELATIVE_PATH: /identity
       KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: foodbridge-local-only
-    volumes: ['./deploy/keycloak/local-realm.json:/opt/keycloak/data/import/realm.json:ro']
-    ports: ['127.0.0.1:58080:8080']
+    volumes:
+      - 'keycloak-local-data:/opt/keycloak/data'
+      - './deploy/keycloak/local-realm.json:/opt/keycloak/data/import/realm.json:ro'
+      - './deploy/keycloak/themes:/opt/keycloak/themes:ro'
+      - './apps/web/src/styles/theme.css:/opt/keycloak/themes/foodbridge/login/resources/css/shared.css:ro'
+    ports: !reset []
+volumes:
+  keycloak-local-data:

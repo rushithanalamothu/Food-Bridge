@@ -1,10 +1,12 @@
+import { Button } from './Button';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { InMemoryWebStorage, UserManager, WebStorageStateStore } from 'oidc-client-ts';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { setAccessToken, setOrganization, getOrganization } from '../api/session';
 import { getSession, getMemberships } from '../api/workflow';
 import type { Actor, Role, MembershipRead } from '../api/generated/workflow';
 import { Notice } from './Workspace';
+import { WorkspaceWelcome } from './WorkspaceWelcome';
 
 const env = import.meta.env;
 const manager =
@@ -38,6 +40,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false);
   const [serverLogin, setServerLogin] = useState<boolean>();
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [accessMissing, setAccessMissing] = useState(false);
   const [actor, setActor] = useState<Actor>();
   const [error, setError] = useState('');
   const [org, setOrg] = useState('');
@@ -57,6 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .then((session) => {
         if (controller.signal.aborted) return;
         setServerLogin(session.login_enabled === true);
+        setRegistrationEnabled(session.registration_enabled === true);
         if (session.login_enabled) {
           setAccessToken();
           setSignedIn(session.authenticated === true);
@@ -130,11 +135,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActor(undefined);
     setError('');
     setSelect(false);
+    setAccessMissing(false);
     void getMemberships(role)
       .then((memberships) => {
         if (controller.signal.aborted) return;
         const options = memberships.filter((item) => item.role === role);
         setChoices(options);
+        if (!options.length) {
+          setAccessMissing(true);
+          setOrg('');
+          setOrganization();
+          return;
+        }
         const current = getOrganization();
         const next = options.some((item) => item.organization_id === current)
           ? current
@@ -164,12 +176,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
     return () => controller.abort();
   }, [ready, role, revision, serverLogin, signedIn]);
-  async function signIn() {
+  async function signIn(intent: 'login' | 'register' = 'login') {
     setError('');
     try {
       if (serverLogin) {
         window.location.assign(
-          '/api/v1/auth/login?return_to=' + encodeURIComponent(location.pathname),
+          '/api/v1/auth/login?return_to=' +
+            encodeURIComponent(location.pathname) +
+            '&intent=' +
+            intent,
         );
         return;
       }
@@ -180,23 +195,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setError('Could not open your organization’s sign-in page. Please retry.');
     }
   }
+  const welcome = ready && serverLogin && !signedIn && !!role;
   return (
     <SessionContext.Provider value={{ revision, actor }}>
-      <div className="account-bar">
-        <span>
-          {actor
-            ? 'Organization ' + actor.organization_id.slice(0, 8) + ' · ' + actor.role
-            : 'Your community food workspace'}
-        </span>
+      <div className={welcome ? 'account-bar account-bar--welcome' : 'account-bar'}>
+        <div className="account-identity">
+          <small>{actor ? 'Current organization' : 'FoodBridge workspace'}</small>
+          <strong>
+            {actor
+              ? (choices.find((choice) => choice.organization_id === actor.organization_id)
+                  ?.organization_name ?? 'Your organization')
+              : 'Your community food workspace'}
+          </strong>
+        </div>
         <div className="actions">
-          {(serverLogin || manager) && !signedIn && (
-            <button className="quiet-button" onClick={() => void signIn()}>
+          {(serverLogin || manager) && !signedIn && !welcome && (
+            <Button variant="secondary" onClick={() => void signIn()}>
               Sign in
-            </button>
+            </Button>
+          )}
+          {serverLogin && registrationEnabled && !signedIn && !welcome && (
+            <Button onClick={() => void signIn('register')}>Create account</Button>
           )}
           {signedIn && (
-            <button
-              className="quiet-button"
+            <Button
+              variant="secondary"
               onClick={() => {
                 void (async () => {
                   try {
@@ -217,12 +240,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               }}
             >
               Sign out of FoodBridge
-            </button>
+            </Button>
           )}
           {role && choices.length > 1 && (
-            <button className="text-button" onClick={() => setSelect((v) => !v)}>
+            <Button variant="ghost" onClick={() => setSelect((v) => !v)}>
               Choose organization
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -249,7 +272,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               </option>
             ))}
           </select>
-          <button>Use organization</button>
+          <Button type="submit">Use organization</Button>
         </form>
       )}
       {error && (
@@ -263,7 +286,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {!ready || (role && (!serverLogin || signedIn) && resolvedScope !== `${role}:${revision}`) ? (
         <p role="status">Loading your workspace…</p>
       ) : serverLogin && !signedIn && role ? (
-        <Notice>Sign in to access your organization’s workspace.</Notice>
+        <WorkspaceWelcome
+          role={role}
+          signIn={() => void signIn()}
+          register={registrationEnabled ? () => void signIn('register') : undefined}
+        />
+      ) : role && accessMissing ? (
+        <section className="access-pending" aria-labelledby="access-title">
+          <p className="eyebrow">Organization access</p>
+          <h1 id="access-title">You’re signed in. Workspace access is next.</h1>
+          <p>
+            Your account does not have organization access to this workspace yet. Ask your
+            FoodBridge coordinator to assign the appropriate role.
+          </p>
+          <p className="muted">
+            Creating or verifying an account does not grant access to donations, recipient details
+            or driver assignments.
+          </p>
+          <div className="actions">
+            <Button onClick={() => setRevision((value) => value + 1)}>Check access again</Button>
+            <Link className="fb-button fb-button--secondary" to="/">
+              Back to FoodBridge
+            </Link>
+          </div>
+        </section>
       ) : (
         <div key={`${role}:${revision}`}>{children}</div>
       )}

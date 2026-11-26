@@ -1,7 +1,10 @@
+import { WorkflowProgress } from '../../components/WorkflowProgress';
+import { Button } from '../../components/Button';
 import { DonationTimeline } from '../../components/DonationTimeline';
 import { useWorkspace, useCommand } from '../../hooks/useWorkspace';
 import {
   WorkspaceHeader,
+  Notice,
   StatusBadge,
   Stats,
   formatTime,
@@ -357,11 +360,17 @@ export function DonorPage() {
   return (
     <section className="donor-workspace">
       <WorkspaceHeader
-        eyebrow={identity?.organization_name ?? 'Donor workspace'}
+        eyebrow="Donor workspace"
         title={posted ? 'Donation posted' : 'Post today’s surplus'}
         {...dashboard}
         refresh={refreshWorkspace}
         loading={dashboard.loading || setupLoading}
+      />
+      <WorkflowProgress
+        steps={['Describe', 'Review', 'Post']}
+        current={posted ? 2 : draft ? 1 : 0}
+        complete={!!posted}
+        label="Donation progress"
       />
       <Stats
         items={[
@@ -401,22 +410,18 @@ export function DonorPage() {
           donation records are real local database operations.
         </p>
       )}
-      {error && (
-        <p role="alert" className="donor-error">
-          {error}
-        </p>
-      )}
+      {error && <Notice error>{error}</Notice>}
       {setupLoading && !identity && <p role="status">Loading donor details…</p>}
       {setupError && (
         <div role="alert" className="notice error">
           {setupError}
-          <button
-            className="quiet-button"
+          <Button
+            variant="secondary"
             disabled={setupLoading}
             onClick={() => setSetupAttempt((attempt) => attempt + 1)}
           >
             Retry donor setup
-          </button>
+          </Button>
         </div>
       )}
       {recovering && (
@@ -425,12 +430,9 @@ export function DonorPage() {
       {recoveryError && (
         <div role="alert" className="notice error">
           {recoveryError}
-          <button
-            className="quiet-button"
-            onClick={() => setRecoveryAttempt((attempt) => attempt + 1)}
-          >
+          <Button variant="secondary" onClick={() => setRecoveryAttempt((attempt) => attempt + 1)}>
             Retry saved draft
-          </button>
+          </Button>
         </div>
       )}
       {identity && !posted && (
@@ -459,9 +461,9 @@ export function DonorPage() {
                   Include weight, storage, allergens and times. Missing details stay blank for you
                   to fill in.
                 </p>
-                <button type="submit" disabled={busy}>
+                <Button type="submit" busy={busy}>
                   {busy ? 'Checking…' : 'Review details'}
-                </button>
+                </Button>
               </form>
             ) : (
               <form
@@ -475,8 +477,8 @@ export function DonorPage() {
               >
                 <div className="donor-row">
                   <h2>2. Check the details</h2>
-                  <button
-                    className="quiet-button"
+                  <Button
+                    variant="secondary"
                     type="button"
                     disabled={busy}
                     onClick={() => {
@@ -486,7 +488,7 @@ export function DonorPage() {
                     }}
                   >
                     Edit description
-                  </button>
+                  </Button>
                 </div>
                 <p className="form-hint">
                   {draft.extraction.provider === 'rules'
@@ -700,9 +702,9 @@ export function DonorPage() {
                   I checked the quantities, allergens, storage and all times. These are the details
                   I confirm.
                 </label>
-                <button type="submit" disabled={busy || !reviewed}>
+                <Button type="submit" busy={busy} disabled={!reviewed}>
                   {busy ? 'Posting…' : 'Confirm and post donation'}
-                </button>
+                </Button>
               </form>
             )}
           </div>
@@ -713,16 +715,16 @@ export function DonorPage() {
             ) : (
               recent.map((item) => (
                 <div className="recent-donation" key={item.donation.id}>
-                  <button
+                  <Button
                     type="button"
-                    className="text-button"
+                    variant="ghost"
                     onClick={() => {
                       selectDonation(item);
                       setError('');
                     }}
                   >
                     {item.donation.food_name}
-                  </button>
+                  </Button>
                   <p>
                     {item.donation.quantity_kg} kg · <StatusBadge status={item.donation.status} />
                   </p>
@@ -737,10 +739,10 @@ export function DonorPage() {
               ))
             )}
             {nextCursor && (
-              <button
+              <Button
                 type="button"
-                className="quiet-button"
-                disabled={paging}
+                variant="secondary"
+                busy={paging}
                 onClick={async () => {
                   setPaging(true);
                   const requestedSnapshot = dashboard.data;
@@ -757,7 +759,7 @@ export function DonorPage() {
                 }}
               >
                 Load older donations
-              </button>
+              </Button>
             )}
           </aside>
         </div>
@@ -801,9 +803,9 @@ export function DonorPage() {
                   Uses synthetic recipients, a 14-minute route and a demo driver. It does not
                   reserve or match the food.
                 </p>
-                <button type="button" onClick={() => void preview()} disabled={busy || polling}>
+                <Button type="button" onClick={() => void preview()} disabled={busy || polling}>
                   {polling ? 'Worker evaluating…' : 'Check demo recipients'}
-                </button>
+                </Button>
                 {evaluation?.status === 'pending' && !polling && (
                   <p role="status">
                     Still queued. Check the intake worker / relay, then retry this button with the
@@ -864,23 +866,23 @@ export function DonorPage() {
                 Cancel this donation and release any reservation before pickup?
               </ConfirmAction>
             )}
-            <button
-              className="quiet-button"
+            <Button
+              variant="secondary"
               type="button"
               onClick={() => void refreshSelectedDonation()}
             >
               Refresh status
-            </button>
-            <button type="button" onClick={startAgain}>
+            </Button>
+            <Button type="button" onClick={startAgain}>
               Post another donation
-            </button>
+            </Button>
           </div>
         </div>
       )}
       {posted && (
-        <button className="quiet-button" onClick={() => setHistory(posted.donation.id)}>
+        <Button variant="secondary" onClick={() => setHistory(posted.donation.id)}>
           View donation history
-        </button>
+        </Button>
       )}
       {history && (
         <DonationTimeline

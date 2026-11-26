@@ -1,82 +1,31 @@
-.donor-workspace {
-  max-width: 980px;
-}
-.donor-workspace h2 {
-  font-size: 19px;
-  letter-spacing: -0.4px;
-}
-.donor-workspace .demo-label {
-  padding: 12px 0;
-  border-bottom: 1px solid #dddeda;
-  color: #667473;
-  font-size: 12px;
-}
+/* Donor layout only. Controls, type, colors and feedback use the shared theme. */
 .donor-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(180px, 1fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(220px, 1fr);
+  gap: 28px;
   margin-top: 28px;
   align-items: start;
 }
 .donor-sheet {
-  border: 1px solid #dddeda;
-  background: #fffefa;
-  padding: 26px;
-  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--space-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   min-width: 0;
 }
-.donor-workspace label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin: 18px 0 6px;
+.demo-label {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 14px;
 }
-.donor-workspace input,
-.donor-workspace textarea,
-.donor-workspace select {
-  width: 100%;
-  padding: 10px 11px;
-  border: 1px solid #cdd3cf;
-  border-radius: 4px;
-  color: #233b43;
-  background: #fffefa;
-  font: inherit;
-  font-size: 15px;
-  min-width: 0;
-}
-.donor-workspace textarea {
-  resize: vertical;
-}
-.donor-workspace button {
-  background: #c15332;
-  color: white;
-  border: 1px solid #c15332;
-  border-radius: 4px;
-  padding: 11px 16px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.donor-workspace button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.donor-workspace .quiet-button {
-  background: transparent;
-  color: #233b43;
-  border-color: #cdd3cf;
-}
-.donor-workspace .form-hint {
-  color: #667473;
-  font-size: 12px;
-}
-.donor-workspace .donor-fields {
+.donor-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 }
-.donor-workspace .donor-row {
+.donor-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -84,49 +33,32 @@
   gap: 12px;
   margin-top: 20px;
 }
-.donor-workspace .confirmation {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 13px;
-  font-weight: 400;
-  margin: 22px 0;
-}
-.donor-workspace .confirmation input {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.donor-workspace .donor-error {
-  color: #8b351e;
-  background: #f8e8dd;
-  padding: 14px;
-  font-size: 13px;
-}
 .review-issues {
-  border-left: 2px solid #c7ad82;
-  padding: 0 0 0 14px;
-  font-size: 12px;
-  color: #667473;
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-soft);
+  border-radius: var(--radius-control);
+  padding: 16px 20px;
+  font-size: 14px;
+  color: var(--color-warning);
+  margin: 20px 0;
 }
 .review-issues ul {
   padding-left: 18px;
+  margin-bottom: 0;
 }
 .recent-donation {
-  padding: 15px 0;
-  border-bottom: 1px solid #dddeda;
-  font-size: 13px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
 }
 .recent-donation p {
   margin: 5px 0;
-  color: #667473;
-  font-size: 12px;
+  color: var(--color-muted);
+  font-size: 14px;
 }
 .pickup-address {
-  border-top: 1px solid #dddeda;
+  border-top: 1px solid var(--color-border);
   padding-top: 16px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .posted-donation {
   margin-top: 24px;
@@ -137,64 +69,34 @@
   gap: 24px;
 }
 .posted-donation dt {
-  font-size: 12px;
-  color: #667473;
+  font-size: 14px;
+  color: var(--color-muted);
 }
 .posted-donation dd {
   margin: 5px 0;
-  font-size: 14px;
+  font-size: 16px;
 }
 .eligibility-demo {
   margin: 24px 0;
   padding-top: 12px;
-  border-top: 1px solid #dddeda;
+  border-top: 1px solid var(--color-border);
 }
 .eligibility-decision {
-  border-bottom: 1px solid #dddeda;
+  border-bottom: 1px solid var(--color-border);
   padding: 14px 0;
-  font-size: 13px;
+  font-size: 14px;
 }
-@media (max-width: 700px) {
+@media (max-width: 800px) {
   .donor-columns {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 450px) {
   .donor-sheet {
-    padding: 18px;
+    padding: var(--space-card);
   }
-  .donor-workspace .donor-fields {
+  .donor-fields {
     grid-template-columns: 1fr;
     gap: 0;
   }
-  .donor-workspace input {
-    font-size: 16px;
-  }
-}
-.donor-workspace {
-  max-width: none;
-}
-.donor-sheet {
-  border-radius: 10px;
-  border-color: #dce0d5;
-}
-.donor-workspace button {
-  border-radius: 7px;
-  background: #a84125;
-  border-color: #a84125;
-}
-.donor-workspace .text-button {
-  color: #24483c;
-  background: transparent;
-  border: 0;
-}
-.donor-workspace .quiet-button {
-  background: transparent;
-  border-color: #becac1;
-}
-.donor-workspace .danger {
-  color: #96361f;
-}
-.donor-workspace .stat strong {
-  font-size: clamp(24px, 3vw, 34px);
 }

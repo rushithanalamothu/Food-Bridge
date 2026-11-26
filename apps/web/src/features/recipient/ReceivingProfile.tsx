@@ -1,3 +1,4 @@
+import { Button } from '../../components/Button';
 import { useEffect, useState } from 'react';
 import type {
   ReceivingProfileRead,
@@ -87,8 +88,8 @@ export function ReceivingProfile({
       <div className="section-heading">
         <h2>Receiving preferences</h2>
         {!editing && (
-          <button
-            className="quiet-button"
+          <Button
+            variant="secondary"
             onClick={() => {
               setBaseline(value);
               setEditing(true);
@@ -96,22 +97,22 @@ export function ReceivingProfile({
             }}
           >
             Edit preferences
-          </button>
+          </Button>
         )}
       </div>
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="success">{message}</Notice>}
       {error && (
         <Notice error>
           {error}{' '}
-          <button
-            className="text-button"
+          <Button
+            variant="ghost"
             onClick={() => {
               setBaseline(value);
               setError('');
             }}
           >
             Reload current preferences
-          </button>
+          </Button>
         </Notice>
       )}
       {editing && value.profile.version !== profile.version && (
@@ -231,10 +232,12 @@ export function ReceivingProfile({
             required
           />
           <div className="actions">
-            <button disabled={action.busy}>Save preferences</button>
-            <button
+            <Button type="submit" busy={action.busy}>
+              Save preferences
+            </Button>
+            <Button
               type="button"
-              className="quiet-button"
+              variant="secondary"
               disabled={action.busy}
               onClick={() => {
                 setEditing(false);
@@ -242,7 +245,7 @@ export function ReceivingProfile({
               }}
             >
               Cancel editing
-            </button>
+            </Button>
           </div>
         </form>
       )}

@@ -97,7 +97,11 @@ export function connectStream(
         throw new Error('stream_closed');
       } catch {
         if (controller.signal.aborted) return;
-        state(navigator.onLine === false ? 'offline' : 'reconnecting');
+        state(
+          typeof navigator !== 'undefined' && navigator.onLine === false
+            ? 'offline'
+            : 'reconnecting',
+        );
       }
       await wait(Math.min(15000, 500 * 2 ** Math.min(attempts++, 5)) + Math.random() * 250);
     }

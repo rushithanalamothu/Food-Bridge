@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     smtp_allowed_domains: list[str] = Field(default_factory=list)
     public_url: str = "http://localhost:5173"
     browser_auth_enabled: bool = False
+    browser_registration_enabled: bool = False
+    browser_login_ttl_s: int = Field(default=1800, ge=300, le=3600)
     browser_cookie_name: str = Field(default="foodbridge_session", pattern=r"^[A-Za-z0-9_-]{1,64}$")
     oidc_client_id: str | None = None
     oidc_client_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)

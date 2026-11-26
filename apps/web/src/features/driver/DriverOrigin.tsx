@@ -1,3 +1,4 @@
+import { Button } from '../../components/Button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DriverOriginRead, DriverOriginUpdate } from '../../api/generated/workflow';
 import { getDriverOrigin, saveDriverOrigin } from '../../api/workflow';
@@ -85,8 +86,8 @@ export function DriverOrigin() {
       <div className="section-heading">
         <h2 id="driver-origin-heading">Your starting point</h2>
         {!baseline && (
-          <button
-            className="quiet-button"
+          <Button
+            variant="secondary"
             disabled={!value || loading || action.busy}
             onClick={() => {
               setBaseline(value);
@@ -95,7 +96,7 @@ export function DriverOrigin() {
             }}
           >
             Update starting point
-          </button>
+          </Button>
         )}
       </div>
       <p>
@@ -103,7 +104,7 @@ export function DriverOrigin() {
         entering an address does not look up its coordinates. This is a self-reported location.
       </p>
       {loading && <p role="status">Loading starting point…</p>}
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="success">{message}</Notice>}
       {error && <Notice error>{error}</Notice>}
       {!loading && value && (
         <>
@@ -116,7 +117,7 @@ export function DriverOrigin() {
             </p>
           )}
           {stale && (
-            <Notice>
+            <Notice tone="warning">
               {value.origin ? 'Your starting point is out of date.' : 'No starting point saved.'}{' '}
               Live matching needs a location updated within five minutes. Saving does not change
               your availability or guarantee an assignment.
@@ -174,16 +175,18 @@ export function DriverOrigin() {
               required
             />
             <div className="actions">
-              <button disabled={conflict}>Save starting point</button>
-              <button type="button" className="quiet-button" onClick={() => setBaseline(undefined)}>
+              <Button type="submit" disabled={conflict} busy={action.busy}>
+                Save starting point
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setBaseline(undefined)}>
                 Cancel location update
-              </button>
+              </Button>
             </div>
           </fieldset>
         </form>
       )}
-      <button
-        className="text-button"
+      <Button
+        variant="ghost"
         disabled={loading || action.busy}
         onClick={() =>
           void load().then((next) => {
@@ -192,7 +195,7 @@ export function DriverOrigin() {
         }
       >
         Reload starting point
-      </button>
+      </Button>
     </section>
   );
 }

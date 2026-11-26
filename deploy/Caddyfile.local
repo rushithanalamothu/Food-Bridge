@@ -1,0 +1,29 @@
+# Local review gateway: the only host-published application service.
+:5173 {
+	bind 0.0.0.0
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+	redir /identity /identity/ 308
+	handle /identity/* {
+		reverse_proxy keycloak:8080
+	}
+	redir /test-inbox /test-inbox/ 308
+	handle /test-inbox/* {
+		reverse_proxy mailpit:8025
+	}
+	handle /internal/* {
+		respond 404
+	}
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -6,6 +6,7 @@ import json
 import secrets
 import time
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -195,15 +196,17 @@ def cookie(response, name, value, settings, age):
 
 
 @router.get("/login", include_in_schema=False)
-def login(request: Request, return_to: str = "/"):
+def login(request: Request, return_to: str = "/", intent: Literal["login", "register"] = "login"):
     settings = request.app.state.settings
     info = metadata(settings)
+    if intent == "register" and not settings.browser_registration_enabled:
+        fail("registration_unavailable", 403)
     if return_to not in {"/", "/donor", "/recipient", "/driver", "/operations"}:
         return_to = "/"
     state, nonce, verifier = (secrets.token_urlsafe(32) for _ in range(3))
     saved = {"nonce": nonce, "verifier": verifier, "return_to": return_to}
     try:
-        store(settings).set(key("login", state), json.dumps(saved), ex=300)
+        store(settings).set(key("login", state), json.dumps(saved), ex=settings.browser_login_ttl_s)
     except RedisError:
         fail("session_store_unavailable", 503)
     challenge = (
@@ -219,15 +222,32 @@ def login(request: Request, return_to: str = "/"):
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     }
+    if intent == "register":
+        params["prompt"] = "create"
     response = RedirectResponse(
         info["authorization_endpoint"] + "?" + urlencode(params), status_code=302
     )
-    cookie(response, LOGIN_COOKIE, state, settings, 300)
+    cookie(response, LOGIN_COOKIE, state, settings, settings.browser_login_ttl_s)
     return response
 
 
 @router.get("/callback", include_in_schema=False)
 def callback(request: Request, state: str = "", code: str = "", error: str = ""):
+    try:
+        return complete_callback(request, state, code, error)
+    except AppError:
+        if "text/html" not in request.headers.get("accept", ""):
+            raise
+        # A stale email/login tab must not strand a person on an API JSON error.
+        # All state/nonce/PKCE/token checks remain in complete_callback.
+        response = RedirectResponse("/auth/error", status_code=303)
+        response.delete_cookie(LOGIN_COOKIE, path="/")
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
+
+def complete_callback(request: Request, state: str, code: str, error: str):
     settings = request.app.state.settings
     metadata(settings)
     if (
@@ -335,7 +355,24 @@ def session_info(request: Request):
     from foodbridge.auth.identity import request_subject
 
     settings = request.app.state.settings
-    subject = request_subject(request)
+    try:
+        subject = request_subject(request)
+    except AppError as error:
+        if error.status != 401 or not settings.browser_auth_enabled:
+            raise
+        # Session discovery must let an expired browser start a fresh login.
+        # Protected endpoints continue rejecting the stale credential.
+        response = JSONResponse(
+            {
+                "authenticated": False,
+                "login_enabled": True,
+                "registration_enabled": settings.browser_registration_enabled,
+                "memberships": [],
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+        response.delete_cookie(COOKIE, path="/")
+        return response
     mode = "oidc"
     if (
         subject is None
@@ -351,6 +388,8 @@ def session_info(request: Request):
             {
                 "authenticated": False,
                 "login_enabled": settings.browser_auth_enabled,
+                "registration_enabled": settings.browser_auth_enabled
+                and settings.browser_registration_enabled,
                 "memberships": [],
             },
             headers={"Cache-Control": "no-store"},
@@ -373,6 +412,8 @@ def session_info(request: Request):
             "authenticated": True,
             "mode": mode,
             "login_enabled": settings.browser_auth_enabled,
+            "registration_enabled": settings.browser_auth_enabled
+            and settings.browser_registration_enabled,
             "memberships": memberships,
         },
         headers={"Cache-Control": "no-store"},

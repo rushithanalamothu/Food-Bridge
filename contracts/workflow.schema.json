@@ -65,6 +65,11 @@
           ],
           "default": null,
           "title": "Mode"
+        },
+        "registration_enabled": {
+          "default": false,
+          "title": "Registration Enabled",
+          "type": "boolean"
         }
       },
       "required": [

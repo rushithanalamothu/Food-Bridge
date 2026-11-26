@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Button } from './Button';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Connection } from '../api/stream';
 
 export const humanize = (value: string) =>
@@ -40,9 +41,9 @@ export function WorkspaceHeader({
           <h1>{title}</h1>
           {children}
         </div>
-        <button className="quiet-button" onClick={() => void refresh()} disabled={loading}>
+        <Button variant="secondary" onClick={() => void refresh()} busy={loading}>
           Refresh
-        </button>
+        </Button>
       </div>
       <div className="sync-bar" role="status">
         <span className={`connection-dot ${connection}`} />
@@ -57,9 +58,20 @@ export function WorkspaceHeader({
     </>
   );
 }
-export function Notice({ children, error = false }: { children: ReactNode; error?: boolean }) {
+export function Notice({
+  children,
+  error = false,
+  tone = 'info',
+}: {
+  children: ReactNode;
+  error?: boolean;
+  tone?: 'info' | 'success' | 'warning';
+}) {
   return (
-    <div className={error ? 'notice error' : 'notice'} role={error ? 'alert' : 'status'}>
+    <div
+      className={error ? 'notice error' : `notice notice--${tone}`}
+      role={error ? 'alert' : 'status'}
+    >
       {children}
     </div>
   );
@@ -68,9 +80,9 @@ export function ActionError({ message, dismiss }: { message: string; dismiss: ()
   return (
     <Notice error>
       {message}{' '}
-      <button className="text-button" onClick={dismiss}>
+      <Button variant="ghost" onClick={dismiss}>
         Dismiss action error
-      </button>
+      </Button>
     </Notice>
   );
 }
@@ -78,7 +90,17 @@ export function EmptyState({ title, children }: { title: string; children: React
   return (
     <div className="empty-state">
       <span className="empty-symbol" aria-hidden="true">
-        ↗
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8 12 3 3 5-6" />
+        </svg>
       </span>
       <h2>{title}</h2>
       <p>{children}</p>
@@ -119,32 +141,62 @@ export function ConfirmAction({
   danger?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const confirm = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  const description = useId();
+  useEffect(() => {
+    if (confirming) confirm.current?.focus();
+    else if (restoreFocus.current) {
+      trigger.current?.focus();
+      restoreFocus.current = false;
+    }
+  }, [confirming]);
+  function cancel() {
+    restoreFocus.current = true;
+    setConfirming(false);
+  }
   return confirming ? (
-    <div className="confirm-action">
-      <p>{children}</p>
+    <div
+      className="confirm-action"
+      role="group"
+      aria-label={`Confirm ${label.toLowerCase()}`}
+      aria-describedby={description}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          cancel();
+        }
+      }}
+    >
+      <p className="confirmation-title">{label}?</p>
+      <p id={description}>{children}</p>
       <div className="actions">
-        <button
+        <Button
+          ref={confirm}
           disabled={disabled}
-          className={danger ? 'danger' : ''}
+          tone={danger ? 'danger' : 'default'}
           onClick={() => {
             setConfirming(false);
             onConfirm();
           }}
         >
           {label.toLowerCase().startsWith('confirm ') ? label : 'Confirm ' + label.toLowerCase()}
-        </button>
-        <button className="quiet-button" disabled={disabled} onClick={() => setConfirming(false)}>
-          Keep current state
-        </button>
+        </Button>
+        <Button variant="secondary" disabled={disabled} onClick={cancel}>
+          Go back
+        </Button>
       </div>
     </div>
   ) : (
-    <button
+    <Button
+      ref={trigger}
       disabled={disabled}
-      className={danger ? 'quiet-button danger' : ''}
+      variant={danger ? 'secondary' : 'primary'}
+      tone={danger ? 'danger' : 'default'}
       onClick={() => setConfirming(true)}
     >
       {label}
-    </button>
+    </Button>
   );
 }

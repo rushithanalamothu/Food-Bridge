@@ -12,11 +12,20 @@ The callback validates the signed ID token, nonce, audience/issuer and consisten
 
 Provision memberships with the trusted server CLI, never with browser claims:
 
+
 ```sh
 uv run python scripts/provision_member.py --subject VERIFIED_OIDC_SUBJECT --organization-id EXISTING_ORG_UUID --role donor --display-name 'Demo donor'
 ```
 
 Creating a user in Keycloak does not automatically grant FoodBridge access. The subject must be provisioned against an existing organization. Login/provider tokens must not be printed in logs; the release stack disables API access logging so authorization codes are not logged from callback query strings. Redis contains credential material and must remain private, backed by protected storage. Losing Redis sessions requires users to sign in again; reservation truth remains in PostgreSQL.
+
+### Authentication appearance
+
+The self-hosted identity screens use `deploy/keycloak/themes/foodbridge`, inheriting Keycloak's native form templates and authentication behavior. Both local and production Compose profiles mount the same `apps/web/src/styles/theme.css` used by React into the theme as `css/shared.css`; the tracked placeholder is replaced by that read-only mount. `foodbridge.css` adapts only the identity-page layout, branding and native control classes. The realm selects `loginTheme=foodbridge`, including realms generated for production. Include the theme directory and shared CSS file in deployment artifacts; release them with the frontend so the login page cannot drift to a second palette. Do not duplicate the app tokens or replace native login actions/hidden fields to restyle a form.
+
+Keycloak skips importing realms that already exist. For an existing persistent realm, deploy the theme assets and select **foodbridge** under Realm settings → Themes → Login theme, then save. Keep the realm display name/branding aligned with the supplied realm configuration; do not delete a realm or its users to apply a visual update. The local test realm is disposable; production updates must retain users, clients, credentials and sessions. Coordinate identity-theme changes with Tej and shared visual changes with Mithil.
+
+Release browser acceptance explicitly checks the real identity page against the app's rendered primary sign-in control (background, text color, font, size, radius and height), password visibility, invalid-password feedback, identity-provider error rendering, mobile width and accessibility. This is separate from successful OIDC protocol processing. New enabled authentication flows must also receive a visual check when added; inheriting a theme alone is not evidence that an untested flow has been verified.
 
 ## External notification adapter
 
@@ -53,7 +62,7 @@ FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p food
 FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
 ```
 
-Open <http://localhost:55173>. Sign in as `tej-demo` with password `foodbridge-local-only`. These are explicitly synthetic local-only credentials, never imported by the production configuration generator. The local Keycloak administration page is <http://localhost:58080>; its bootstrap user is `local-admin` with the same local-only password. The test inbox is <http://localhost:58025>. Every permitted SMTP destination ends in `example.test`, so no public recipient receives a message.
+Open <http://localhost:55173>. Sign in as `tej-demo` with password `foodbridge-local-only`. These are explicitly synthetic local-only credentials, never imported by the production configuration generator. The local Keycloak administration page is <http://localhost:55173/identity/admin/>; its bootstrap user is `local-admin` with the same local-only password. The test inbox is <http://localhost:55173/test-inbox/>. Every permitted SMTP destination ends in `example.test`, so no public recipient receives a message.
 
 The local OIDC test identity has donor/recipient/driver/operator memberships. The seed binds the synthetic driver to that identity in this isolated database. These demo memberships are not a production provisioning policy. Existing fixture receiving/driver windows are preserved and expire; use a separate fresh project or reviewed versioned fixture updates when needed, never drop shared data to make a test pass.
 
@@ -102,3 +111,35 @@ uv run python scripts/release_control.py --record deploy/releases/ROLLBACK.json 
 The tool records previous image references, applies additive migrations on promotion, starts the consistent service set and checks readiness/migration state. Rollback never automatically downgrades a database. Confirm schema compatibility before rolling images back. The tool also runs `scripts/smoke_gateway.py` against the public HTTPS origin to verify static serving, API readiness and internal-route isolation. A ready service set is still recorded as awaiting authenticated acceptance, not as a verified end-to-end release.
 
 A real server/domain, sender/provider account, production matching/routing and final browser acceptance are still prerequisites for shared release sign-off. Local tests and deployable files cannot establish that an unprovisioned public environment is working.
+
+## Account signup and recovery
+
+The local browser-session profile enables **Create account** on the workspace welcome screen and **Forgot password?** on the identity sign-in form. Keycloak 26.8 uses email-first registration: enter username, email and name, verify the emailed link, then choose a password (minimum 12 characters). Verification can be resent after Keycloak's native 30-second cooldown. Password recovery sends a native, single-use action link; its initial confirmation does not reveal whether an account exists. Authentication, password policy, action-token validation and credential storage remain owned by Keycloak.
+
+Local identity mail goes to [Mailpit](http://localhost:55173/test-inbox/), not a public inbox. The `foodbridge-local` child theme adds a test-inbox link and inherits the shared FoodBridge appearance. Registration and verification templates retain native forms and action URLs; the two presentation overrides were based on Keycloak 26.8.2 and must be reviewed when upgrading it. Signup, verification, password setup, reset and error screens use the app's shared CSS tokens.
+
+A verified account receives **no organization or role automatically**. Signed-in users without the selected role see a workspace-access explanation and **Check access again**; they must be provisioned by the coordinator using the existing membership command above. Do not turn signup into a donor/driver/operations role selector or grant memberships from browser input. This is not an organization onboarding implementation.
+
+`FOODBRIDGE_BROWSER_REGISTRATION_ENABLED` controls the app's registration entry point and defaults to false. The local release profile enables it. `/auth/session` and generated `BrowserSessionRead` expose the additive `registration_enabled` flag to the shared client; Tej/Mithil review applies. The OIDC registration path uses standard `prompt=create` and the same state, nonce, PKCE and callback validation as login. `FOODBRIDGE_BROWSER_LOGIN_TTL_S` defaults to 1800 seconds (bounded 300–3600); Redis login state and its HttpOnly cookie share that expiry. User-generated action links expire after 900 seconds in the supplied realm. Stale browser callbacks show a themed recovery page without creating a session.
+
+Production generation deliberately removes local SMTP settings and the local inbox theme, and leaves realm registration/password reset disabled until a real sender is configured. Before enabling them, configure and test a TLS SMTP sender in Keycloak **Realm settings → Email**, enable **User registration** and **Forgot password** in Login settings, retain **Verify email**, and set the backend registration flag to true. Existing realms need an explicit settings update; startup imports never overwrite them. Backend notification SMTP settings do not configure Keycloak's separate account-email sender. No public email delivery is claimed from Mailpit testing.
+
+Local verification on 2026-11-18: `make check` passed (240 Python unit tests, 14 frontend tests, build/contracts/docs checks); `make integration` passed all 78 tests against PostgreSQL/PostGIS and Redis. Workspace browser acceptance passed 52 tests, with the separate full-workflow test skipped in that fixture suite and exercised by the real release suite instead. Four real-stack browser tests passed, covering themed identity/error screens, donor-to-delivery and the account email lifecycle; an additional real-stack unknown-account reset test passed. Account acceptance consumed captured SMTP links, verified resend and password setup, rejected a tampered link, checked unprovisioned access, recovered a password, rejected the old password and reused reset link, and signed in with the replacement. This is local evidence, not public SMTP delivery or hosted acceptance.
+
+## One local entry point
+
+The local review/release profile publishes only **http://localhost:55173**. Caddy serves the built app, forwards `/api/*` to FastAPI, `/identity/*` to Keycloak, and `/test-inbox/*` to the local email preview. Login, registration, password reset and email action links remain on that same origin. The API, PostgreSQL, Redis, Keycloak, Mailpit and workers communicate over the private Compose network and have no host port mappings. Seeing container ports such as `8000/tcp` in Docker is not a published host listener; only `127.0.0.1:55173->5173/tcp` is exposed. The root development profile still exposes developer ports for independently running services; use the release profile for review/demo. Production uses the existing TLS gateway on ports 80/443 and a separate identity hostname, with no Mailpit.
+
+Local Keycloak accounts now persist in `keycloak-local-data`; normal `up --build`/container recreation retains them. Do not use `down -v` when retaining local data. For an existing pre-volume setup, stop Keycloak, securely copy its `/opt/keycloak/data/h2` directory into `h2/` of the new named volume, which is mounted at `/opt/keycloak/data` (owner UID 1000), and start the updated profile. Do not delete users or realms to change the issuer path. Previously issued sessions/links with the old issuer may require a fresh sign-in/email.
+
+For deliberate host-side debugging only, append `-f compose.release-debug.yml` to enable loopback PostgreSQL `55432`, Redis `56379` and API `58000`. With that override, integration checks can use:
+
+```sh
+FOODBRIDGE_DATABASE_URL=postgresql+psycopg://foodbridge:foodbridge_local@localhost:55432/foodbridge FOODBRIDGE_REDIS_URL=redis://localhost:56379/0 make integration
+```
+
+Re-run Compose `up -d` without the debug override afterward to remove those listeners. Do not add the debug override to the demo command or CI release browser profile. Identity proxy paths follow [Keycloak's documented relative-path configuration](https://www.keycloak.org/server/reverseproxy); Mailpit uses its [documented webroot configuration](https://mailpit.axllent.org/docs/configuration/proxy/).
+
+Single-entry-point verification: Docker's resolved profile and live port mappings expose only `55173`; OIDC discovery advertises the `/identity` issuer and endpoints on that origin. The Mailpit UI loaded its assets/API through `/test-inbox/` with only the app origin requested and no browser JavaScript errors. Identity visual comparisons wait for loaded stylesheet values before asserting against the app controls, including a cold cache.
+
+After moving to the gateway, the real-stack donation workflow, account email lifecycle and unknown-account recovery checks passed. Both identity visual/accessibility checks passed after making stylesheet assertions await loading. `make check` also passed. A previously registered local account was confirmed present after copying the stopped identity database into the persistent volume. No application schema or queue semantics changed in this gateway update; the preceding 78-test infrastructure integration result remains separate evidence.

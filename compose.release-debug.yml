@@ -1,0 +1,9 @@
+# Optional host access for developer tools and make integration; omit for review/demo.
+# Add after compose.release-local.yml, then recreate db/redis/api when removing it.
+services:
+  db:
+    ports: !override ['127.0.0.1:55432:5432']
+  redis:
+    ports: !override ['127.0.0.1:56379:6379']
+  api:
+    ports: !override ['127.0.0.1:58000:8000']

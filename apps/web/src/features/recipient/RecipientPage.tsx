@@ -1,3 +1,4 @@
+import { Button } from '../../components/Button';
 import { useEffect, useRef, useState } from 'react';
 import { IntakeApiError } from '../../api/intake';
 import {
@@ -141,8 +142,14 @@ export function RecipientPage() {
       <WorkspaceHeader eyebrow="Receiver workspace" title="Good food. Ready to receive." {...view}>
         <p>Review eligible offers, manage receiving preferences, and follow each delivery.</p>
       </WorkspaceHeader>
+      {action.busy && (
+        <p className="pending-feedback" role="status">
+          <span className="button-spinner" aria-hidden="true" />
+          Saving your request…
+        </p>
+      )}
       {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="success">{message}</Notice>}
       <Stats
         items={[
           {
@@ -270,17 +277,17 @@ export function RecipientPage() {
                   </ConfirmAction>
                 </div>
               )}
-              <button className="text-button" onClick={() => setHistory(match.donation_id)}>
+              <Button variant="ghost" onClick={() => setHistory(match.donation_id)}>
                 View donation history
-              </button>
+              </Button>
             </article>
           );
         })}
       </div>
       {(cursor === undefined ? view.data?.offers.next_cursor : cursor) && (
-        <button
-          className="quiet-button"
-          disabled={paging}
+        <Button
+          variant="secondary"
+          busy={paging}
           onClick={async () => {
             setPaging(true);
             view.setError('');
@@ -300,7 +307,7 @@ export function RecipientPage() {
           }}
         >
           Load older offers
-        </button>
+        </Button>
       )}
       <h2>Your reservations</h2>
       {view.data && !reservations.length && (
@@ -317,9 +324,9 @@ export function RecipientPage() {
               <strong>{hold.quantity_kg} kg reserved</strong> · {hold.storage}
             </p>
             <p>Hold: {hold.status}</p>
-            <button className="text-button" onClick={() => setHistory(donation.id)}>
+            <Button variant="ghost" onClick={() => setHistory(donation.id)}>
               View donation history
-            </button>
+            </Button>
             {hold.status === 'active' &&
               ['reserved', 'pickup_assigned'].includes(donation.status) && (
                 <ConfirmAction
@@ -335,9 +342,9 @@ export function RecipientPage() {
         ))}
       </div>
       {(holdCursor === undefined ? view.data?.reservations.next_cursor : holdCursor) && (
-        <button
-          className="quiet-button"
-          disabled={paging}
+        <Button
+          variant="secondary"
+          busy={paging}
           onClick={async () => {
             setPaging(true);
             view.setError('');
@@ -357,7 +364,7 @@ export function RecipientPage() {
           }}
         >
           Load older reservations
-        </button>
+        </Button>
       )}
       {history && (
         <DonationTimeline

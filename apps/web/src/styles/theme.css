@@ -1,0 +1,355 @@
+/* Shared design tokens. Feature styles must use these, not redefine control colors. */
+:root {
+  --font-body: 'Avenir Next', 'Segoe UI', sans-serif;
+  --color-primary: #244f3c;
+  --color-primary-hover: #193f2e;
+  --color-primary-soft: #e7efe7;
+  --color-accent: #b65333;
+  --color-text: #294338;
+  --color-heading: #1b4030;
+  --color-muted: #53675b;
+  --color-page: #f8faf7;
+  --color-surface: #ffffff;
+  --color-surface-soft: #eef3ed;
+  --color-border: #d8e2d8;
+  --color-border-strong: #98ad9e;
+  --color-danger: #a3332d;
+  --color-danger-hover: #832722;
+  --color-danger-soft: #fff0ec;
+  --color-success: #285d3d;
+  --color-success-soft: #eaf4eb;
+  --color-warning: #755313;
+  --color-warning-soft: #fff5dc;
+  --color-info: #405d66;
+  --color-info-soft: #edf3f5;
+  --color-white: #ffffff;
+  --color-focus-ring: #244f3c30;
+  --color-art: #eaf0e3;
+  --color-art-border: #d5e0ce;
+  --color-art-line: #b6c9ad;
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --shadow-card: 0 3px 16px #183b2c05;
+  --shadow-button: 0 2px 3px #183b2c0c;
+  --color-leaf: #708d58;
+  --space-card: 24px;
+  --space-stat: 24px;
+}
+
+.fb-button,
+.button {
+  --button-bg: var(--color-primary);
+  --button-color: var(--color-white);
+  --button-border: var(--color-primary);
+  --button-hover: var(--color-primary-hover);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--button-border);
+  border-radius: var(--radius-control);
+  background: var(--button-bg);
+  color: var(--button-color);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.fb-button[data-tone='danger'] {
+  --button-bg: var(--color-danger);
+  --button-border: var(--color-danger);
+  --button-hover: var(--color-danger-hover);
+}
+.fb-button--secondary {
+  --button-bg: var(--color-surface);
+  --button-color: var(--color-primary);
+  --button-border: var(--color-border-strong);
+  --button-hover: var(--color-primary-soft);
+  box-shadow: none;
+}
+.fb-button--secondary[data-tone='danger'] {
+  --button-bg: var(--color-surface);
+  --button-color: var(--color-danger);
+  --button-border: var(--color-danger);
+  --button-hover: var(--color-danger-soft);
+}
+.fb-button--ghost {
+  --button-bg: transparent;
+  --button-color: var(--color-primary);
+  --button-border: transparent;
+  --button-hover: var(--color-primary-soft);
+  padding: 9px 10px;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.fb-button--ghost[data-tone='danger'] {
+  --button-bg: transparent;
+  --button-color: var(--color-danger);
+  --button-border: transparent;
+  --button-hover: var(--color-danger-soft);
+}
+.fb-button--large,
+.button {
+  min-height: 50px;
+  padding: 13px 24px;
+  font-size: 1rem;
+}
+.fb-button:hover:not(:disabled),
+.button:hover {
+  background: var(--button-hover);
+}
+.fb-button:active:not(:disabled),
+.button:active {
+  box-shadow: none;
+}
+.fb-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.fb-button:focus-visible,
+.button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--color-focus-ring);
+}
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 750ms linear infinite;
+}
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-button,
+  .button {
+    transition: none;
+  }
+  .button-spinner {
+    animation: none;
+  }
+}
+label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 18px 0 7px;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 11px 13px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+textarea {
+  resize: vertical;
+}
+input:hover:not(:disabled),
+textarea:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+input[readonly],
+textarea[readonly],
+input:disabled,
+select:disabled {
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+}
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 2px 0 0;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+.checkbox,
+.confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  font-weight: 400;
+  font-size: 15px;
+  margin: 22px 0;
+}
+fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  margin: 22px 0;
+  min-width: 0;
+}
+legend {
+  font-size: 0.875rem;
+  font-weight: 650;
+  padding: 0 8px;
+}
+.notice.notice--success {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+.notice.notice--warning {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+.notice .fb-button {
+  margin: 4px 0 0 8px;
+}
+.pending-feedback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.workflow-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 30px;
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+}
+.workflow-progress li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.progress-marker {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.workflow-progress .is-current {
+  color: var(--color-primary);
+  font-weight: 650;
+}
+.is-current .progress-marker {
+  color: var(--color-white);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.is-complete .progress-marker {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-heading);
+}
+.confirm-action {
+  border: 1px solid var(--color-border);
+}
+.confirmation-title {
+  font-weight: 650;
+  color: var(--color-heading);
+  margin-top: 0;
+}
+.organization-form {
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+select:not([multiple]) {
+  appearance: none;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23244f3c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+.account-identity {
+  flex: 1;
+  min-width: 0;
+}
+.account-identity small {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+.account-identity strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  :root {
+    --space-card: 20px;
+    --space-stat: 12px;
+  }
+  .actions > .fb-button {
+    flex: 1 1 auto;
+  }
+  .workflow-progress {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .workflow-progress li {
+    flex-direction: column;
+    text-align: center;
+    gap: 6px;
+  }
+}

@@ -2,7 +2,7 @@
   "realm": "foodbridge",
   "enabled": true,
   "sslRequired": "none",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "clients": [
     {
       "clientId": "foodbridge-web",
@@ -47,5 +47,26 @@
         }
       ]
     }
-  ]
+  ],
+  "loginTheme": "foodbridge-local",
+  "displayName": "FoodBridge",
+  "displayNameHtml": "food<span>bridge</span><sup>\u25cf</sup>",
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "registrationEmailAsUsername": false,
+  "editUsernameAllowed": false,
+  "passwordPolicy": "length(12)",
+  "actionTokenGeneratedByUserLifespan": 900,
+  "accessCodeLifespanLogin": 1800,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "accounts@example.test",
+    "fromDisplayName": "FoodBridge",
+    "auth": "false",
+    "starttls": "false",
+    "ssl": "false"
+  }
 }

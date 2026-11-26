@@ -36,6 +36,7 @@ class SessionMembership(Contract):
 class BrowserSessionRead(Contract):
     authenticated: bool
     login_enabled: bool
+    registration_enabled: bool = False
     mode: Literal["oidc", "local_demo"] | None = None
     memberships: list[SessionMembership]
 

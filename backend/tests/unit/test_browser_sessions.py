@@ -19,11 +19,13 @@ from foodbridge.settings import Settings
 class MemoryRedis:
     def __init__(self):
         self.values = {}
+        self.expiries = {}
 
     def set(self, key, value, ex=None, xx=False):
         if xx and key not in self.values:
             return False
         self.values[key] = value
+        self.expiries[key] = ex
         return True
 
     def get(self, key):
@@ -339,3 +341,64 @@ def test_logout_clears_local_session_during_provider_outage(browser_env, monkeyp
     assert response.status_code == 200
     assert env.redis.get(browser.key("session", sid)) is None
     assert env.client.cookies.get(browser.COOKIE) is None
+
+
+def test_registration_uses_standard_prompt_and_requires_explicit_capability(browser_env):
+    env = browser_env
+    assert (
+        env.client.get("/api/v1/auth/login?intent=register", follow_redirects=False).status_code
+        == 403
+    )
+    assert not env.redis.values
+    env.settings.browser_registration_enabled = True
+    response = env.client.get(
+        "/api/v1/auth/login?intent=register&return_to=/driver", follow_redirects=False
+    )
+    assert response.status_code == 302
+    params = parse_qs(urlsplit(response.headers["location"]).query)
+    assert params["prompt"] == ["create"]
+    assert params["code_challenge_method"] == ["S256"]
+    state = params["state"][0]
+    assert json.loads(env.redis.get(browser.key("login", state)))["return_to"] == "/driver"
+    assert (
+        env.client.get("/api/v1/auth/login?intent=arbitrary", follow_redirects=False).status_code
+        == 422
+    )
+
+
+def test_email_verification_login_state_has_one_bounded_lifetime(browser_env):
+    env = browser_env
+    env.settings.browser_login_ttl_s = 1800
+    response = env.client.get("/api/v1/auth/login", follow_redirects=False)
+    params = parse_qs(urlsplit(response.headers["location"]).query)
+    assert env.redis.expiries[browser.key("login", params["state"][0])] == 1800
+    assert "Max-Age=1800" in response.headers["set-cookie"]
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, ai_provider="rules", browser_login_ttl_s=3601)
+
+
+def test_stale_browser_callback_has_a_safe_recovery_page_without_a_session(browser_env):
+    env = browser_env
+    response = env.client.get(
+        "/api/v1/auth/callback?state=stale&code=expired",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/auth/error"
+    assert response.headers["cache-control"] == "no-store"
+    assert not env.redis.values
+    assert not env.client.cookies.get(browser.COOKIE)
+
+
+def test_expired_browser_session_discovers_signed_out_without_granting_access(browser_env):
+    env = browser_env
+    env.client.cookies.set(browser.COOKIE, "missing", domain="testserver.local", path="/")
+    assert env.client.get("/api/v1/session").status_code == 401
+    response = env.client.get("/api/v1/auth/session")
+    assert response.status_code == 200
+    assert response.json()["authenticated"] is False
+    assert response.json()["memberships"] == []
+    assert response.json()["login_enabled"] is True
+    assert "Max-Age=0" in response.headers["set-cookie"]
+    assert not env.client.cookies.get(browser.COOKIE)

@@ -144,7 +144,7 @@ Breaking field/status changes require a consumer-first plan: add the compatible 
 
 ## 8. Authentication and data access
 
-Use JWT access tokens issued by a configured OIDC provider; verify signature, issuer, audience and expiration using cached JWKS. Do not invent a custom password system for the demo. Map `sub` to a server-managed user and explicit organization memberships. Roles are donor, recipient, driver and operator; the UI role switcher in the scaffold is navigation, not authorization.
+Use JWT access tokens issued by a configured OIDC provider; verify signature, issuer, audience and expiration using cached JWKS. Do not invent a custom password system for the demo. Map `sub` to a server-managed user and explicit organization memberships. Roles are donor, recipient, driver and operator; the UI role switcher in the scaffold is navigation, not authorization. Gateway account creation uses native identity-provider email verification before password setup; recovery also stays with the provider. New accounts receive no workspace membership automatically and see an access-pending screen. See [account signup and recovery](features/release-integration.md#account-signup-and-recovery) for local email testing, shared theme rules and production SMTP activation.
 
 Donors see their own donations; recipients see their own offers/reservations; drivers see assigned pickups; operators see scoped operational data. Membership and resource ownership are checked on every command, detail/list endpoint and SSE connection/replay. Never accept actor/organization IDs from a browser body as authority. Seeded demo identities must use the same authorization layer.
 

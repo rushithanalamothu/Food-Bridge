@@ -62,6 +62,11 @@ def test_deployment_generator_keeps_secrets_private_and_refuses_overwrite(tmp_pa
     assert "FOODBRIDGE_ENABLE_LOCAL_WORKFLOW_DEMO='false'" in private.read_text()
     realm = json.loads((tmp_path / "realm.json").read_text())
     assert realm["users"] == [] and realm["sslRequired"] == "external"
+    assert realm["loginTheme"] == "foodbridge"
+    assert realm["smtpServer"] == {}
+    assert realm["registrationAllowed"] is False
+    assert realm["resetPasswordAllowed"] is False
+    assert realm["verifyEmail"] is True
     assert realm["clients"][0]["redirectUris"] == ["https://food.example.test/api/v1/auth/callback"]
     with pytest.raises(ValueError, match="refusing"):
         module.initialize(tmp_path, "food.example.test", "login.example.test", "api:sha", "web:sha")

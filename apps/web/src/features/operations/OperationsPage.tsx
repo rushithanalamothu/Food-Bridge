@@ -1,3 +1,4 @@
+import { Button } from '../../components/Button';
 import { DonationTimeline } from '../../components/DonationTimeline';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -99,8 +100,14 @@ export function OperationsPage() {
       >
         <p>Monitor your organization’s donations and recover work that needs attention.</p>
       </WorkspaceHeader>
+      {action.busy && (
+        <p className="pending-feedback" role="status">
+          <span className="button-spinner" aria-hidden="true" />
+          Saving your request…
+        </p>
+      )}
       {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="success">{message}</Notice>}
       {summary?.synthetic && (
         <Notice>
           Synthetic demonstration data · these figures do not represent real food rescued.
@@ -157,16 +164,16 @@ export function OperationsPage() {
             <p>
               Pickup by {formatTime(donation.pickup_window.end, donation.pickup_location.timezone)}
             </p>
-            <button className="text-button" onClick={() => setHistory(donation.id)}>
+            <Button variant="ghost" onClick={() => setHistory(donation.id)}>
               View donation history
-            </button>
+            </Button>
           </article>
         ))}
       </div>
       {(boardCursor === undefined ? view.data?.board.next_cursor : boardCursor) && (
-        <button
-          className="quiet-button"
-          disabled={paging}
+        <Button
+          variant="secondary"
+          busy={paging}
           onClick={async () => {
             setPaging(true);
             view.setError('');
@@ -186,7 +193,7 @@ export function OperationsPage() {
           }}
         >
           Load older donations
-        </button>
+        </Button>
       )}
       {history && (
         <DonationTimeline
@@ -208,13 +215,13 @@ export function OperationsPage() {
               {failure.replay_count} replays
             </p>
             <p className="muted">{formatTime(failure.created_at)}</p>
-            <button
-              className="quiet-button"
+            <Button
+              variant="secondary"
               disabled={reviewing || action.busy}
               onClick={() => void review(failure.donation_id)}
             >
               Review workflow
-            </button>
+            </Button>
             {auditId === failure.donation_id &&
               audit !== undefined &&
               !reviewing &&
@@ -252,8 +259,9 @@ export function OperationsPage() {
         ))}
       </div>
       {(cursor === undefined ? view.data?.failures.next_cursor : cursor) && (
-        <button
-          disabled={paging}
+        <Button
+          variant="secondary"
+          busy={paging}
           onClick={async () => {
             setPaging(true);
             view.setError('');
@@ -273,7 +281,7 @@ export function OperationsPage() {
           }}
         >
           Load older failures
-        </button>
+        </Button>
       )}
       {audit && (
         <section className="card">

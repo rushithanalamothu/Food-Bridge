@@ -189,7 +189,10 @@ services:
       KC_HOSTNAME: https://${FOODBRIDGE_AUTH_DOMAIN:?Set auth domain}
       KC_HTTP_ENABLED: 'true'
       KC_PROXY_HEADERS: xforwarded
-    volumes: ['./runtime/realm.json:/opt/keycloak/data/import/realm.json:ro']
+    volumes:
+      - './runtime/realm.json:/opt/keycloak/data/import/realm.json:ro'
+      - './keycloak/themes/foodbridge:/opt/keycloak/themes/foodbridge:ro'
+      - '../apps/web/src/styles/theme.css:/opt/keycloak/themes/foodbridge/login/resources/css/shared.css:ro'
     depends_on: { auth-db: { condition: service_healthy } }
     restart: unless-stopped
   prometheus:

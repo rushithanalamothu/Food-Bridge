@@ -1,35 +1,72 @@
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { ApiStatus } from './components/ApiStatus';
 import { SessionProvider } from './components/SessionProvider';
+import { WorkspaceIcon } from './components/WorkspaceIcon';
 import { DonorPage } from './features/donor/DonorPage';
 import { RecipientPage } from './features/recipient/RecipientPage';
 import { DriverPage } from './features/driver/DriverPage';
 import { OperationsPage } from './features/operations/OperationsPage';
 
 export function App() {
+  const { pathname } = useLocation();
+  const previousPath = useRef(pathname);
+  useEffect(() => {
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    document.getElementById('content')?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#content">
         Skip to content
       </a>
-      <header>
+      <header className="app-header">
         <NavLink to="/" className="wordmark" aria-label="FoodBridge home">
           food<span>bridge</span>
           <span className="brand-dot">●</span>
         </NavLink>
-        <span className="environment-label">GOOD FOOD. STRONGER COMMUNITIES.</span>
+        <nav className="workspace-nav" aria-label="Workspace">
+          {[
+            { path: 'donor', label: 'Donor', icon: 'donor' },
+            { path: 'recipient', label: 'Receiver', icon: 'recipient' },
+            { path: 'driver', label: 'Driver', icon: 'driver' },
+            { path: 'operations', label: 'Operations', icon: 'operator' },
+          ].map((item) => (
+            <NavLink key={item.path} to={'/' + item.path}>
+              <WorkspaceIcon name={item.icon} />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <span className="header-caption">Good food. Stronger communities.</span>
       </header>
-      <nav aria-label="Workspace">
-        <NavLink to="/donor">Donor</NavLink>
-        <NavLink to="/recipient">Receiver</NavLink>
-        <NavLink to="/driver">Driver</NavLink>
-        <NavLink to="/operations">Operations</NavLink>
-      </nav>
       <main id="content" tabIndex={-1}>
         <SessionProvider>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/auth/callback" element={<p role="status">Completing sign-in…</p>} />
+            <Route
+              path="/auth/error"
+              element={
+                <section className="access-pending">
+                  <p className="eyebrow">Account access</p>
+                  <h1>Let’s start sign-in again.</h1>
+                  <p>
+                    We couldn’t complete that sign-in. The link may have expired, already been used,
+                    or been opened in a different browser.
+                  </p>
+                  <p>
+                    Your verification or password change may still be complete. Start a fresh
+                    sign-in to continue.
+                  </p>
+                  <Link className="button" to="/donor">
+                    Return to sign in
+                  </Link>
+                </section>
+              }
+            />
             <Route path="/donor/*" element={<DonorPage />} />
             <Route path="/recipient/*" element={<RecipientPage />} />
             <Route path="/driver/*" element={<DriverPage />} />
@@ -73,7 +110,7 @@ function HomePage() {
             into a timely delivery.
           </p>
           <Link className="button" to="/donor">
-            Share surplus food <span aria-hidden="true">↗</span>
+            Share surplus food
           </Link>
         </div>
         <div className="journey" aria-label="Donation journey">
@@ -129,7 +166,6 @@ function HomePage() {
             <span className="eyebrow">{item.number}</span>
             <h3>{item.title}</h3>
             <p>{item.text}</p>
-            <span aria-hidden="true">↗</span>
           </Link>
         ))}
       </div>

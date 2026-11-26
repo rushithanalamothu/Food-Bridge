@@ -119,10 +119,10 @@ jobs:
         run: |
           FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml up --build -d
           for attempt in $(seq 1 90); do
-            if curl -fsS http://localhost:58080/realms/foodbridge/.well-known/openid-configuration > /dev/null; then break; fi
+            if curl -fsS http://localhost:55173/identity/realms/foodbridge/.well-known/openid-configuration > /dev/null; then break; fi
             sleep 2
           done
-          curl -fsS http://localhost:58080/realms/foodbridge/.well-known/openid-configuration > /dev/null
+          curl -fsS http://localhost:55173/identity/realms/foodbridge/.well-known/openid-configuration > /dev/null
           FOODBRIDGE_BACKEND_IMAGE=foodbridge-backend:release-local docker compose -p foodbridge-release -f compose.yaml -f compose.release-local.yml exec -T api uv run --no-sync python scripts/seed_release_demo.py
       - name: Real login, driver/operations and SMTP acceptance
         run: FOODBRIDGE_RELEASE_E2E=1 npm run test:e2e

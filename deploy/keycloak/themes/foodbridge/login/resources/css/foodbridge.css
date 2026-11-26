@@ -1,0 +1,262 @@
+/* Keycloak layout adapter. Palette and controls come from the mounted app theme. */
+:root {
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html.fb-auth-page {
+  font-size: 100%;
+  min-height: 100%;
+}
+body.fb-auth-body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-page);
+  background-image: none;
+  color: var(--color-text);
+  font: 1rem/1.6 var(--font-body);
+}
+.fb-auth-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 92px 1fr;
+}
+.fb-auth-brand {
+  display: flex;
+  align-items: center;
+  padding: 18px clamp(24px, 4vw, 80px);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+#kc-header-wrapper {
+  padding: 0;
+  color: var(--color-heading);
+  font-family: var(--font-body);
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -1.5px;
+  text-transform: none;
+  line-height: 1.6;
+}
+#kc-header-wrapper span {
+  color: var(--color-accent);
+}
+#kc-header-wrapper sup {
+  color: var(--color-leaf);
+  font-size: 14px;
+  margin-left: 6px;
+  position: static;
+  vertical-align: top;
+  line-height: 1.6;
+}
+.fb-auth-card {
+  align-self: center;
+  width: min(480px, calc(100% - 48px));
+  min-width: 0;
+  margin: 48px auto;
+  padding: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.fb-auth-heading {
+  margin: 0 0 28px;
+  padding: 0;
+  color: var(--color-heading);
+}
+#kc-page-title {
+  margin: 0;
+  text-align: left;
+  font: 650 2rem/1.2 var(--font-body);
+  letter-spacing: -1px;
+}
+.fb-auth-field {
+  margin-bottom: 22px;
+}
+.fb-auth-label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--color-text);
+  font: 600 0.875rem/1.6 var(--font-body);
+}
+.fb-auth-input {
+  width: 100%;
+}
+.fb-auth-input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.fb-auth-input-error {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+.fb-password-group {
+  display: flex;
+  align-items: stretch;
+}
+.fb-password-group .fb-auth-input {
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius-control) 0 0 var(--radius-control);
+}
+.fb-password-group .fb-password-toggle {
+  min-width: 48px;
+  min-height: 46px;
+  padding: 10px;
+  border-left: 0;
+  border-color: var(--color-border-strong);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+.fb-auth-actions {
+  margin-top: 28px;
+}
+.fb-auth-full-width,
+#kc-login {
+  width: 100%;
+}
+.fb-auth-settings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.fb-auth-body a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.fb-auth-body a.fb-button {
+  text-decoration: none;
+}
+.fb-auth-body :focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.fb-auth-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 16px;
+  border-left: 3px solid var(--color-info);
+  border-radius: var(--radius-control);
+  background: var(--color-info-soft);
+  color: var(--color-info);
+  font-size: 0.875rem;
+}
+.fb-auth-notice .pf-c-alert__icon {
+  color: inherit;
+  margin-top: 3px;
+}
+.fb-auth-notice.alert-error {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+}
+.fb-auth-notice.alert-warning {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+}
+.fb-auth-notice.alert-success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+}
+.fb-auth-footer {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.fb-auth-footer p {
+  margin: 0;
+}
+#kc-info-wrapper,
+#kc-registration-container {
+  margin-top: 24px;
+  padding: 0;
+  background: transparent;
+  font-size: 0.875rem;
+}
+#kc-error-message p,
+.instruction {
+  color: var(--color-text);
+  font-size: 1rem;
+}
+.fb-auth-heading .col-md-10 {
+  width: auto;
+  float: none;
+  padding: 0;
+}
+.subtitle {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  margin-bottom: 10px;
+}
+.required {
+  color: var(--color-danger);
+}
+.fb-auth-body input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+}
+@media (max-width: 600px) {
+  .fb-auth-shell {
+    grid-template-rows: 82px 1fr;
+  }
+  .fb-auth-brand {
+    padding: 20px 22px;
+  }
+  .fb-auth-card {
+    width: calc(100% - 40px);
+    padding: 24px;
+    margin-block: 32px;
+  }
+  #kc-page-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* Keep the password control visible while upstream icon fonts initialize. */
+.fb-password-toggle i {
+  display: none;
+}
+.fb-password-toggle::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  display: block;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.fb-password-toggle:has(.fa-eye-slash)::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12ZM3 3l18 18'/%3E%3C/svg%3E");
+}
+
+.fb-auth-label-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.fb-auth-actions {
+  width: 100%;
+}
+.fb-auth-settings .fb-auth-options {
+  min-width: 0;
+}
+.fb-local-inbox {
+  margin-top: 12px !important;
+  font-size: 0.875rem;
+}
+#kc-info .fb-button {
+  margin: 12px 0;
+}

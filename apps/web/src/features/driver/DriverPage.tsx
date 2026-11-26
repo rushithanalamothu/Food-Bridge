@@ -1,3 +1,5 @@
+import { WorkflowProgress } from '../../components/WorkflowProgress';
+import { Button } from '../../components/Button';
 import { useEffect, useRef, useState } from 'react';
 import { getPickups, pickupCommand } from '../../api/workflow';
 import type { PickupRead } from '../../api/generated/workflow';
@@ -61,8 +63,14 @@ export function DriverPage() {
       >
         <p>Accept a task, check handling details, and confirm each handoff.</p>
       </WorkspaceHeader>
+      {action.busy && (
+        <p className="pending-feedback" role="status">
+          <span className="button-spinner" aria-hidden="true" />
+          Saving your request…
+        </p>
+      )}
       {view.error && <ActionError message={view.error} dismiss={() => view.setError('')} />}
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="success">{message}</Notice>}
       <Stats
         items={[
           {
@@ -105,6 +113,14 @@ export function DriverPage() {
                 <StatusBadge status={pickup.status} />
               </div>
               <h3>{food.food_name}</h3>
+              {['assigned', 'accepted', 'collected', 'delivered'].includes(pickup.status) && (
+                <WorkflowProgress
+                  steps={['Accept', 'Pick up', 'Deliver']}
+                  current={pickup.status === 'assigned' ? 0 : pickup.status === 'accepted' ? 1 : 2}
+                  complete={pickup.status === 'delivered'}
+                  label={`Delivery progress for ${food.food_name}`}
+                />
+              )}
               <p>
                 {food.quantity_kg} kg · {food.storage} ·{' '}
                 {food.packaging_type ?? 'Packaging unspecified'}
@@ -139,19 +155,19 @@ export function DriverPage() {
                 <strong>Handling notes:</strong> {food.handling_notes || 'No additional notes.'}
               </p>
               {expired && ['assigned', 'accepted'].includes(pickup.status) && (
-                <Notice>
+                <Notice tone="warning">
                   This assignment’s pickup window has elapsed. Refresh for reassignment or expiry
                   status.
                 </Notice>
               )}
               {pickup.status === 'assigned' && (
                 <div className="actions">
-                  <button
+                  <Button
                     disabled={action.busy || expired}
                     onClick={() => void act(pickup, 'accept')}
                   >
                     Accept assignment
-                  </button>
+                  </Button>
                   <ConfirmAction
                     label="Decline assignment"
                     danger
@@ -192,13 +208,14 @@ export function DriverPage() {
                     <p className="muted">
                       If the weight differs, contact your coordinator before collection.
                     </p>
-                    <button
+                    <Button
+                      type="submit"
                       disabled={
                         action.busy || expired || now < Date.parse(food.pickup_window.start)
                       }
                     >
                       Confirm pickup
-                    </button>
+                    </Button>
                   </form>
                   <ConfirmAction
                     label="Decline assignment"
@@ -251,16 +268,17 @@ export function DriverPage() {
                   </a>
                 </p>
               )}
-              <button className="text-button" onClick={() => setHistory(food.id)}>
+              <Button variant="ghost" onClick={() => setHistory(food.id)}>
                 View donation history
-              </button>
+              </Button>
             </article>
           );
         })}
       </div>
       {(cursor === undefined ? view.data?.next_cursor : cursor) && (
-        <button
-          disabled={paging}
+        <Button
+          variant="secondary"
+          busy={paging}
           onClick={async () => {
             setPaging(true);
             view.setError('');
@@ -278,7 +296,7 @@ export function DriverPage() {
           }}
         >
           Load older assignments
-        </button>
+        </Button>
       )}
       {history && (
         <DonationTimeline

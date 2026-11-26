@@ -1,3 +1,4 @@
+import { Button } from './Button';
 import { useEffect, useState } from 'react';
 import type { DonationDetail, Role } from '../api/generated/workflow';
 import { getDonationDetail } from '../api/workflow';
@@ -37,9 +38,9 @@ function TimelineContent({ role, id, version, onClose }: TimelineProps) {
     <section className="card" aria-label="Donation history">
       <div className="section-heading">
         <h2>{detail?.donation.food_name ?? 'Donation history'}</h2>
-        <button className="quiet-button" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose}>
           Close history
-        </button>
+        </Button>
       </div>
       {error && <Notice error>{error}</Notice>}
       {!detail && !error && <p role="status">Loading history…</p>}
